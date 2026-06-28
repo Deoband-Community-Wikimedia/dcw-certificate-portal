@@ -203,6 +203,11 @@ if (is_dir($fontDir)) {
                     <label for="field_enabled" style="margin-bottom: 0;">Show this element on PDF</label>
                 </div>
 
+                <div class="form-group" id="sample_text_group" style="display: none; padding-top: 10px; border-top: 1px solid #eaedf1;">
+                    <label>Preview Sample Text <span style="font-size: 11px; font-weight: normal; color: #777;">(Not saved, for testing only)</span></label>
+                    <input type="text" id="sample_text_input" placeholder="Type to preview length..." style="width: 100%; padding: 10px; box-sizing: border-box; border: 1.5px solid #cbd5e1; border-radius: 6px; font-family: monospace;">
+                </div>
+
                 <div class="form-group">
                     <label>X Position (mm)</label>
                     <input type="text" id="pos_x" readonly style="background:#eee;">
@@ -383,7 +388,6 @@ if (is_dir($fontDir)) {
             ['name', 'certid', 'date', 'qrcode'].forEach(applyStyleToElement);
         }
 
-        // Form Inputs
         const formInputs = {
             enabled: document.getElementById('field_enabled'),
             pos_x: document.getElementById('pos_x'),
@@ -394,7 +398,8 @@ if (is_dir($fontDir)) {
             font_file: document.getElementById('existing_font'),
             color_picker: document.getElementById('color_picker'),
             file_proxy: document.getElementById('font_file_input'),
-            date_format: document.getElementById('date_format')
+            date_format: document.getElementById('date_format'),
+            sample_text: document.getElementById('sample_text_input')
         };
 
         function updateDatePreview() {
@@ -427,6 +432,13 @@ if (is_dir($fontDir)) {
             formInputs.font_file.value = s.font_file;
             document.getElementById('lbl_current_tab').innerText = activeTab.toUpperCase();
             
+            if (activeTab === 'name' || activeTab === 'certid') {
+                document.getElementById('sample_text_group').style.display = 'block';
+                formInputs.sample_text.value = document.getElementById('el_' + activeTab).innerText;
+            } else {
+                document.getElementById('sample_text_group').style.display = 'none';
+            }
+
             if (activeTab === 'date') {
                 document.getElementById('date_format_group').style.display = 'block';
                 formInputs.date_format.value = s.date_format || 'F j, Y';
@@ -600,6 +612,45 @@ if (is_dir($fontDir)) {
         // Initial Load
         updateDatePreview();
         loadSettingsIntoForm();
+
+        formInputs.sample_text.addEventListener('input', (e) => {
+            if (activeTab === 'name' || activeTab === 'certid') {
+                const el = document.getElementById('el_' + activeTab);
+                el.innerText = e.target.value || (activeTab === 'name' ? 'Participant Name' : 'CERT-1A2B3C4D');
+                applyStyleToElement(activeTab);
+            }
+        });
+
+        // Keyboard Nudging (Pixel-Perfect Precision)
+        document.addEventListener('keydown', (e) => {
+            // Prevent scrolling when using arrow keys, unless user is typing in an input field
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
+                e.preventDefault();
+                const el = document.getElementById('el_' + activeTab);
+                if (!el || el.classList.contains('hidden')) return;
+
+                let left = el.offsetLeft;
+                let top = el.offsetTop;
+                let nudgeAmount = e.shiftKey ? 10 : 1;
+
+                if (e.key === 'ArrowUp') top -= nudgeAmount;
+                if (e.key === 'ArrowDown') top += nudgeAmount;
+                if (e.key === 'ArrowLeft') left -= nudgeAmount;
+                if (e.key === 'ArrowRight') left += nudgeAmount;
+
+                el.style.left = left + 'px';
+                el.style.top = top + 'px';
+
+                const x_mm = (left / canvas.offsetWidth) * pdfWidthMM;
+                const y_mm = (top / canvas.offsetHeight) * pdfHeightMM;
+
+                formInputs.pos_x.value = x_mm.toFixed(2);
+                formInputs.pos_y.value = y_mm.toFixed(2);
+                
+                settings[activeTab].pos_x = parseFloat(x_mm.toFixed(2));
+                settings[activeTab].pos_y = parseFloat(y_mm.toFixed(2));
+            }
+        });
 
     </script>
 </body>
