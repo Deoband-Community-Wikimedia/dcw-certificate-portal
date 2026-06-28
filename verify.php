@@ -235,7 +235,7 @@ $roleName = $certData['role_name'] ? " as " . htmlspecialchars($certData['role_n
 
     <div class="top-nav">
         <a href="https://dcwwiki.org/" target="_blank">
-            <img src="https://dcwwiki.org/images/5/56/DCW_logo.png" alt="DCW Logo">
+            <img src="https://dcwwiki.org/images/5/56/DCW_logo.png" alt="DCW Logo" width="45" height="45" decoding="async">
         </a>
         <div class="nav-title">Credential Verification</div>
     </div>
