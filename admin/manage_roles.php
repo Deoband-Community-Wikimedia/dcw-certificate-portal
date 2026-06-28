@@ -68,11 +68,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         }
     } elseif (isset($_POST['action']) && $_POST['action'] === 'delete_role') {
-        $roleId = $_POST['role_id'];
-        // Delete role
-        $stmt = $pdo->prepare("DELETE FROM event_roles WHERE id = ? AND event_id = ?");
-        $stmt->execute([$roleId, $eventId]);
-        $success = "Role deleted successfully.";
+        $passcode = trim($_POST['super_admin_passcode'] ?? '');
+        if ($passcode !== SUPER_ADMIN_PASSCODE) {
+            $error = "Security Error: Invalid Super Admin Passcode.";
+        } else {
+            $roleId = $_POST['role_id'];
+            
+            // Get role name for logging
+            $stmtRoleName = $pdo->prepare("SELECT role_name FROM event_roles WHERE id = ?");
+            $stmtRoleName->execute([$roleId]);
+            $deletedRoleName = $stmtRoleName->fetchColumn() ?: 'Unknown';
+            
+            // Delete role
+            $stmt = $pdo->prepare("DELETE FROM event_roles WHERE id = ? AND event_id = ?");
+            $stmt->execute([$roleId, $eventId]);
+            
+            log_audit_action($pdo, 'Deleted Role', "Role: {$deletedRoleName} from Event ID: {$eventId}");
+            $success = "Role deleted successfully.";
+        }
     }
 }
 
@@ -148,10 +161,11 @@ $roles = $stmt->fetchAll();
                                         <a href="preview_event.php?role_id=<?= $role['id'] ?>" class="btn btn-sm" title="Visual Editor">
                                             <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
                                         </a>
-                                        <form method="POST" action="manage_roles.php?event_id=<?= $eventId ?>" style="margin:0;" onsubmit="return confirm('Are you sure you want to delete this role?');">
+                                        <form method="POST" action="manage_roles.php?event_id=<?= $eventId ?>" style="margin:0;" id="deleteForm_<?= $role['id'] ?>" onsubmit="return confirmDelete(<?= $role['id'] ?>);">
                                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generate_csrf_token()) ?>">
                                             <input type="hidden" name="action" value="delete_role">
                                             <input type="hidden" name="role_id" value="<?= $role['id'] ?>">
+                                            <input type="hidden" name="super_admin_passcode" id="delete_passcode_<?= $role['id'] ?>" value="">
                                             <button type="submit" class="btn btn-sm btn-red" title="Delete Role">
                                                 <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                                             </button>
@@ -171,6 +185,18 @@ $roles = $stmt->fetchAll();
 </div>
 
 <script src="script.js"></script>
+<script>
+function confirmDelete(id) {
+    if (!confirm('Are you sure you want to delete this role?')) return false;
+    let code = prompt("Security Check: Please enter the Super Admin Passcode to authorize this deletion:");
+    if (code) {
+        document.getElementById('delete_passcode_' + id).value = code;
+        return true;
+    }
+    alert("Deletion cancelled: Passcode is required.");
+    return false;
+}
+</script>
 <?php if ($error): ?>
 <script>
     window.flashMessage = <?= json_encode($error) ?>;

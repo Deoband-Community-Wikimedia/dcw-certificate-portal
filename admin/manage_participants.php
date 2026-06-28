@@ -46,15 +46,30 @@ function generateCertId($prefix) {
 $certPrefix = $event['cert_prefix'] ?? 'DCW';
 
 // Handle Deletion
-if (isset($_GET['delete_pid'])) {
-    $csrf = $_GET['csrf_token'] ?? '';
+if (isset($_POST['action']) && $_POST['action'] === 'delete_participant') {
+    $csrf = $_POST['csrf_token'] ?? '';
     verify_csrf_token($csrf);
     
-    $delPid = $_GET['delete_pid'];
-    $stmtDel = $pdo->prepare("DELETE FROM event_participants WHERE participant_id = ? AND event_id = ?");
-    $stmtDel->execute([$delPid, $eventId]);
-    header("Location: manage_participants.php?id=" . $eventId . "&msg=deleted");
-    exit;
+    $passcode = trim($_POST['super_admin_passcode'] ?? '');
+    if ($passcode !== SUPER_ADMIN_PASSCODE) {
+        $message = "Security Error: Invalid Super Admin Passcode.";
+        $messageType = 'error';
+    } else {
+        $delPid = $_POST['delete_pid'];
+        
+        // Log before delete
+        $stmtParticipant = $pdo->prepare("SELECT full_name FROM participants WHERE id = ?");
+        $stmtParticipant->execute([$delPid]);
+        $deletedParticipantName = $stmtParticipant->fetchColumn() ?: 'Unknown';
+        
+        $stmtDel = $pdo->prepare("DELETE FROM event_participants WHERE participant_id = ? AND event_id = ?");
+        $stmtDel->execute([$delPid, $eventId]);
+        
+        log_audit_action($pdo, 'Removed Participant', "Participant: {$deletedParticipantName} from Event ID: {$eventId}");
+        
+        header("Location: manage_participants.php?id=" . $eventId . "&msg=deleted");
+        exit;
+    }
 }
 
 // Handle Export
@@ -412,9 +427,15 @@ $participants = $stmt->fetchAll();
                                 <a href="manage_participants.php?id=<?= $eventId ?>&edit_pid=<?= $p['id'] ?>" class="action-link" title="Edit" style="color: var(--accent-color);">
                                     <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                                 </a>
-                                <a href="manage_participants.php?id=<?= $eventId ?>&delete_pid=<?= $p['id'] ?>&csrf_token=<?= generate_csrf_token() ?>" class="action-link" title="Remove" style="color: var(--secondary-color);" onclick="return confirm('Are you sure you want to remove this participant from this event?');">
-                                    <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                                </a>
+                                <form method="POST" action="manage_participants.php?id=<?= $eventId ?>" style="margin:0;" id="deleteForm_<?= $p['id'] ?>" onsubmit="return confirmDelete(<?= $p['id'] ?>);">
+                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generate_csrf_token()) ?>">
+                                    <input type="hidden" name="action" value="delete_participant">
+                                    <input type="hidden" name="delete_pid" value="<?= $p['id'] ?>">
+                                    <input type="hidden" name="super_admin_passcode" id="delete_passcode_<?= $p['id'] ?>" value="">
+                                    <button type="submit" class="action-link" title="Remove" style="color: var(--secondary-color); background:none; border:none; padding:0; cursor:pointer;">
+                                        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                                    </button>
+                                </form>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -448,6 +469,18 @@ $participants = $stmt->fetchAll();
 </div>
 
 <script src="script.js"></script>
+<script>
+function confirmDelete(id) {
+    if (!confirm('Are you sure you want to remove this participant from this event?')) return false;
+    let code = prompt("Security Check: Please enter the Super Admin Passcode to authorize this removal:");
+    if (code) {
+        document.getElementById('delete_passcode_' + id).value = code;
+        return true;
+    }
+    alert("Removal cancelled: Passcode is required.");
+    return false;
+}
+</script>
 <?php if (isset($_GET['msg']) && $_GET['msg'] === 'deleted'): ?>
 <script>
     window.flashMessage = 'Participant successfully removed.';
