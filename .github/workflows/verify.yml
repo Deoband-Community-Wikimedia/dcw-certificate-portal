@@ -1,0 +1,30 @@
+name: Verify Pull Request
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  php-syntax-check:
+    name: PHP Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+    - name: Get latest code
+      uses: actions/checkout@v4
+      
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        
+    - name: Run PHP Syntax Check (Linting)
+      run: |
+        echo "Checking PHP syntax for all files..."
+        find . -type f -name "*.php" -exec php -l {} \; | grep -v "No syntax errors detected" || true
+        # If there are any syntax errors, fail the build
+        if find . -type f -name "*.php" -exec php -l {} \; | grep -q "Parse error"; then
+          echo "Syntax errors found! Please fix them before merging."
+          exit 1
+        fi
+        echo "All PHP files passed syntax check!"
