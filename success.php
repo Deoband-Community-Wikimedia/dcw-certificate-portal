@@ -258,6 +258,26 @@ $linkedInShareMobile = "https://www.linkedin.com/sharing/share-offsite/?url=" . 
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h4.969v-8.399c0-4.67 6.029-5.052 6.029 0v8.399h4.988v-10.131c0-7.88-8.922-7.593-11.018-3.714v-2.155z"/></svg>
                 Post on LinkedIn
             </a>
+
+            <div class="form-group" style="margin-top: 20px;">
+                <label>Credential ID</label>
+                <div class="input-group">
+                    <input type="text" id="certId" value="<?= htmlspecialchars($certId) ?>" readonly>
+                    <button type="button" onclick="copyText('certId', this)" title="Copy Credential ID" style="display:flex; align-items:center; justify-content:center; padding: 0 15px;">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Verification URL</label>
+                <div class="input-group">
+                    <input type="text" id="verifyUrl" value="<?= htmlspecialchars($verifyUrl) ?>" readonly>
+                    <button type="button" onclick="copyText('verifyUrl', this)" title="Copy Verification URL" style="display:flex; align-items:center; justify-content:center; padding: 0 15px;">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -278,9 +298,10 @@ $linkedInShareMobile = "https://www.linkedin.com/sharing/share-offsite/?url=" . 
             input.select();
             input.setSelectionRange(0, 99999); 
             document.execCommand("copy");
-            const originalText = btn.innerText;
-            btn.innerText = "Copied!";
-            setTimeout(() => { btn.innerText = originalText; }, 2000);
+            
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>';
+            setTimeout(() => { btn.innerHTML = originalHTML; }, 2000);
         }
 
         const pdfUrl = 'download.php?id=<?= htmlspecialchars($certId) ?>&preview=1';
