@@ -34,13 +34,10 @@ $orgNameEncoded = urlencode('Deoband Community Wikimedia');
 $linkedInAddUrl = "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name={$eventName}&organizationName={$orgNameEncoded}&issueYear={$issueYear}&issueMonth={$issueMonth}&certUrl=" . urlencode($verifyUrl) . "&certId=" . urlencode($certId);
 
 $dbCaption = $certData['linkedin_caption'] ?? '';
-if (trim($dbCaption) !== '') {
-    $customCaption = str_replace(['{EVENT_NAME}', '{URL}'], [$certData['event_name'], $verifyUrl], $dbCaption);
-    $linkedInShareUrl = "https://www.linkedin.com/feed/?shareActive=true&text=" . rawurlencode($customCaption);
-} else {
-    $defaultText = "I just earned my certificate for completing {$certData['event_name']}! Check out my verified credential here: {$verifyUrl}";
-    $linkedInShareUrl = "https://www.linkedin.com/feed/?shareActive=true&text=" . rawurlencode($defaultText);
-}
+$customCaption = trim($dbCaption) !== '' ? str_replace(['{EVENT_NAME}', '{URL}'], [$certData['event_name'], $verifyUrl], $dbCaption) : "I just earned my certificate for completing {$certData['event_name']}! Check out my verified credential here: {$verifyUrl}";
+
+$linkedInShareDesktop = "https://www.linkedin.com/feed/?shareActive=true&text=" . rawurlencode($customCaption);
+$linkedInShareMobile = "https://www.linkedin.com/sharing/share-offsite/?url=" . urlencode($verifyUrl);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -257,7 +254,7 @@ if (trim($dbCaption) !== '') {
                 Add to LinkedIn Profile
             </a>
 
-            <a href="<?= $linkedInShareUrl ?>" target="_blank" class="btn-linkedin-outline">
+            <a href="<?= $linkedInShareDesktop ?>" target="_blank" class="btn-linkedin-outline" onclick="return handleLinkedInShare(event, '<?= $linkedInShareMobile ?>');">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h4.969v-8.399c0-4.67 6.029-5.052 6.029 0v8.399h4.988v-10.131c0-7.88-8.922-7.593-11.018-3.714v-2.155z"/></svg>
                 Share in a LinkedIn Post
             </a>
@@ -281,6 +278,17 @@ if (trim($dbCaption) !== '') {
     </div>
 
     <script>
+        function handleLinkedInShare(event, mobileUrl) {
+            // Check if user is on a mobile device
+            if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                event.preventDefault();
+                // Use the official mobile-supported share endpoint (strips custom text but attaches the preview card reliably)
+                window.open(mobileUrl, '_blank');
+                return false;
+            }
+            return true;
+        }
+
         function copyText(inputId, btn) {
             const input = document.getElementById(inputId);
             input.select();
