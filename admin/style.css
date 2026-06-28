@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
     --primary-color: #106b9a; /* DCW Blue */
@@ -411,8 +411,9 @@ table tr:hover { background: #fbfdff; }
 }
 
  
- / *   P a s s w o r d   T o g g l e   * / 
- . p a s s w o r d - w r a p p e r   {   p o s i t i o n :   r e l a t i v e ;   d i s p l a y :   b l o c k ;   } 
- . p a s s w o r d - t o g g l e   {   p o s i t i o n :   a b s o l u t e ;   r i g h t :   1 2 p x ;   t o p :   5 0 % ;   t r a n s f o r m :   t r a n s l a t e Y ( - 5 0 % ) ;   b a c k g r o u n d :   n o n e ;   b o r d e r :   n o n e ;   c u r s o r :   p o i n t e r ;   c o l o r :   # 6 4 7 4 8 b ;   p a d d i n g :   0 ;   d i s p l a y :   f l e x ;   a l i g n - i t e m s :   c e n t e r ;   j u s t i f y - c o n t e n t :   c e n t e r ;   } 
- . p a s s w o r d - t o g g l e : h o v e r   {   c o l o r :   v a r ( - - p r i m a r y - c o l o r ) ;   }  
- 
+
+/* Password Toggle */
+.password-wrapper { position: relative; display: block; }
+.password-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748b; padding: 0; display: flex; align-items: center; justify-content: center; }
+.password-toggle:hover { color: var(--primary-color); }
+
