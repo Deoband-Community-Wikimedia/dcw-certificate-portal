@@ -11,6 +11,9 @@ if (!$certId) {
     exit;
 }
 
+$basePath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+if ($basePath === '/') $basePath = '';
+
 $stmt = $pdo->prepare("
     SELECT p.full_name, e.name as event_name, ep.created_at, er.role_name
     FROM event_participants ep
@@ -256,7 +259,7 @@ $roleName = $certData['role_name'] ? " as " . htmlspecialchars($certData['role_n
                 <div class="detail-value"><?= $issueDate ?></div>
             </div>
 
-            <a href="<?= dirname($_SERVER['SCRIPT_NAME']) ?>/download.php?id=<?= htmlspecialchars($certId) ?>" class="btn-primary">
+            <a href="<?= $basePath ?>/download.php?id=<?= htmlspecialchars($certId) ?>" class="btn-primary">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                 Download Original PDF
             </a>
@@ -264,7 +267,7 @@ $roleName = $certData['role_name'] ? " as " . htmlspecialchars($certData['role_n
     </div>
 
     <script>
-        const pdfUrl = '<?= dirname($_SERVER['SCRIPT_NAME']) ?>/download.php?id=<?= htmlspecialchars($certId) ?>&preview=1';
+        const pdfUrl = '<?= $basePath ?>/download.php?id=<?= htmlspecialchars($certId) ?>&preview=1';
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
         pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
