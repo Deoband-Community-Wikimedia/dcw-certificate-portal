@@ -123,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <div class="login-card">
         <div style="text-align: center; margin-bottom: 10px;">
-            <img src="https://dcwwiki.org/images/5/56/DCW_logo.png" alt="DCW Logo"
+            <img src="../assets/DCW_logo.png" alt="DCW Logo"
                 style="height: 120px; background: white; padding: 5px; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
         </div>
         <h2>Admin Login</h2>

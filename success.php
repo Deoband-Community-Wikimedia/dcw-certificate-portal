@@ -223,7 +223,7 @@ $linkedInShareMobile = "https://www.linkedin.com/sharing/share-offsite/?url=" . 
 
     <div class="top-nav">
         <a href="https://dcwwiki.org/" target="_blank">
-            <img src="https://dcwwiki.org/images/5/56/DCW_logo.png" alt="DCW Logo" width="45" height="45" decoding="async">
+            <img src="assets/DCW_logo.png" alt="DCW Logo" width="45" height="45" decoding="async">
         </a>
         <div class="nav-title">Official Credential</div>
     </div>

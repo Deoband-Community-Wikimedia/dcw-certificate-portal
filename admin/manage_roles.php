@@ -128,7 +128,7 @@ $roles = $stmt->fetchAll();
 
 <div class="navbar">
     <div style="display: flex; align-items: center; gap: 15px;">
-        <img src="https://dcwwiki.org/images/5/56/DCW_logo.png" alt="DCW Logo" width="35" height="35" decoding="async" style="height: 35px; width: 35px; background: white; padding: 2px; border-radius: 50%;">
+        <img src="../assets/DCW_logo.png" alt="DCW Logo" width="35" height="35" decoding="async" style="height: 35px; width: 35px; background: white; padding: 2px; border-radius: 50%;">
         <span style="font-size: 18px; font-weight: bold; letter-spacing: 0.5px;">Admin Panel</span>
     </div>
     <div>
