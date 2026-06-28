@@ -118,6 +118,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 14px;
             text-align: center;
         }
+        /* Password Toggle */
+        .password-wrapper { position: relative; display: block; }
+        .password-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748b; padding: 0; display: flex; align-items: center; justify-content: center; }
+        .password-toggle:hover { color: var(--primary-color); }
     </style>
 </head>
 
