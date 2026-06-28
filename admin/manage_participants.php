@@ -37,7 +37,7 @@ $messageType = ''; // 'success' or 'error'
 function generateCertId($prefix) {
     $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluded I, O, 0, 1 for clarity
     $randomStr = '';
-    for ($i = 0; $i < 6; $i++) {
+    for ($i = 0; $i < 8; $i++) {
         $randomStr .= $chars[random_int(0, strlen($chars) - 1)];
     }
     return strtoupper($prefix) . '-' . $randomStr;
