@@ -369,6 +369,9 @@ $participants = $stmt->fetchAll();
         <div class="upload-box" style="flex: 1; min-width: 300px;">
             <h3 style="margin-top:0;">Bulk Upload CSV</h3>
             <p style="font-size: 13px; color: #555;">Upload a CSV file containing participants. Format: <strong>Full_Name, Email, Role_Name</strong>. First row will be ignored.</p>
+            <div style="background: #fffbeb; border: 1px solid #fde68a; color: #b45309; padding: 10px; border-radius: 6px; font-size: 12.5px; margin-bottom: 15px;">
+                <strong>⚠️ Important:</strong> The <em>Role_Name</em> in your CSV must <strong>exactly match</strong> a Role you have already created for this event. If a role in the CSV does not exist in the system, those participants will be skipped!
+            </div>
             <form method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generate_csrf_token()) ?>">
                 <input type="hidden" name="action" value="upload_csv">
