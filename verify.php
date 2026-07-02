@@ -49,14 +49,14 @@ $roleName = $certData['role_name'] ? " as " . htmlspecialchars($certData['role_n
     <meta property="og:url" content="https://<?= htmlspecialchars($_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']) ?>">
     <meta property="og:title" content="Verified Credential: <?= htmlspecialchars($certData['full_name']) ?> - <?= htmlspecialchars($certData['event_name']) ?>">
     <meta property="og:description" content="This official credential was securely issued by DCW. Verify the authenticity of this certificate online.">
-    <meta property="og:image" content="assets/DCW_logo.png">
+    <meta property="og:image" content="https://<?= htmlspecialchars($_SERVER['HTTP_HOST']) . $basePath ?>/assets/DCW_logo.png">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://<?= htmlspecialchars($_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']) ?>">
     <meta property="twitter:title" content="Verified Credential: <?= htmlspecialchars($certData['full_name']) ?> - <?= htmlspecialchars($certData['event_name']) ?>">
     <meta property="twitter:description" content="This official credential was securely issued by DCW. Verify the authenticity of this certificate online.">
-    <meta property="twitter:image" content="assets/DCW_logo.png">
+    <meta property="twitter:image" content="https://<?= htmlspecialchars($_SERVER['HTTP_HOST']) . $basePath ?>/assets/DCW_logo.png">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <style>
@@ -236,7 +236,7 @@ $roleName = $certData['role_name'] ? " as " . htmlspecialchars($certData['role_n
 
     <div class="top-nav">
         <a href="https://dcwwiki.org/" target="_blank">
-            <img src="assets/DCW_logo.png" alt="DCW Logo" width="45" height="45" decoding="async">
+            <img src="<?= $basePath ?>/assets/DCW_logo.png" alt="DCW Logo" width="45" height="45" decoding="async">
         </a>
         <div class="nav-title">Credential Verification</div>
     </div>
@@ -255,11 +255,11 @@ $roleName = $certData['role_name'] ? " as " . htmlspecialchars($certData['role_n
             </div>
             
             <h1><?= htmlspecialchars($certData['full_name']) ?></h1>
-            <div class="meta">This credential was securely issued by DCW.</div>
+            <div class="meta">This credential was securely issued by Deoband Community Wikimedia.</div>
 
             <div class="detail-row">
                 <div class="detail-label">Credential ID</div>
-                <div class="detail-value" style="font-family: monospace; font-size: 15px; background: #f1f5f9; padding: 6px 10px; border-radius: 6px; display: inline-block; width: fit-content; border: 1px solid #e2e8f0;"><?= htmlspecialchars($certId) ?></div>
+                <div class="detail-value" style="font-family: monospace; font-size: 15px; background: #f1f5f9; padding: 6px 10px; border-radius: 6px; display: inline-block; width: fit-content; border: 1px solid var(--border-color);"><?= htmlspecialchars($certId) ?></div>
             </div>
 
             <div class="detail-row">
@@ -315,4 +315,3 @@ $roleName = $certData['role_name'] ? " as " . htmlspecialchars($certData['role_n
     </div>
 </body>
 </html>
-
