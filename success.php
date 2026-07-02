@@ -31,10 +31,11 @@ $eventName = urlencode($certData['event_name']);
 $issueYear = date('Y', strtotime($certData['created_at']));
 $issueMonth = date('n', strtotime($certData['created_at']));
 $orgNameEncoded = urlencode('Deoband Community Wikimedia');
-$linkedInAddUrl = "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name={$eventName}&organizationName={$orgNameEncoded}&issueYear={$issueYear}&issueMonth={$issueMonth}&certUrl=" . urlencode($verifyUrl) . "&certId=" . urlencode($certId);
+$logoUrl = urlencode('https://dcwwiki.org/images/5/56/DCW_logo.png');
+$linkedInAddUrl = "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name={$eventName}&organizationName={$orgNameEncoded}&issueYear={$issueYear}&issueMonth={$issueMonth}&logoUrl={$logoUrl}&organizationId=deoband-community-wikimedia&certUrl=" . urlencode($verifyUrl);
 
 $dbCaption = $certData['linkedin_caption'] ?? '';
-$customCaption = trim($dbCaption) !== '' ? str_replace(['{EVENT_NAME}', '{URL}'], [$certData['event_name'], $verifyUrl], $dbCaption) : "I just earned my certificate for completing {$certData['event_name']}! Check out my verified credential here: {$verifyUrl}";
+$customCaption = trim($dbCaption) !== '' ? str_replace(['{EVENT_NAME}', '{URL}'], [$certData['event_name'], $verifyUrl], $dbCaption) : "I just earned my certificate for completing {$certData['event_name']} at Deoband Community Wikimedia. Learn more: {$verifyUrl}";
 
 $linkedInShareDesktop = "https://www.linkedin.com/feed/?shareActive=true&text=" . rawurlencode($customCaption);
 $linkedInShareMobile = "https://www.linkedin.com/sharing/share-offsite/?url=" . urlencode($verifyUrl);
@@ -251,12 +252,12 @@ $linkedInShareMobile = "https://www.linkedin.com/sharing/share-offsite/?url=" . 
             <p style="font-size: 14px; margin-bottom: 24px;">Showcase your achievement to your professional network. We've pre-filled all the information for you!</p>
 
             <a href="<?= $linkedInAddUrl ?>" target="_blank" class="btn-linkedin">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h4.969v-8.399c0-4.67 6.029-5.052 6.029 0v8.399h4.988v-10.131c0-7.88-8.922-7.593-11.018-3.714v-2.155z"/></svg>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm[...]
                 Add to LinkedIn Profile
             </a>
 
             <a href="<?= $linkedInShareDesktop ?>" target="_blank" class="btn-linkedin-outline" onclick="return handleLinkedInShare(event, '<?= $linkedInShareMobile ?>');">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h4.969v-8.399c0-4.67 6.029-5.052 6.029 0v8.399h4.988v-10.131c0-7.88-8.922-7.593-11.018-3.714v-2.155z"/></svg>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm[...]
                 Post on LinkedIn
             </a>
 
@@ -265,7 +266,7 @@ $linkedInShareMobile = "https://www.linkedin.com/sharing/share-offsite/?url=" . 
                 <div class="input-group">
                     <input type="text" id="certId" value="<?= htmlspecialchars($certId) ?>" readonly>
                     <button type="button" onclick="copyText('certId', this)" title="Copy Credential ID" style="display:flex; align-items:center; justify-content:center; padding: 0 15px;">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V[...]
                     </button>
                 </div>
             </div>
@@ -275,7 +276,7 @@ $linkedInShareMobile = "https://www.linkedin.com/sharing/share-offsite/?url=" . 
                 <div class="input-group">
                     <input type="text" id="verifyUrl" value="<?= htmlspecialchars($verifyUrl) ?>" readonly>
                     <button type="button" onclick="copyText('verifyUrl', this)" title="Copy Verification URL" style="display:flex; align-items:center; justify-content:center; padding: 0 15px;">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V[...]
                     </button>
                 </div>
             </div>
@@ -333,4 +334,3 @@ $linkedInShareMobile = "https://www.linkedin.com/sharing/share-offsite/?url=" . 
     </div>
 </body>
 </html>
-
