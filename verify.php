@@ -15,7 +15,7 @@ $basePath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
 if ($basePath === '/') $basePath = '';
 
 $stmt = $pdo->prepare("
-    SELECT p.full_name, e.name as event_name, ep.created_at, er.role_name
+    SELECT p.full_name, e.name as event_name, e.certificate_issue_date, ep.created_at, er.role_name
     FROM event_participants ep
     JOIN participants p ON ep.participant_id = p.id
     JOIN events e ON ep.event_id = e.id
@@ -29,7 +29,8 @@ if (!$certData) {
     die(header("HTTP/1.0 404 Not Found"));
 }
 
-$issueDate = date('F j, Y', strtotime($certData['created_at']));
+$issueSource = !empty($certData['certificate_issue_date']) ? $certData['certificate_issue_date'] : $certData['created_at'];
+$issueDate = date('F j, Y', strtotime($issueSource));
 $roleName = $certData['role_name'] ? " as " . htmlspecialchars($certData['role_name']) : "";
 ?>
 <!DOCTYPE html>

@@ -20,7 +20,7 @@ use setasign\Fpdi\Tcpdf\Fpdi;
 
 // 1. Verify certificate ID exists
 $stmt = $pdo->prepare("
-    SELECT ep.*, p.full_name, p.email, e.name as event_name, er.template_file, er.visual_settings, er.rotation 
+    SELECT ep.*, p.full_name, p.email, e.name as event_name, e.certificate_issue_date, er.template_file, er.visual_settings, er.rotation 
     FROM event_participants ep
     JOIN participants p ON ep.participant_id = p.id
     JOIN events e ON ep.event_id = e.id
@@ -43,7 +43,8 @@ $dateFormat = 'F j, Y';
 if (isset($visualSettings['date']['date_format'])) {
     $dateFormat = $visualSettings['date']['date_format'];
 }
-$issueDate = date($dateFormat, strtotime($certData['created_at']));
+$issueSource = !empty($certData['certificate_issue_date']) ? $certData['certificate_issue_date'] : $certData['created_at'];
+$issueDate = date($dateFormat, strtotime($issueSource));
 
 $pdf = new Fpdi();
 $pdf->setPrintHeader(false);

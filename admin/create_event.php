@@ -33,12 +33,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $linkedinCaption = trim($_POST['linkedin_caption'] ?? '');
     $certPrefix = trim($_POST['cert_prefix'] ?? 'DCW');
     if ($certPrefix === '') $certPrefix = 'DCW';
+    $certificateIssueDate = trim($_POST['certificate_issue_date'] ?? '');
+    if ($certificateIssueDate === '') {
+        $certificateIssueDate = null;
+    }
 
     if (!$eventName) {
         $error = "Event name is required.";
     } else {
-        $stmt = $pdo->prepare("INSERT INTO events (name, linkedin_caption, cert_prefix) VALUES (?, ?, ?)");
-        $stmt->execute([$eventName, $linkedinCaption, $certPrefix]);
+        $stmt = $pdo->prepare("INSERT INTO events (name, linkedin_caption, cert_prefix, certificate_issue_date) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$eventName, $linkedinCaption, $certPrefix, $certificateIssueDate]);
         $newEventId = $pdo->lastInsertId();
         
         log_audit_action($pdo, 'Created Event', "Event ID: {$newEventId}, Name: {$eventName}");
@@ -85,6 +89,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <input type="text" name="cert_prefix" placeholder="e.g. DCW26" value="DCW" style="text-transform: uppercase;">
             <div style="font-size: 11px; color: #777; margin-top: 5px;">
                 Used for generating participant IDs (e.g., DCW26-K9X4M7).
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Certificate Issue Date (Optional)</label>
+            <input type="date" name="certificate_issue_date" value="">
+            <div style="font-size: 11px; color: #777; margin-top: 5px;">
+                Leave empty to use the event creation date.
             </div>
         </div>
         
