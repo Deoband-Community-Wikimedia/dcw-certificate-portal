@@ -32,8 +32,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $eventName = trim($_POST['name'] ?? '');
     $linkedinCaption = trim($_POST['linkedin_caption'] ?? '');
     $customVerificationText = trim($_POST['custom_verification_text'] ?? '');
+    $certificateIssueDate = trim($_POST['certificate_issue_date'] ?? '');
+    if ($certificateIssueDate === '') {
+        $certificateIssueDate = null;
+    }
 
     $passcode = trim($_POST['super_admin_passcode'] ?? '');
+
+    $description = trim($_POST['description'] ?? '');
+    if ($description === '') $description = null;
+    $partners = trim($_POST['partners'] ?? '');
+    if ($partners === '') $partners = null;
 
     $nameChanged = ($eventName !== $event['name']);
 
@@ -44,6 +53,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $stmtUpdate = $pdo->prepare("UPDATE events SET name = ?, linkedin_caption = ?, custom_verification_text = ? WHERE id = ?");
         $stmtUpdate->execute([$eventName, $linkedinCaption, $customVerificationText, $eventId]);
+        $stmtUpdate = $pdo->prepare("UPDATE events SET name = ?, linkedin_caption = ?, certificate_issue_date = ?, description = ?, partners = ? WHERE id = ?");
+        $stmtUpdate->execute([$eventName, $linkedinCaption, $certificateIssueDate, $description, $partners, $eventId]);
         
         log_audit_action($pdo, 'Edited Event', "Event ID: {$eventId}, New Name: {$eventName}");
         
@@ -52,6 +63,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $event['name'] = $eventName;
         $event['linkedin_caption'] = $linkedinCaption;
         $event['custom_verification_text'] = $customVerificationText;
+        $event['certificate_issue_date'] = $certificateIssueDate;
+        $event['description'] = $description;
+        $event['partners'] = $partners;
     }
 }
 ?>
@@ -108,6 +122,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <textarea name="linkedin_caption" rows="4" placeholder="e.g. I'm thrilled to announce I've completed the {EVENT_NAME} workshop! Check out my verified credential here: {URL} #DCW2026" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit; resize: vertical;"><?= htmlspecialchars($event['linkedin_caption'] ?? '') ?></textarea>
             <div style="font-size: 11px; color: #777; margin-top: 5px;">
                 Use <strong>{EVENT_NAME}</strong> and <strong>{URL}</strong> as placeholders. They will be automatically replaced when the participant shares their certificate.
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Certificate Issue Date (Optional)</label>
+            <input type="date" name="certificate_issue_date" value="<?= htmlspecialchars($event['certificate_issue_date'] ?? '') ?>">
+            <div style="font-size: 11px; color: #777; margin-top: 5px;">
+                Leave empty to use the event creation date.
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Event Description (Optional)</label>
+            <textarea name="description" rows="3" maxlength="1000" placeholder="Briefly describe what this event was about. This will be shown on the verification page." style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit; resize: vertical;"><?= htmlspecialchars($event['description'] ?? '') ?></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Organising Partners (Optional)</label>
+            <input type="text" name="partners" maxlength="255" placeholder="e.g. Wikimedia Foundation" value="<?= htmlspecialchars($event['partners'] ?? '') ?>">
+            <div style="font-size: 11px; color: #777; margin-top: 5px;">
+                If provided, the credential will say it was issued in partnership with these partners.
             </div>
         </div>
         

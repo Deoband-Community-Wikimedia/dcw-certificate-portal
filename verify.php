@@ -16,6 +16,7 @@ if ($basePath === '/') $basePath = '';
 
 $stmt = $pdo->prepare("
     SELECT p.full_name, e.name as event_name, e.custom_verification_text, ep.created_at, er.role_name
+    SELECT p.full_name, e.name as event_name, e.certificate_issue_date, e.description, e.partners, ep.created_at, er.role_name
     FROM event_participants ep
     JOIN participants p ON ep.participant_id = p.id
     JOIN events e ON ep.event_id = e.id
@@ -29,7 +30,8 @@ if (!$certData) {
     die(header("HTTP/1.0 404 Not Found"));
 }
 
-$issueDate = date('F j, Y', strtotime($certData['created_at']));
+$issueSource = !empty($certData['certificate_issue_date']) ? $certData['certificate_issue_date'] : $certData['created_at'];
+$issueDate = date('F j, Y', strtotime($issueSource));
 $roleName = $certData['role_name'] ? " as " . htmlspecialchars($certData['role_name']) : "";
 ?>
 <!DOCTYPE html>
@@ -446,6 +448,17 @@ $roleName = $certData['role_name'] ? " as " . htmlspecialchars($certData['role_n
                 <div class="detail-label">Recipient Name</div>
                 <div class="detail-value" style="font-size: 18px; color: var(--primary-color); font-weight: 700;"><?= htmlspecialchars($certData['full_name']) ?></div>
             </div>
+            <h1><?= htmlspecialchars($certData['full_name']) ?></h1>
+            <div class="meta">
+                This credential was securely issued by Deoband Community Wikimedia<?= !empty($certData['partners']) ? " in partnership with " . htmlspecialchars($certData['partners']) : "" ?>.
+            </div>
+
+            <?php if (!empty($certData['description'])): ?>
+            <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 30px; font-size: 15px; color: #475569; line-height: 1.6;">
+                <strong>About this event:</strong><br>
+                <?= nl2br(htmlspecialchars($certData['description'])) ?>
+            </div>
+            <?php endif; ?>
 
             <div class="detail-row">
                 <div class="detail-label">Credential ID</div>

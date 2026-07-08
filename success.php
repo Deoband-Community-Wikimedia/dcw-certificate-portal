@@ -9,7 +9,7 @@ if (!isset($_GET['id'])) {
 $certId = trim($_GET['id']);
 
 $stmt = $pdo->prepare("
-    SELECT p.full_name, e.name as event_name, e.linkedin_caption, ep.created_at
+    SELECT p.full_name, e.name as event_name, e.linkedin_caption, e.certificate_issue_date, ep.created_at
     FROM event_participants ep
     JOIN participants p ON ep.participant_id = p.id
     JOIN events e ON ep.event_id = e.id
@@ -28,8 +28,9 @@ if ($baseDir === '/') $baseDir = '';
 $verifyUrl = $protocol . $_SERVER['HTTP_HOST'] . $baseDir . '/verify/' . $certId;
 
 $eventName = urlencode($certData['event_name']);
-$issueYear = date('Y', strtotime($certData['created_at']));
-$issueMonth = date('n', strtotime($certData['created_at']));
+$issueSource = !empty($certData['certificate_issue_date']) ? $certData['certificate_issue_date'] : $certData['created_at'];
+$issueYear = date('Y', strtotime($issueSource));
+$issueMonth = date('n', strtotime($issueSource));
 $organizationId = '92536649';
 
 $linkedInAddUrl = "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name={$eventName}&organizationId={$organizationId}&issueYear={$issueYear}&issueMonth={$issueMonth}&certUrl=" . urlencode($verifyUrl) . "&certId=" . urlencode($certId);

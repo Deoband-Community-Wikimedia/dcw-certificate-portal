@@ -34,12 +34,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $customVerificationText = trim($_POST['custom_verification_text'] ?? '');
     $certPrefix = trim($_POST['cert_prefix'] ?? 'DCW');
     if ($certPrefix === '') $certPrefix = 'DCW';
+    $certificateIssueDate = trim($_POST['certificate_issue_date'] ?? '');
+    if ($certificateIssueDate === '') {
+        $certificateIssueDate = null;
+    }
+    $description = trim($_POST['description'] ?? '');
+    if ($description === '') $description = null;
+    $partners = trim($_POST['partners'] ?? '');
+    if ($partners === '') $partners = null;
 
     if (!$eventName) {
         $error = "Event name is required.";
     } else {
         $stmt = $pdo->prepare("INSERT INTO events (name, linkedin_caption, custom_verification_text, cert_prefix) VALUES (?, ?, ?, ?)");
         $stmt->execute([$eventName, $linkedinCaption, $customVerificationText, $certPrefix]);
+        $stmt = $pdo->prepare("INSERT INTO events (name, linkedin_caption, cert_prefix, certificate_issue_date, description, partners) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$eventName, $linkedinCaption, $certPrefix, $certificateIssueDate, $description, $partners]);
         $newEventId = $pdo->lastInsertId();
         
         log_audit_action($pdo, 'Created Event', "Event ID: {$newEventId}, Name: {$eventName}");
@@ -88,6 +98,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 Used for generating participant IDs (e.g., DCW26-K9X4M7).
             </div>
         </div>
+
+        <div class="form-group">
+            <label>Certificate Issue Date (Optional)</label>
+            <input type="date" name="certificate_issue_date" value="">
+            <div style="font-size: 11px; color: #777; margin-top: 5px;">
+                Leave empty to use the event creation date.
+            </div>
+        </div>
         
         <div class="form-group">
             <label>Custom Certificate Verification Text (Optional)</label>
@@ -102,6 +120,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <textarea name="linkedin_caption" rows="4" placeholder="e.g. I'm thrilled to announce I've completed the {EVENT_NAME} workshop! Check out my verified credential here: {URL} #DCW2026" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit; resize: vertical;"></textarea>
             <div style="font-size: 11px; color: #777; margin-top: 5px;">
                 Use <strong>{EVENT_NAME}</strong> and <strong>{URL}</strong> as placeholders. They will be automatically replaced when the participant shares their certificate.
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Event Description (Optional)</label>
+            <textarea name="description" rows="3" maxlength="1000" placeholder="Briefly describe what this event was about. This will be shown on the verification page." style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit; resize: vertical;"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Organising Partners (Optional)</label>
+            <input type="text" name="partners" maxlength="255" placeholder="e.g. Wikimedia Foundation">
+            <div style="font-size: 11px; color: #777; margin-top: 5px;">
+                If provided, the credential will say it was issued in partnership with these partners.
             </div>
         </div>
         
