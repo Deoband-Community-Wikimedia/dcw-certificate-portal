@@ -41,7 +41,6 @@ $linkedInShareDesktop = "https://www.linkedin.com/feed/?shareActive=true&text=" 
 $linkedInShareMobile = "https://www.linkedin.com/sharing/share-offsite/?url=" . urlencode($verifyUrl);
 ?>
 <!DOCTYPE html>
-<!DOCTYPE html>
 <html lang="en">
 <head>
     <link rel="icon" type="image/png" href="https://dcwwiki.org/images/5/56/DCW_logo.png">
@@ -556,6 +555,3 @@ $linkedInShareMobile = "https://www.linkedin.com/sharing/share-offsite/?url=" . 
     </footer>
 </body>
 </html>
-</body>
-</html>
-

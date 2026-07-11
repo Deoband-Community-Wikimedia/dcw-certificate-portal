@@ -15,8 +15,7 @@ $basePath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
 if ($basePath === '/') $basePath = '';
 
 $stmt = $pdo->prepare("
-    SELECT p.full_name, e.name as event_name, e.custom_verification_text, ep.created_at, er.role_name
-    SELECT p.full_name, e.name as event_name, e.certificate_issue_date, e.description, e.partners, ep.created_at, er.role_name
+    SELECT p.full_name, e.name as event_name, e.custom_verification_text, e.certificate_issue_date, e.description, e.partners, ep.created_at, er.role_name
     FROM event_participants ep
     JOIN participants p ON ep.participant_id = p.id
     JOIN events e ON ep.event_id = e.id
@@ -555,7 +554,5 @@ $roleName = $certData['role_name'] ? " as " . htmlspecialchars($certData['role_n
             </div>
         </div>
     </footer>
-</body>
-</html>
 </body>
 </html>
