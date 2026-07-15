@@ -544,28 +544,41 @@ if (is_dir($fontDir)) {
         let dragTarget = null;
         let startX, startY, initialLeft, initialTop;
 
+        function startDrag(e, el) {
+            // If not active tab, switch to it
+            if (activeTab !== el.dataset.id) {
+                document.querySelector(`.tab[data-target="${el.dataset.id}"]`).click();
+            }
+            
+            isDragging = true;
+            dragTarget = el;
+            startX = e.clientX !== undefined ? e.clientX : e.touches[0].clientX;
+            startY = e.clientY !== undefined ? e.clientY : e.touches[0].clientY;
+            initialLeft = el.offsetLeft;
+            initialTop = el.offsetTop;
+            el.style.cursor = 'grabbing';
+            // Prevent default behavior if it's a touch to prevent scrolling while dragging
+            if (e.type === 'touchstart') e.preventDefault();
+        }
+
         document.querySelectorAll('.element-box').forEach(el => {
-            el.addEventListener('mousedown', (e) => {
-                // If not active tab, switch to it
-                if (activeTab !== el.dataset.id) {
-                    document.querySelector(`.tab[data-target="${el.dataset.id}"]`).click();
-                }
-                
-                isDragging = true;
-                dragTarget = el;
-                startX = e.clientX;
-                startY = e.clientY;
-                initialLeft = el.offsetLeft;
-                initialTop = el.offsetTop;
-                el.style.cursor = 'grabbing';
-            });
+            el.addEventListener('mousedown', (e) => startDrag(e, el));
+            el.addEventListener('touchstart', (e) => startDrag(e, el), { passive: false });
         });
 
-        document.addEventListener('mousemove', (e) => {
+        function performDrag(e) {
             if (!isDragging || !dragTarget) return;
 
-            let dx = e.clientX - startX;
-            let dy = e.clientY - startY;
+            const currentX = e.clientX !== undefined ? e.clientX : (e.touches ? e.touches[0].clientX : undefined);
+            const currentY = e.clientY !== undefined ? e.clientY : (e.touches ? e.touches[0].clientY : undefined);
+
+            if (currentX === undefined || currentY === undefined) return;
+            
+            // Prevent scrolling on touch devices while dragging
+            if (e.type === 'touchmove') e.preventDefault();
+
+            let dx = currentX - startX;
+            let dy = currentY - startY;
 
             let newLeft = initialLeft + dx;
             let newTop = initialTop + dy;
@@ -581,15 +594,22 @@ if (is_dir($fontDir)) {
             
             settings[activeTab].pos_x = parseFloat(x_mm.toFixed(2));
             settings[activeTab].pos_y = parseFloat(y_mm.toFixed(2));
-        });
+        }
 
-        document.addEventListener('mouseup', () => {
+        document.addEventListener('mousemove', performDrag);
+        document.addEventListener('touchmove', performDrag, { passive: false });
+
+        function endDrag() {
             if (isDragging && dragTarget) {
                 dragTarget.style.cursor = 'move';
                 isDragging = false;
                 dragTarget = null;
             }
-        });
+        }
+
+        document.addEventListener('mouseup', endDrag);
+        document.addEventListener('touchend', endDrag);
+        document.addEventListener('touchcancel', endDrag);
 
         // Zoom & Rotate
         document.getElementById('tool_zoom_in').addEventListener('click', () => {
