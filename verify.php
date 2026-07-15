@@ -192,6 +192,28 @@ $roleName = $certData['role_name'] ? " as " . htmlspecialchars($certData['role_n
             }
         }
 
+        @media (min-width: 769px) {
+            .preview-container {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+            }
+            .event-description-box {
+                margin-bottom: 0;
+            }
+            .details-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 16px 20px;
+            }
+            .details-grid .detail-row {
+                margin-bottom: 0;
+            }
+            .preview-heading {
+                text-align: left;
+            }
+        }
+
         .container {
             background-color: var(--card-bg);
             padding: 40px;
@@ -426,19 +448,26 @@ $roleName = $certData['role_name'] ? " as " . htmlspecialchars($certData['role_n
 
     <div class="main-wrapper">
         <div class="container preview-container">
-            <div class="preview-box">
-                <canvas id="pdf-preview"></canvas>
-            </div>
-        </div>
+            <h1 class="preview-heading">Verified Credential</h1>
 
-        <div class="container">
-            <h1>Verified Credential</h1>
-            
             <div class="verification-badge">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-1.8 15.4L6 13.2l1.4-1.4 2.8 2.8 7.6-7.6 1.4 1.4-9 9z"/></svg>
                 Official Credential Verified
             </div>
-            
+
+            <div class="preview-box">
+                <canvas id="pdf-preview"></canvas>
+            </div>
+
+            <?php if (!empty($certData['description'])): ?>
+            <div class="event-description-box" style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; font-size: 15px; color: #475569; line-height: 1.6;">
+                <strong>About this event:</strong><br>
+                <?= nl2br(htmlspecialchars($certData['description'])) ?>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <div class="container">
             <div class="meta">
                 <?= !empty($certData['custom_verification_text']) ? htmlspecialchars($certData['custom_verification_text']) : "This digital credential has been securely issued and verified by Deoband Community Wikimedia." ?>
             </div>
@@ -452,33 +481,28 @@ $roleName = $certData['role_name'] ? " as " . htmlspecialchars($certData['role_n
                 This credential was securely issued by Deoband Community Wikimedia<?= !empty($certData['partners']) ? " in partnership with " . htmlspecialchars($certData['partners']) : "" ?>.
             </div>
 
-            <?php if (!empty($certData['description'])): ?>
-            <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 30px; font-size: 15px; color: #475569; line-height: 1.6;">
-                <strong>About this event:</strong><br>
-                <?= nl2br(htmlspecialchars($certData['description'])) ?>
-            </div>
-            <?php endif; ?>
+            <div class="details-grid">
+                <div class="detail-row">
+                    <div class="detail-label">Credential ID</div>
+                    <div class="detail-value" style="font-family: monospace; font-size: 15px; background: #f1f5f9; padding: 6px 10px; border-radius: 6px; display: inline-block; width: fit-content; border: 1px solid var(--border-color);"><?= htmlspecialchars($certId) ?></div>
+                </div>
 
-            <div class="detail-row">
-                <div class="detail-label">Credential ID</div>
-                <div class="detail-value" style="font-family: monospace; font-size: 15px; background: #f1f5f9; padding: 6px 10px; border-radius: 6px; display: inline-block; width: fit-content; border: 1px solid var(--border-color);"><?= htmlspecialchars($certId) ?></div>
-            </div>
+                <div class="detail-row">
+                    <div class="detail-label">Event Name</div>
+                    <div class="detail-value"><?= htmlspecialchars($certData['event_name']) ?></div>
+                </div>
 
-            <div class="detail-row">
-                <div class="detail-label">Event Name</div>
-                <div class="detail-value"><?= htmlspecialchars($certData['event_name']) ?></div>
-            </div>
+                <?php if ($roleName): ?>
+                <div class="detail-row">
+                    <div class="detail-label">Role</div>
+                    <div class="detail-value"><?= htmlspecialchars($certData['role_name']) ?></div>
+                </div>
+                <?php endif; ?>
 
-            <?php if ($roleName): ?>
-            <div class="detail-row">
-                <div class="detail-label">Role</div>
-                <div class="detail-value"><?= htmlspecialchars($certData['role_name']) ?></div>
-            </div>
-            <?php endif; ?>
-
-            <div class="detail-row">
-                <div class="detail-label">Issue Date</div>
-                <div class="detail-value"><?= $issueDate ?></div>
+                <div class="detail-row">
+                    <div class="detail-label">Issue Date</div>
+                    <div class="detail-value"><?= $issueDate ?></div>
+                </div>
             </div>
 
             <a href="<?= $basePath ?>/download.php?id=<?= htmlspecialchars($certId) ?>" class="btn-primary">
