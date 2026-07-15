@@ -423,7 +423,7 @@ $linkedInShareMobile = "https://www.linkedin.com/sharing/share-offsite/?url=" . 
             <h1>Credential Claimed</h1>
             <p>Congratulations, <strong><?= htmlspecialchars($certData['full_name']) ?></strong>! Your official certificate for <strong><?= htmlspecialchars($certData['event_name']) ?></strong> has been successfully generated and permanently recorded in our system.</p>
 
-            <a href="download.php?id=<?= htmlspecialchars($certId) ?>" class="btn-primary">
+           <a href="download.php?id=<?= htmlspecialchars($certId) ?>" class="btn-primary">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                 Download PDF
             </a>
@@ -466,6 +466,29 @@ $linkedInShareMobile = "https://www.linkedin.com/sharing/share-offsite/?url=" . 
     </div>
 
     <script>
+        document.getElementById('downloadBtn').addEventListener('click', function(e) {
+            const currentCertId = document.getElementById('certId').value;
+
+            fetch('send-email.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'id=' + encodeURIComponent(currentCertId)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Automated credential email queued successfully.');
+                } else {
+                    console.warn('Email trigger warning: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Network execution failure during backend handling:', error);
+            });
+        });
+
         function handleLinkedInShare(event, mobileUrl) {
             // Check if user is on a mobile device
             if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
