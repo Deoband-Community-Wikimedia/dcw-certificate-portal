@@ -83,7 +83,7 @@ if (file_exists($templatePath)) {
         $pdf->useTemplate($tplIdx, 0, 0, $w, $h);
     }
 
-    function renderElementForEmail($pdf, $settings, $text) {
+    function renderElementForEmail($pdf, $settings, $text, $linkUrl = '') {
         if (!isset($settings['enabled']) || !$settings['enabled']) return;
 
         $fontName = $settings['font_name'] ?? 'helvetica';
@@ -128,6 +128,9 @@ if (file_exists($templatePath)) {
         if ($boxWidth > 0) {
             $pdf->SetXY($posX, $posY);
             $pdf->MultiCell($boxWidth, 0, $text, 0, $align, false, 1);
+            if ($linkUrl !== '') {
+                $pdf->Link($posX, $posY, $boxWidth, $pdf->GetY() - $posY, $linkUrl);
+            }
         } else {
             $strWidth = $pdf->GetStringWidth($text);
             if ($align === 'C') {
@@ -137,16 +140,23 @@ if (file_exists($templatePath)) {
             } else {
                 $pdf->SetXY($posX, $posY);
             }
-            $pdf->Cell($strWidth, 0, $text, 0, 0, 'L');
+            $pdf->Cell($strWidth, 0, $text, 0, 0, 'L', false, $linkUrl);
         }
     }
+
+    // Calculate verification URL early for hyperlinks
+    $protocolPdf = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+    $domainNamePdf = $_SERVER['HTTP_HOST'];
+    $basePathPdf = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+    if ($basePathPdf === '/') $basePathPdf = '';
+    $verifyUrlPdf = $protocolPdf . $domainNamePdf . $basePathPdf . '/verify/' . $certId;
 
     if (is_array($visualSettings)) {
         if (isset($visualSettings['name'])) {
             renderElementForEmail($pdf, $visualSettings['name'], $fullName);
         }
         if (isset($visualSettings['certid'])) {
-            renderElementForEmail($pdf, $visualSettings['certid'], $certId);
+            renderElementForEmail($pdf, $visualSettings['certid'], $certId, $verifyUrlPdf);
         }
         if (isset($visualSettings['date'])) {
             renderElementForEmail($pdf, $visualSettings['date'], $issueDate);
@@ -155,12 +165,6 @@ if (file_exists($templatePath)) {
             renderElementForEmail($pdf, $visualSettings['custom_text'], $certData['custom_certificate_text']);
         }
         if (isset($visualSettings['qrcode']) && !empty($visualSettings['qrcode']['enabled'])) {
-            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-            $domainName = $_SERVER['HTTP_HOST'];
-            $basePath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
-            if ($basePath === '/') $basePath = '';
-            $verifyUrl = $protocol . $domainName . $basePath . '/verify/' . $certId;
-            
             $qr = $visualSettings['qrcode'];
             $qx = (float)$qr['pos_x'];
             $qy = (float)$qr['pos_y'];
@@ -175,7 +179,8 @@ if (file_exists($templatePath)) {
             }
             
             $style = array('border' => 0, 'padding' => 0, 'fgcolor' => $fgColor, 'bgcolor' => false);
-            $pdf->write2DBarcode($verifyUrl, 'QRCODE,L', $qx, $qy, $qsize, $qsize, $style, 'N');
+            $pdf->write2DBarcode($verifyUrlPdf, 'QRCODE,L', $qx, $qy, $qsize, $qsize, $style, 'N');
+            $pdf->Link($qx, $qy, $qsize, $qsize, $verifyUrlPdf);
         }
     }
 }
