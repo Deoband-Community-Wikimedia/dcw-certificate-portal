@@ -178,8 +178,16 @@ if (is_array($visualSettings)) {
     }
 }
 
+// Sanitize a string for safe use in a downloaded file name (Windows/Mac/Linux)
+function sanitizeForFilename($str) {
+    $clean = preg_replace('/[\/\\\\:\*\?"<>\|]+/', '', trim($str));
+    return preg_replace('/\s+/', ' ', $clean); // collapse extra whitespace
+}
+
 // Output
-$filename = "certificate-" . preg_replace('/[^a-z0-9]+/', '-', strtolower($fullName)) . ".pdf";
+$safeFullName = sanitizeForFilename($fullName);
+$safeEventName = sanitizeForFilename($certData['event_name']);
+$filename = "{$safeFullName} - {$safeEventName} - Certificate.pdf";
 
 if ($preview) {
     // Show inline in browser for previews
