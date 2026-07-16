@@ -396,7 +396,7 @@ if (is_dir($fontDir)) {
                 el.style.textAlign = s.text_align === 'C' ? 'center' : (s.text_align === 'R' ? 'right' : 'left');
                 el.style.transform = 'none';
                 el.style.transformOrigin = 'top left';
-            } else {
+            } else if (key !== 'qrcode') {
                 el.style.width = 'auto';
                 el.style.whiteSpace = 'nowrap';
                 
