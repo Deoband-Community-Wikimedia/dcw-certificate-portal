@@ -29,17 +29,17 @@ if (!$role) {
 $defaultSettings = [
     'name' => [
         'enabled' => true,
-        'pos_x' => 105, 'pos_y' => 100, 'font_size' => 40,
+        'pos_x' => 105, 'pos_y' => 100, 'font_size' => 40, 'box_width' => 0,
         'text_color' => '0,0,0', 'text_align' => 'C', 'font_file' => '', 'font_name' => 'alexbrush'
     ],
     'certid' => [
         'enabled' => true,
-        'pos_x' => 10, 'pos_y' => 195, 'font_size' => 12,
+        'pos_x' => 10, 'pos_y' => 195, 'font_size' => 12, 'box_width' => 0,
         'text_color' => '0,0,0', 'text_align' => 'L', 'font_file' => '', 'font_name' => 'helvetica'
     ],
     'date' => [
         'enabled' => true,
-        'pos_x' => 200, 'pos_y' => 195, 'font_size' => 12,
+        'pos_x' => 200, 'pos_y' => 195, 'font_size' => 12, 'box_width' => 0,
         'text_color' => '0,0,0', 'text_align' => 'R', 'font_file' => '', 'font_name' => 'helvetica',
         'date_format' => 'F j, Y'
     ],
@@ -47,14 +47,23 @@ $defaultSettings = [
         'enabled' => false,
         'pos_x' => 10, 'pos_y' => 10, 'font_size' => 30,
         'text_color' => '0,0,0', 'text_align' => 'L', 'font_file' => '', 'font_name' => ''
+    ],
+    'custom_text' => [
+        'enabled' => false,
+        'pos_x' => 100, 'pos_y' => 120, 'font_size' => 18, 'box_width' => 0,
+        'text_color' => '0,0,0', 'text_align' => 'C', 'font_file' => '', 'font_name' => 'helvetica'
     ]
 ];
 
 $visualSettings = !empty($role['visual_settings']) ? json_decode($role['visual_settings'], true) : $defaultSettings;
 // Ensure all keys exist
-foreach (['name', 'certid', 'date', 'qrcode'] as $key) {
+foreach (['name', 'certid', 'date', 'qrcode', 'custom_text'] as $key) {
     if (!isset($visualSettings[$key])) {
         $visualSettings[$key] = $defaultSettings[$key];
+    }
+    // Ensure box_width exists for backwards compatibility
+    if ($key !== 'qrcode' && !isset($visualSettings[$key]['box_width'])) {
+        $visualSettings[$key]['box_width'] = 0;
     }
 }
 
@@ -82,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         mkdir($fontDir, 0777, true);
     }
     
-    foreach (['name', 'certid', 'date', 'qrcode'] as $element) {
+    foreach (['name', 'certid', 'date', 'qrcode', 'custom_text'] as $element) {
         $fileInputName = 'font_file_' . $element;
         if (isset($_FILES[$fileInputName]) && $_FILES[$fileInputName]['error'] === UPLOAD_ERR_OK) {
             $fontExt = strtolower(pathinfo($_FILES[$fileInputName]['name'], PATHINFO_EXTENSION));
@@ -142,7 +151,7 @@ if (is_dir($fontDir)) {
     
     <!-- Dynamic Font Loading for Elements -->
     <style id="dynamic-fonts-style">
-        <?php foreach (['name', 'certid', 'date', 'qrcode'] as $key): ?>
+        <?php foreach (['name', 'certid', 'date', 'qrcode', 'custom_text'] as $key): ?>
             <?php if (!empty($visualSettings[$key]['font_file'])): ?>
                 @font-face {
                     font-family: 'Font_<?= $key ?>';
@@ -183,6 +192,7 @@ if (is_dir($fontDir)) {
                     <div id="el_certid" class="element-box" data-id="certid">CERT-1A2B3C4D</div>
                     <div id="el_date" class="element-box" data-id="date"><?= date('F j, Y') ?></div>
                     <div id="el_qrcode" class="element-box" data-id="qrcode" style="background: url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg') no-repeat center; background-size: 100% 100%;"></div>
+                    <div id="el_custom_text" class="element-box hidden" data-id="custom_text">Participant's Custom Text</div>
                 </div>
             </div>
         </div>
@@ -193,6 +203,7 @@ if (is_dir($fontDir)) {
                 <div class="tab" data-target="certid">Cert ID</div>
                 <div class="tab" data-target="date">Issue Date</div>
                 <div class="tab" data-target="qrcode">QR Code</div>
+                <div class="tab" data-target="custom_text">Custom Text</div>
             </div>
 
             <form id="settings-form" method="POST" action="" enctype="multipart/form-data">
@@ -221,6 +232,11 @@ if (is_dir($fontDir)) {
                 <div class="form-group">
                     <label>Size (pt for text, mm for QR)</label>
                     <input type="number" id="font_size">
+                </div>
+
+                <div class="form-group" id="group_box_width">
+                    <label>Max Width (mm) <span style="font-size: 11px; font-weight: normal; color: #777;">(0 = unlimited)</span></label>
+                    <input type="number" id="box_width" step="1">
                 </div>
 
                 <div class="form-group" id="group_color">
@@ -272,6 +288,7 @@ if (is_dir($fontDir)) {
                 <input type="file" name="font_file_certid" id="real_file_certid" style="display:none" accept=".ttf">
                 <input type="file" name="font_file_date" id="real_file_date" style="display:none" accept=".ttf">
                 <input type="file" name="font_file_qrcode" id="real_file_qrcode" style="display:none" accept=".ttf">
+                <input type="file" name="font_file_custom_text" id="real_file_custom_text" style="display:none" accept=".ttf">
 
                 <button type="submit" class="btn btn-green" style="width: 100%; margin-top: 15px;">Save All Layouts</button>
             </form>
@@ -365,28 +382,42 @@ if (is_dir($fontDir)) {
                 el.style.fontSize = (s.font_size / docHeightPt * canvas.offsetHeight) + 'px';
                 let colorStr = s.text_color.trim();
                 el.style.color = colorStr.startsWith('#') ? colorStr : `rgb(${colorStr})`;
-                el.style.width = 'auto';
-                el.style.height = 'auto';
-                el.style.border = 'none';
             }
             
-            // Alignment
-            if (s.text_align === 'C') {
-                el.style.textAlign = 'center';
-                el.style.transform = 'translateX(-50%)';
-                el.style.transformOrigin = 'center left';
-            } else if (s.text_align === 'R') {
-                el.style.textAlign = 'right';
-                el.style.transform = 'translateX(-100%)';
-                el.style.transformOrigin = 'top right';
-            } else {
-                el.style.textAlign = 'left';
+            // Alignment and Box Width
+            let boxWidthMM = parseFloat(s.box_width) || 0;
+            if (boxWidthMM > 0 && key !== 'qrcode') {
+                let pxWidth = (boxWidthMM / pdfWidthMM) * canvas.offsetWidth;
+                el.style.width = pxWidth + 'px';
+                el.style.whiteSpace = 'normal';
+                
+                // If bounding box is used, X/Y is ALWAYS the top-left corner of the box,
+                // and CSS textAlign handles the text alignment natively inside it.
+                el.style.textAlign = s.text_align === 'C' ? 'center' : (s.text_align === 'R' ? 'right' : 'left');
                 el.style.transform = 'none';
+                el.style.transformOrigin = 'top left';
+            } else if (key !== 'qrcode') {
+                el.style.width = 'auto';
+                el.style.whiteSpace = 'nowrap';
+                
+                // Legacy offset-based alignment
+                if (s.text_align === 'C') {
+                    el.style.textAlign = 'center';
+                    el.style.transform = 'translateX(-50%)';
+                    el.style.transformOrigin = 'center left';
+                } else if (s.text_align === 'R') {
+                    el.style.textAlign = 'right';
+                    el.style.transform = 'translateX(-100%)';
+                    el.style.transformOrigin = 'top right';
+                } else {
+                    el.style.textAlign = 'left';
+                    el.style.transform = 'none';
+                }
             }
         }
 
         function updateAllElementStyles() {
-            ['name', 'certid', 'date', 'qrcode'].forEach(applyStyleToElement);
+            ['name', 'certid', 'date', 'qrcode', 'custom_text'].forEach(applyStyleToElement);
         }
 
         const formInputs = {
@@ -394,6 +425,7 @@ if (is_dir($fontDir)) {
             pos_x: document.getElementById('pos_x'),
             pos_y: document.getElementById('pos_y'),
             font_size: document.getElementById('font_size'),
+            box_width: document.getElementById('box_width'),
             text_color: document.getElementById('text_color'),
             text_align: document.getElementById('text_align'),
             font_file: document.getElementById('existing_font'),
@@ -433,7 +465,7 @@ if (is_dir($fontDir)) {
             formInputs.font_file.value = s.font_file;
             document.getElementById('lbl_current_tab').innerText = activeTab.toUpperCase();
             
-            if (activeTab === 'name' || activeTab === 'certid') {
+            if (activeTab === 'name' || activeTab === 'certid' || activeTab === 'custom_text') {
                 document.getElementById('sample_text_group').style.display = 'block';
                 formInputs.sample_text.value = document.getElementById('el_' + activeTab).innerText;
             } else {
@@ -452,18 +484,21 @@ if (is_dir($fontDir)) {
                 document.getElementById('group_align').style.display = 'none';
                 document.getElementById('group_font').style.display = 'none';
                 document.getElementById('font_upload_group').style.display = 'none';
+                document.getElementById('group_box_width').style.display = 'none';
             } else {
                 document.getElementById('group_color').style.display = 'block';
                 document.getElementById('group_align').style.display = 'block';
                 document.getElementById('group_font').style.display = 'block';
                 document.getElementById('font_upload_group').style.display = 'block';
+                document.getElementById('group_box_width').style.display = 'block';
+                formInputs.box_width.value = s.box_width || 0;
             }
             
             // Clear proxy input
             formInputs.file_proxy.value = '';
             
             // Manage classes
-            ['name', 'certid', 'date', 'qrcode'].forEach(k => {
+            ['name', 'certid', 'date', 'qrcode', 'custom_text'].forEach(k => {
                 document.getElementById('el_' + k).classList.toggle('active', k === activeTab);
             });
         }
@@ -486,6 +521,9 @@ if (is_dir($fontDir)) {
             s.text_color = formInputs.text_color.value;
             s.text_align = formInputs.text_align.value;
             s.font_file = formInputs.font_file.value;
+            if (activeTab !== 'qrcode') {
+                s.box_width = parseFloat(formInputs.box_width.value) || 0;
+            }
             if (activeTab === 'date') {
                 s.date_format = formInputs.date_format.value;
                 updateDatePreview();
@@ -509,6 +547,7 @@ if (is_dir($fontDir)) {
 
         formInputs.enabled.addEventListener('change', syncState);
         formInputs.font_size.addEventListener('input', syncState);
+        formInputs.box_width.addEventListener('input', syncState);
         formInputs.text_color.addEventListener('input', (e) => {
             formInputs.color_picker.value = parseColorToHex(e.target.value);
             syncState();
@@ -544,28 +583,41 @@ if (is_dir($fontDir)) {
         let dragTarget = null;
         let startX, startY, initialLeft, initialTop;
 
+        function startDrag(e, el) {
+            // If not active tab, switch to it
+            if (activeTab !== el.dataset.id) {
+                document.querySelector(`.tab[data-target="${el.dataset.id}"]`).click();
+            }
+            
+            isDragging = true;
+            dragTarget = el;
+            startX = e.clientX !== undefined ? e.clientX : e.touches[0].clientX;
+            startY = e.clientY !== undefined ? e.clientY : e.touches[0].clientY;
+            initialLeft = el.offsetLeft;
+            initialTop = el.offsetTop;
+            el.style.cursor = 'grabbing';
+            // Prevent default behavior if it's a touch to prevent scrolling while dragging
+            if (e.type === 'touchstart') e.preventDefault();
+        }
+
         document.querySelectorAll('.element-box').forEach(el => {
-            el.addEventListener('mousedown', (e) => {
-                // If not active tab, switch to it
-                if (activeTab !== el.dataset.id) {
-                    document.querySelector(`.tab[data-target="${el.dataset.id}"]`).click();
-                }
-                
-                isDragging = true;
-                dragTarget = el;
-                startX = e.clientX;
-                startY = e.clientY;
-                initialLeft = el.offsetLeft;
-                initialTop = el.offsetTop;
-                el.style.cursor = 'grabbing';
-            });
+            el.addEventListener('mousedown', (e) => startDrag(e, el));
+            el.addEventListener('touchstart', (e) => startDrag(e, el), { passive: false });
         });
 
-        document.addEventListener('mousemove', (e) => {
+        function performDrag(e) {
             if (!isDragging || !dragTarget) return;
 
-            let dx = e.clientX - startX;
-            let dy = e.clientY - startY;
+            const currentX = e.clientX !== undefined ? e.clientX : (e.touches ? e.touches[0].clientX : undefined);
+            const currentY = e.clientY !== undefined ? e.clientY : (e.touches ? e.touches[0].clientY : undefined);
+
+            if (currentX === undefined || currentY === undefined) return;
+            
+            // Prevent scrolling on touch devices while dragging
+            if (e.type === 'touchmove') e.preventDefault();
+
+            let dx = currentX - startX;
+            let dy = currentY - startY;
 
             let newLeft = initialLeft + dx;
             let newTop = initialTop + dy;
@@ -581,15 +633,22 @@ if (is_dir($fontDir)) {
             
             settings[activeTab].pos_x = parseFloat(x_mm.toFixed(2));
             settings[activeTab].pos_y = parseFloat(y_mm.toFixed(2));
-        });
+        }
 
-        document.addEventListener('mouseup', () => {
+        document.addEventListener('mousemove', performDrag);
+        document.addEventListener('touchmove', performDrag, { passive: false });
+
+        function endDrag() {
             if (isDragging && dragTarget) {
                 dragTarget.style.cursor = 'move';
                 isDragging = false;
                 dragTarget = null;
             }
-        });
+        }
+
+        document.addEventListener('mouseup', endDrag);
+        document.addEventListener('touchend', endDrag);
+        document.addEventListener('touchcancel', endDrag);
 
         // Zoom & Rotate
         document.getElementById('tool_zoom_in').addEventListener('click', () => {
@@ -615,9 +674,9 @@ if (is_dir($fontDir)) {
         loadSettingsIntoForm();
 
         formInputs.sample_text.addEventListener('input', (e) => {
-            if (activeTab === 'name' || activeTab === 'certid') {
+            if (activeTab === 'name' || activeTab === 'certid' || activeTab === 'custom_text') {
                 const el = document.getElementById('el_' + activeTab);
-                el.innerText = e.target.value || (activeTab === 'name' ? 'Participant Name' : 'CERT-1A2B3C4D');
+                el.innerText = e.target.value || (activeTab === 'name' ? 'Participant Name' : (activeTab === 'certid' ? 'CERT-1A2B3C4D' : 'Participant\'s Custom Text'));
                 applyStyleToElement(activeTab);
             }
         });

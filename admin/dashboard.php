@@ -80,6 +80,7 @@ $totalCerts = $pdo->query("SELECT COUNT(*) FROM event_participants WHERE certifi
         <span style="font-size: 18px; font-weight: bold; letter-spacing: 0.5px;">Admin Panel - Certificate System</span>
     </div>
     <div>
+        <a href="email_logs.php" style="margin-right: 15px;">Email Logs</a>
         <a href="#" onclick="return viewAuditLogs();" style="margin-right: 15px;">Audit Logs</a>
         <a href="manage_users.php" style="margin-right: 15px;">Manage Users</a>
         <a href="logout.php">Logout</a>

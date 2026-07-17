@@ -75,7 +75,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'delete_participant') {
 // Handle Export
 if (isset($_GET['export'])) {
     $stmt = $pdo->prepare("
-        SELECT p.full_name, p.email, er.role_name, ep.certificate_id, p.created_at
+        SELECT p.full_name, p.email, er.role_name, ep.certificate_id, p.created_at, ep.custom_certificate_text
         FROM participants p
         JOIN event_participants ep ON p.id = ep.participant_id
         LEFT JOIN event_roles er ON ep.role_id = er.id
@@ -88,14 +88,15 @@ if (isset($_GET['export'])) {
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename=participants_event_' . $eventId . '.csv');
     $output = fopen('php://output', 'w');
-    fputcsv($output, array('Full Name', 'Email', 'Role', 'Certificate ID', 'Added On'));
+    fputcsv($output, array('Full Name', 'Email', 'Role', 'Certificate ID', 'Added On', 'Custom Text'));
     foreach ($exportData as $row) {
         fputcsv($output, array(
             $row['full_name'], 
             $row['email'], 
             $row['role_name'] ?? 'No Role', 
             $row['certificate_id'] ?? 'Pending', 
-            $row['created_at']
+            $row['created_at'],
+            $row['custom_certificate_text'] ?? ''
         ));
     }
     fclose($output);
@@ -110,6 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fullName = trim($_POST['single_name'] ?? '');
         $email = trim($_POST['single_email'] ?? '');
         $roleId = $_POST['role_id'] ?? null;
+        $customText = trim($_POST['single_custom_text'] ?? '');
         
         if ($fullName && filter_var($email, FILTER_VALIDATE_EMAIL) && $roleId) {
             // 1. Insert into participants
@@ -123,8 +125,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // 3. Link to event
             $certId = generateCertId($certPrefix);
-            $stmtLinkEvent = $pdo->prepare("INSERT IGNORE INTO event_participants (participant_id, event_id, role_id, certificate_id) VALUES (?, ?, ?, ?)");
-            $stmtLinkEvent->execute([$pid, $eventId, $roleId, $certId]);
+            $stmtLinkEvent = $pdo->prepare("INSERT IGNORE INTO event_participants (participant_id, event_id, role_id, certificate_id, custom_certificate_text) VALUES (?, ?, ?, ?, ?)");
+            $stmtLinkEvent->execute([$pid, $eventId, $roleId, $certId, $customText ?: null]);
             
             if ($stmtLinkEvent->rowCount() > 0) {
                 $message = "Participant added successfully.";
@@ -142,15 +144,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fullName = trim($_POST['single_name'] ?? '');
         $email = trim($_POST['single_email'] ?? '');
         $roleId = $_POST['role_id'] ?? null;
+        $customText = trim($_POST['single_custom_text'] ?? '');
         
         if ($fullName && filter_var($email, FILTER_VALIDATE_EMAIL) && $roleId) {
             $stmtUpdate = $pdo->prepare("UPDATE participants SET full_name = ?, email = ? WHERE id = ?");
             try {
                 $stmtUpdate->execute([$fullName, $email, $editPid]);
                 
-                // Update role in event_participants
-                $stmtUpdateRole = $pdo->prepare("UPDATE event_participants SET role_id = ? WHERE participant_id = ? AND event_id = ?");
-                $stmtUpdateRole->execute([$roleId, $editPid, $eventId]);
+                // Update role and custom text in event_participants
+                $stmtUpdateRole = $pdo->prepare("UPDATE event_participants SET role_id = ?, custom_certificate_text = ? WHERE participant_id = ? AND event_id = ?");
+                $stmtUpdateRole->execute([$roleId, $customText ?: null, $editPid, $eventId]);
 
                 $message = "Participant updated successfully.";
                 $messageType = 'success';
@@ -184,12 +187,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Prepared statements
                     $stmtInsertParticipant = $pdo->prepare("INSERT INTO participants (full_name, email) VALUES (?, ?) ON DUPLICATE KEY UPDATE full_name=VALUES(full_name)");
                     $stmtGetParticipant = $pdo->prepare("SELECT id FROM participants WHERE email = ?");
-                    $stmtLinkEvent = $pdo->prepare("INSERT IGNORE INTO event_participants (participant_id, event_id, role_id, certificate_id) VALUES (?, ?, ?, ?)");
+                    $stmtLinkEvent = $pdo->prepare("INSERT IGNORE INTO event_participants (participant_id, event_id, role_id, certificate_id, custom_certificate_text) VALUES (?, ?, ?, ?, ?)");
 
                     while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
                         $fullName = trim($data[0] ?? '');
                         $email = trim($data[1] ?? '');
                         $roleName = strtolower(trim($data[2] ?? ''));
+                        $customText = trim($data[3] ?? '');
 
                         $roleId = $roleMap[$roleName] ?? null;
 
@@ -203,7 +207,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             
                             // 3. Link to event
                             $certId = generateCertId($certPrefix);
-                            $stmtLinkEvent->execute([$pid, $eventId, $roleId, $certId]);
+                            $stmtLinkEvent->execute([$pid, $eventId, $roleId, $certId, $customText ?: null]);
                             
                             if ($stmtLinkEvent->rowCount() > 0) {
                                 $added++;
@@ -257,7 +261,7 @@ $totalPages = ceil($totalRecords / $limit);
 
 // Fetch participants
 $stmt = $pdo->prepare("
-    SELECT p.*, ep.certificate_id, er.role_name, ep.role_id 
+    SELECT p.*, ep.certificate_id, er.role_name, ep.role_id, ep.custom_certificate_text
     FROM participants p
     JOIN event_participants ep ON p.id = ep.participant_id
     LEFT JOIN event_roles er ON ep.role_id = er.id
@@ -304,7 +308,7 @@ $participants = $stmt->fetchAll();
             $editRoleId = null;
             if (isset($_GET['edit_pid'])) {
                 $stmtEdit = $pdo->prepare("
-                    SELECT p.*, ep.role_id 
+                    SELECT p.*, ep.role_id, ep.custom_certificate_text
                     FROM participants p 
                     JOIN event_participants ep ON p.id = ep.participant_id
                     WHERE p.id = ? AND ep.event_id = ?
@@ -331,6 +335,9 @@ $participants = $stmt->fetchAll();
                         <input type="email" name="single_email" value="<?= htmlspecialchars($editParticipant['email']) ?>" required>
                     </div>
                     <div class="form-group">
+                        <input type="text" name="single_custom_text" value="<?= htmlspecialchars($editParticipant['custom_certificate_text'] ?? '') ?>" placeholder="Custom Text (Optional)">
+                    </div>
+                    <div class="form-group">
                         <select name="role_id" required>
                             <option value="">-- Select Role --</option>
                             <?php foreach($rolesList as $r): ?>
@@ -354,6 +361,9 @@ $participants = $stmt->fetchAll();
                         <input type="email" name="single_email" placeholder="Email Address" required>
                     </div>
                     <div class="form-group">
+                        <input type="text" name="single_custom_text" placeholder="Custom Text (Optional)">
+                    </div>
+                    <div class="form-group">
                         <select name="role_id" required>
                             <option value="">-- Select Role --</option>
                             <?php foreach($rolesList as $r): ?>
@@ -369,7 +379,7 @@ $participants = $stmt->fetchAll();
         <!-- Bulk Upload Form -->
         <div class="upload-box" style="flex: 1; min-width: 300px;">
             <h3 style="margin-top:0;">Bulk Upload CSV</h3>
-            <p style="font-size: 13px; color: #555;">Upload a CSV file containing participants. Format: <strong>Full_Name, Email, Role_Name</strong>. First row will be ignored.</p>
+            <p style="font-size: 13px; color: #555;">Upload a CSV file containing participants. Format: <strong>Full_Name, Email, Role_Name, Custom_Text (Optional)</strong>. First row will be ignored.</p>
             <div style="background: #fffbe6; border: 1px solid #ffe58f; padding: 10px; font-size: 12px; color: #d48806; border-radius: 4px; margin-bottom: 15px;">
                 <strong>Important:</strong> The roles in your CSV (e.g., Attendee, Organizer) MUST EXACTLY MATCH the roles you have already created in the <em>Manage Roles</em> section. Any rows with unrecognized roles will be skipped!
             </div>
@@ -406,6 +416,7 @@ $participants = $stmt->fetchAll();
                         <th>Name</th>
                         <th>Email</th>
                         <th>Role</th>
+                        <th>Custom Text</th>
                         <th>Certificate ID</th>
                         <th>Added On</th>
                         <th>Action</th>
@@ -423,6 +434,13 @@ $participants = $stmt->fetchAll();
                                     </span>
                                 <?php else: ?>
                                     <span style="color:#999; font-size:12px;">No Role</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if (!empty($p['custom_certificate_text'])): ?>
+                                    <span style="background: #fdf6e3; color: #b58900; padding: 2px 8px; border-radius: 12px; font-size: 12px; border: 1px solid #eee8d5;"><?= htmlspecialchars($p['custom_certificate_text']) ?></span>
+                                <?php else: ?>
+                                    <span style="color:#ccc; font-style: italic; font-size:12px;">-</span>
                                 <?php endif; ?>
                             </td>
                             <td><span style="font-family: monospace; background: #f4f5f7; padding: 3px 6px; border-radius: 4px; border: 1px solid #e1e4e8;"><?= htmlspecialchars($p['certificate_id']) ?></span></td>

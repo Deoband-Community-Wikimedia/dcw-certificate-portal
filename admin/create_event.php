@@ -46,10 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$eventName) {
         $error = "Event name is required.";
     } else {
-        $stmt = $pdo->prepare("INSERT INTO events (name, linkedin_caption, custom_verification_text, cert_prefix) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$eventName, $linkedinCaption, $customVerificationText, $certPrefix]);
-        $stmt = $pdo->prepare("INSERT INTO events (name, linkedin_caption, cert_prefix, certificate_issue_date, description, partners) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$eventName, $linkedinCaption, $certPrefix, $certificateIssueDate, $description, $partners]);
+        $stmt = $pdo->prepare("INSERT INTO events (name, linkedin_caption, custom_verification_text, cert_prefix, certificate_issue_date, description, partners) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$eventName, $linkedinCaption, $customVerificationText, $certPrefix, $certificateIssueDate, $description, $partners]);
         $newEventId = $pdo->lastInsertId();
         
         log_audit_action($pdo, 'Created Event', "Event ID: {$newEventId}, Name: {$eventName}");
@@ -84,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="container" style="max-width: 600px;">
     <h2>Create New Event</h2>
     
-    <form method="POST" action="">
+    <form method="POST" action="" onsubmit="const btn = this.querySelector('button[type=submit]'); btn.disabled = true; btn.innerText = 'Creating...';">
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generate_csrf_token()) ?>">
         <div class="form-group">
             <label>Event Name</label>

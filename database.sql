@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS event_participants (
     role_id INT NULL,
     participant_id INT NOT NULL,
     certificate_id VARCHAR(50) UNIQUE,
+    custom_certificate_text VARCHAR(255) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
     FOREIGN KEY (role_id) REFERENCES event_roles(id) ON DELETE SET NULL,
@@ -70,4 +71,15 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     action_type VARCHAR(50) NOT NULL,
     details VARCHAR(255) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Email Logs Table
+CREATE TABLE IF NOT EXISTS email_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    certificate_id VARCHAR(50) NOT NULL,
+    recipient_email VARCHAR(255) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    error_message TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (certificate_id) REFERENCES event_participants(certificate_id) ON DELETE CASCADE
 );
