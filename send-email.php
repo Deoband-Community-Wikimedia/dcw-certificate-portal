@@ -1,5 +1,5 @@
-<?php
 require_once 'config.php';
+require_once 'helpers.php';
 // Include PHPMailer and FPDI
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;

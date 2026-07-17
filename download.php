@@ -14,6 +14,7 @@ $certId = trim($_GET['id']);
 $preview = isset($_GET['preview']) && $_GET['preview'] == 1;
 
 require_once 'config.php';
+require_once 'helpers.php';
 require_once 'vendor/autoload.php';
 
 use setasign\Fpdi\Tcpdf\Fpdi;
