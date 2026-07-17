@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS event_participants (
     participant_id INT NOT NULL,
     certificate_id VARCHAR(50) UNIQUE,
     custom_certificate_text VARCHAR(255) NULL,
+    issue_date DATE NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
     FOREIGN KEY (role_id) REFERENCES event_roles(id) ON DELETE SET NULL,

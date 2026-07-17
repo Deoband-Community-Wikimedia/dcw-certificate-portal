@@ -75,7 +75,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'delete_participant') {
 // Handle Export
 if (isset($_GET['export'])) {
     $stmt = $pdo->prepare("
-        SELECT p.full_name, p.email, er.role_name, ep.certificate_id, p.created_at, ep.custom_certificate_text
+        SELECT p.full_name, p.email, er.role_name, ep.certificate_id, p.created_at, ep.custom_certificate_text, ep.issue_date
         FROM participants p
         JOIN event_participants ep ON p.id = ep.participant_id
         LEFT JOIN event_roles er ON ep.role_id = er.id
@@ -88,7 +88,7 @@ if (isset($_GET['export'])) {
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename=participants_event_' . $eventId . '.csv');
     $output = fopen('php://output', 'w');
-    fputcsv($output, array('Full Name', 'Email', 'Role', 'Certificate ID', 'Added On', 'Custom Text'));
+    fputcsv($output, array('Full Name', 'Email', 'Role', 'Certificate ID', 'Added On', 'Custom Text', 'Certificate Issue Date'));
     foreach ($exportData as $row) {
         fputcsv($output, array(
             $row['full_name'], 
@@ -96,7 +96,8 @@ if (isset($_GET['export'])) {
             $row['role_name'] ?? 'No Role', 
             $row['certificate_id'] ?? 'Pending', 
             $row['created_at'],
-            $row['custom_certificate_text'] ?? ''
+            $row['custom_certificate_text'] ?? '',
+            $row['issue_date'] ?? ''
         ));
     }
     fclose($output);
@@ -112,6 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = trim($_POST['single_email'] ?? '');
         $roleId = $_POST['role_id'] ?? null;
         $customText = trim($_POST['single_custom_text'] ?? '');
+        $issueDateInput = trim($_POST['single_issue_date'] ?? '');
         
         if ($fullName && filter_var($email, FILTER_VALIDATE_EMAIL) && $roleId) {
             // 1. Insert into participants
@@ -125,8 +127,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // 3. Link to event
             $certId = generateCertId($certPrefix);
-            $stmtLinkEvent = $pdo->prepare("INSERT IGNORE INTO event_participants (participant_id, event_id, role_id, certificate_id, custom_certificate_text) VALUES (?, ?, ?, ?, ?)");
-            $stmtLinkEvent->execute([$pid, $eventId, $roleId, $certId, $customText ?: null]);
+            $stmtLinkEvent = $pdo->prepare("INSERT IGNORE INTO event_participants (participant_id, event_id, role_id, certificate_id, custom_certificate_text, issue_date) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmtLinkEvent->execute([$pid, $eventId, $roleId, $certId, $customText ?: null, $issueDateInput ?: null]);
             
             if ($stmtLinkEvent->rowCount() > 0) {
                 $message = "Participant added successfully.";
@@ -145,15 +147,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = trim($_POST['single_email'] ?? '');
         $roleId = $_POST['role_id'] ?? null;
         $customText = trim($_POST['single_custom_text'] ?? '');
+        $issueDateInput = trim($_POST['single_issue_date'] ?? '');
         
         if ($fullName && filter_var($email, FILTER_VALIDATE_EMAIL) && $roleId) {
             $stmtUpdate = $pdo->prepare("UPDATE participants SET full_name = ?, email = ? WHERE id = ?");
             try {
                 $stmtUpdate->execute([$fullName, $email, $editPid]);
                 
-                // Update role and custom text in event_participants
-                $stmtUpdateRole = $pdo->prepare("UPDATE event_participants SET role_id = ?, custom_certificate_text = ? WHERE participant_id = ? AND event_id = ?");
-                $stmtUpdateRole->execute([$roleId, $customText ?: null, $editPid, $eventId]);
+                // Update role, custom text, and issue date in event_participants
+                $stmtUpdateRole = $pdo->prepare("UPDATE event_participants SET role_id = ?, custom_certificate_text = ?, issue_date = ? WHERE participant_id = ? AND event_id = ?");
+                $stmtUpdateRole->execute([$roleId, $customText ?: null, $issueDateInput ?: null, $editPid, $eventId]);
 
                 $message = "Participant updated successfully.";
                 $messageType = 'success';
@@ -261,7 +264,7 @@ $totalPages = ceil($totalRecords / $limit);
 
 // Fetch participants
 $stmt = $pdo->prepare("
-    SELECT p.*, ep.certificate_id, er.role_name, ep.role_id, ep.custom_certificate_text
+    SELECT p.*, ep.certificate_id, er.role_name, ep.role_id, ep.custom_certificate_text, ep.issue_date
     FROM participants p
     JOIN event_participants ep ON p.id = ep.participant_id
     LEFT JOIN event_roles er ON ep.role_id = er.id
@@ -308,7 +311,7 @@ $participants = $stmt->fetchAll();
             $editRoleId = null;
             if (isset($_GET['edit_pid'])) {
                 $stmtEdit = $pdo->prepare("
-                    SELECT p.*, ep.role_id, ep.custom_certificate_text
+                    SELECT p.*, ep.role_id, ep.custom_certificate_text, ep.issue_date
                     FROM participants p 
                     JOIN event_participants ep ON p.id = ep.participant_id
                     WHERE p.id = ? AND ep.event_id = ?
@@ -338,6 +341,11 @@ $participants = $stmt->fetchAll();
                         <input type="text" name="single_custom_text" value="<?= htmlspecialchars($editParticipant['custom_certificate_text'] ?? '') ?>" placeholder="Custom Text (Optional)">
                     </div>
                     <div class="form-group">
+                        <label style="font-size: 12px; color: #555; display: block; margin-bottom: 4px;">Certificate Issue Date (Optional)</label>
+                        <input type="date" name="single_issue_date" value="<?= htmlspecialchars($editParticipant['issue_date'] ?? '') ?>">
+                        <small style="color: #999; font-size: 11px;">Leave blank to use the event's issue date (or the date this participant was added).</small>
+                    </div>
+                    <div class="form-group">
                         <select name="role_id" required>
                             <option value="">-- Select Role --</option>
                             <?php foreach($rolesList as $r): ?>
@@ -362,6 +370,11 @@ $participants = $stmt->fetchAll();
                     </div>
                     <div class="form-group">
                         <input type="text" name="single_custom_text" placeholder="Custom Text (Optional)">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 12px; color: #555; display: block; margin-bottom: 4px;">Certificate Issue Date (Optional)</label>
+                        <input type="date" name="single_issue_date">
+                        <small style="color: #999; font-size: 11px;">Leave blank to use the event's issue date (or the date this participant is added).</small>
                     </div>
                     <div class="form-group">
                         <select name="role_id" required>
@@ -444,7 +457,14 @@ $participants = $stmt->fetchAll();
                                 <?php endif; ?>
                             </td>
                             <td><span style="font-family: monospace; background: #f4f5f7; padding: 3px 6px; border-radius: 4px; border: 1px solid #e1e4e8;"><?= htmlspecialchars($p['certificate_id']) ?></span></td>
-                            <td><?= htmlspecialchars($p['created_at']) ?></td>
+                            <td>
+                                <?php if (!empty($p['issue_date'])): ?>
+                                    <?= htmlspecialchars(date('M j, Y', strtotime($p['issue_date']))) ?>
+                                    <span style="background: #e0f2fe; color: #0369a1; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-left: 4px; vertical-align: middle;">CUSTOM</span>
+                                <?php else: ?>
+                                    <?= htmlspecialchars($p['created_at']) ?>
+                                <?php endif; ?>
+                            </td>
                             <td style="display: flex; align-items: center; gap: 15px;">
                                 <a href="manage_participants.php?id=<?= $eventId ?>&edit_pid=<?= $p['id'] ?>" class="action-link" title="Edit" style="color: var(--accent-color);">
                                     <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
