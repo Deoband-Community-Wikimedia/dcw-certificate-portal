@@ -4,6 +4,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Load shared helpers
+require_once __DIR__ . '/helpers.php';
+
 // DB connection logic
 
 $host = 'localhost';

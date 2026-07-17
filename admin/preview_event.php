@@ -29,17 +29,17 @@ if (!$role) {
 $defaultSettings = [
     'name' => [
         'enabled' => true,
-        'pos_x' => 105, 'pos_y' => 100, 'font_size' => 40,
+        'pos_x' => 105, 'pos_y' => 100, 'font_size' => 40, 'box_width' => 0,
         'text_color' => '0,0,0', 'text_align' => 'C', 'font_file' => '', 'font_name' => 'alexbrush'
     ],
     'certid' => [
         'enabled' => true,
-        'pos_x' => 10, 'pos_y' => 195, 'font_size' => 12,
+        'pos_x' => 10, 'pos_y' => 195, 'font_size' => 12, 'box_width' => 0,
         'text_color' => '0,0,0', 'text_align' => 'L', 'font_file' => '', 'font_name' => 'helvetica'
     ],
     'date' => [
         'enabled' => true,
-        'pos_x' => 200, 'pos_y' => 195, 'font_size' => 12,
+        'pos_x' => 200, 'pos_y' => 195, 'font_size' => 12, 'box_width' => 0,
         'text_color' => '0,0,0', 'text_align' => 'R', 'font_file' => '', 'font_name' => 'helvetica',
         'date_format' => 'F j, Y'
     ],
@@ -50,7 +50,7 @@ $defaultSettings = [
     ],
     'custom_text' => [
         'enabled' => false,
-        'pos_x' => 100, 'pos_y' => 120, 'font_size' => 18,
+        'pos_x' => 100, 'pos_y' => 120, 'font_size' => 18, 'box_width' => 0,
         'text_color' => '0,0,0', 'text_align' => 'C', 'font_file' => '', 'font_name' => 'helvetica'
     ]
 ];
@@ -60,6 +60,10 @@ $visualSettings = !empty($role['visual_settings']) ? json_decode($role['visual_s
 foreach (['name', 'certid', 'date', 'qrcode', 'custom_text'] as $key) {
     if (!isset($visualSettings[$key])) {
         $visualSettings[$key] = $defaultSettings[$key];
+    }
+    // Ensure box_width exists for backwards compatibility
+    if ($key !== 'qrcode' && !isset($visualSettings[$key]['box_width'])) {
+        $visualSettings[$key]['box_width'] = 0;
     }
 }
 
@@ -230,6 +234,11 @@ if (is_dir($fontDir)) {
                     <input type="number" id="font_size">
                 </div>
 
+                <div class="form-group" id="group_box_width">
+                    <label>Max Width (mm) <span style="font-size: 11px; font-weight: normal; color: #777;">(0 = unlimited)</span></label>
+                    <input type="number" id="box_width" step="1">
+                </div>
+
                 <div class="form-group" id="group_color">
                     <label>Text Color (HEX/RGB)</label>
                     <div style="display: flex; gap: 5px;">
@@ -373,23 +382,37 @@ if (is_dir($fontDir)) {
                 el.style.fontSize = (s.font_size / docHeightPt * canvas.offsetHeight) + 'px';
                 let colorStr = s.text_color.trim();
                 el.style.color = colorStr.startsWith('#') ? colorStr : `rgb(${colorStr})`;
-                el.style.width = 'auto';
-                el.style.height = 'auto';
-                el.style.border = 'none';
             }
             
-            // Alignment
-            if (s.text_align === 'C') {
-                el.style.textAlign = 'center';
-                el.style.transform = 'translateX(-50%)';
-                el.style.transformOrigin = 'center left';
-            } else if (s.text_align === 'R') {
-                el.style.textAlign = 'right';
-                el.style.transform = 'translateX(-100%)';
-                el.style.transformOrigin = 'top right';
-            } else {
-                el.style.textAlign = 'left';
+            // Alignment and Box Width
+            let boxWidthMM = parseFloat(s.box_width) || 0;
+            if (boxWidthMM > 0 && key !== 'qrcode') {
+                let pxWidth = (boxWidthMM / pdfWidthMM) * canvas.offsetWidth;
+                el.style.width = pxWidth + 'px';
+                el.style.whiteSpace = 'normal';
+                
+                // If bounding box is used, X/Y is ALWAYS the top-left corner of the box,
+                // and CSS textAlign handles the text alignment natively inside it.
+                el.style.textAlign = s.text_align === 'C' ? 'center' : (s.text_align === 'R' ? 'right' : 'left');
                 el.style.transform = 'none';
+                el.style.transformOrigin = 'top left';
+            } else if (key !== 'qrcode') {
+                el.style.width = 'auto';
+                el.style.whiteSpace = 'nowrap';
+                
+                // Legacy offset-based alignment
+                if (s.text_align === 'C') {
+                    el.style.textAlign = 'center';
+                    el.style.transform = 'translateX(-50%)';
+                    el.style.transformOrigin = 'center left';
+                } else if (s.text_align === 'R') {
+                    el.style.textAlign = 'right';
+                    el.style.transform = 'translateX(-100%)';
+                    el.style.transformOrigin = 'top right';
+                } else {
+                    el.style.textAlign = 'left';
+                    el.style.transform = 'none';
+                }
             }
         }
 
@@ -402,6 +425,7 @@ if (is_dir($fontDir)) {
             pos_x: document.getElementById('pos_x'),
             pos_y: document.getElementById('pos_y'),
             font_size: document.getElementById('font_size'),
+            box_width: document.getElementById('box_width'),
             text_color: document.getElementById('text_color'),
             text_align: document.getElementById('text_align'),
             font_file: document.getElementById('existing_font'),
@@ -460,11 +484,14 @@ if (is_dir($fontDir)) {
                 document.getElementById('group_align').style.display = 'none';
                 document.getElementById('group_font').style.display = 'none';
                 document.getElementById('font_upload_group').style.display = 'none';
+                document.getElementById('group_box_width').style.display = 'none';
             } else {
                 document.getElementById('group_color').style.display = 'block';
                 document.getElementById('group_align').style.display = 'block';
                 document.getElementById('group_font').style.display = 'block';
                 document.getElementById('font_upload_group').style.display = 'block';
+                document.getElementById('group_box_width').style.display = 'block';
+                formInputs.box_width.value = s.box_width || 0;
             }
             
             // Clear proxy input
@@ -494,6 +521,9 @@ if (is_dir($fontDir)) {
             s.text_color = formInputs.text_color.value;
             s.text_align = formInputs.text_align.value;
             s.font_file = formInputs.font_file.value;
+            if (activeTab !== 'qrcode') {
+                s.box_width = parseFloat(formInputs.box_width.value) || 0;
+            }
             if (activeTab === 'date') {
                 s.date_format = formInputs.date_format.value;
                 updateDatePreview();
@@ -517,6 +547,7 @@ if (is_dir($fontDir)) {
 
         formInputs.enabled.addEventListener('change', syncState);
         formInputs.font_size.addEventListener('input', syncState);
+        formInputs.box_width.addEventListener('input', syncState);
         formInputs.text_color.addEventListener('input', (e) => {
             formInputs.color_picker.value = parseColorToHex(e.target.value);
             syncState();

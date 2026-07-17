@@ -1,5 +1,5 @@
-<?php
 require_once 'config.php';
+require_once 'helpers.php';
 // Include PHPMailer and FPDI
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -83,7 +83,7 @@ if (file_exists($templatePath)) {
         $pdf->useTemplate($tplIdx, 0, 0, $w, $h);
     }
 
-    function renderElementForEmail($pdf, $settings, $text) {
+    function renderElementForEmail($pdf, $settings, $text, $linkUrl = '') {
         if (!isset($settings['enabled']) || !$settings['enabled']) return;
 
         $fontName = $settings['font_name'] ?? 'helvetica';
@@ -123,25 +123,40 @@ if (file_exists($templatePath)) {
         $posX = $settings['pos_x'];
         $posY = $settings['pos_y'];
         $align = $settings['text_align'] ?? 'L';
+        $boxWidth = isset($settings['box_width']) ? (float)$settings['box_width'] : 0;
 
-        $strWidth = $pdf->GetStringWidth($text);
-
-        if ($align === 'C') {
-            $pdf->SetXY($posX - ($strWidth / 2), $posY);
-        } elseif ($align === 'R') {
-            $pdf->SetXY($posX - $strWidth, $posY);
-        } else {
+        if ($boxWidth > 0) {
             $pdf->SetXY($posX, $posY);
+            $pdf->MultiCell($boxWidth, 0, $text, 0, $align, false, 1);
+            if ($linkUrl !== '') {
+                $pdf->Link($posX, $posY, $boxWidth, $pdf->GetY() - $posY, $linkUrl);
+            }
+        } else {
+            $strWidth = $pdf->GetStringWidth($text);
+            if ($align === 'C') {
+                $pdf->SetXY($posX - ($strWidth / 2), $posY);
+            } elseif ($align === 'R') {
+                $pdf->SetXY($posX - $strWidth, $posY);
+            } else {
+                $pdf->SetXY($posX, $posY);
+            }
+            $pdf->Cell($strWidth, 0, $text, 0, 0, 'L', false, $linkUrl);
         }
-        $pdf->Cell($strWidth, 0, $text, 0, 0, 'L');
     }
+
+    // Calculate verification URL early for hyperlinks
+    $protocolPdf = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+    $domainNamePdf = $_SERVER['HTTP_HOST'];
+    $basePathPdf = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+    if ($basePathPdf === '/') $basePathPdf = '';
+    $verifyUrlPdf = $protocolPdf . $domainNamePdf . $basePathPdf . '/verify/' . $certId;
 
     if (is_array($visualSettings)) {
         if (isset($visualSettings['name'])) {
             renderElementForEmail($pdf, $visualSettings['name'], $fullName);
         }
         if (isset($visualSettings['certid'])) {
-            renderElementForEmail($pdf, $visualSettings['certid'], $certId);
+            renderElementForEmail($pdf, $visualSettings['certid'], $certId, $verifyUrlPdf);
         }
         if (isset($visualSettings['date'])) {
             renderElementForEmail($pdf, $visualSettings['date'], $issueDate);
@@ -150,12 +165,6 @@ if (file_exists($templatePath)) {
             renderElementForEmail($pdf, $visualSettings['custom_text'], $certData['custom_certificate_text']);
         }
         if (isset($visualSettings['qrcode']) && !empty($visualSettings['qrcode']['enabled'])) {
-            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-            $domainName = $_SERVER['HTTP_HOST'];
-            $basePath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
-            if ($basePath === '/') $basePath = '';
-            $verifyUrl = $protocol . $domainName . $basePath . '/verify/' . $certId;
-            
             $qr = $visualSettings['qrcode'];
             $qx = (float)$qr['pos_x'];
             $qy = (float)$qr['pos_y'];
@@ -170,7 +179,8 @@ if (file_exists($templatePath)) {
             }
             
             $style = array('border' => 0, 'padding' => 0, 'fgcolor' => $fgColor, 'bgcolor' => false);
-            $pdf->write2DBarcode($verifyUrl, 'QRCODE,L', $qx, $qy, $qsize, $qsize, $style, 'N');
+            $pdf->write2DBarcode($verifyUrlPdf, 'QRCODE,L', $qx, $qy, $qsize, $qsize, $style, 'N');
+            $pdf->Link($qx, $qy, $qsize, $qsize, $verifyUrlPdf);
         }
     }
 }
@@ -208,7 +218,11 @@ try {
     $mail->Subject = "Verified Credential: " . $certData['event_name'];
 
     // Attach PDF
-    $filename = "certificate-" . preg_replace('/[^a-z0-9]+/', '-', strtolower($fullName)) . ".pdf";
+    // sanitizeForFilename() is defined in config.php and shared with download.php
+    // so the emailed attachment name matches the manually-downloaded filename format.
+    $safeFullName = sanitizeForFilename($fullName);
+    $safeEventName = sanitizeForFilename($certData['event_name']);
+    $filename = "{$safeFullName} - {$safeEventName} - Certificate.pdf";
     $mail->addStringAttachment($pdfString, $filename);
 
     // Professional HTML Email Template Layout

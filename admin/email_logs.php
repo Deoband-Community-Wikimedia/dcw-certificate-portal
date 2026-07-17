@@ -132,7 +132,7 @@ $searchParam = $queryString ? '&' . $queryString : '';
     </div>
 </div>
 
-<div class="container">
+<div class="container" style="max-width: 1300px;">
     <h2 style="margin-top: 0; margin-bottom: 20px;">Universal Email Delivery Logs</h2>
     
     <form method="GET" class="filter-form">

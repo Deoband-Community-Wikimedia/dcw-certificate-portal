@@ -14,6 +14,7 @@ $certId = trim($_GET['id']);
 $preview = isset($_GET['preview']) && $_GET['preview'] == 1;
 
 require_once 'config.php';
+require_once 'helpers.php';
 require_once 'vendor/autoload.php';
 
 use setasign\Fpdi\Tcpdf\Fpdi;
@@ -84,7 +85,7 @@ if ($rotation != 0) {
 }
 
 // Function to render text element
-function renderElement($pdf, $settings, $text) {
+function renderElement($pdf, $settings, $text, $linkUrl = '') {
     if (!isset($settings['enabled']) || !$settings['enabled']) return;
 
     $fontName = $settings['font_name'] ?? 'helvetica';
@@ -124,18 +125,33 @@ function renderElement($pdf, $settings, $text) {
     $posX = $settings['pos_x'];
     $posY = $settings['pos_y'];
     $align = $settings['text_align'] ?? 'L';
+    $boxWidth = isset($settings['box_width']) ? (float)$settings['box_width'] : 0;
 
-    $strWidth = $pdf->GetStringWidth($text);
-
-    if ($align === 'C') {
-        $pdf->SetXY($posX - ($strWidth / 2), $posY);
-    } elseif ($align === 'R') {
-        $pdf->SetXY($posX - $strWidth, $posY);
-    } else {
+    if ($boxWidth > 0) {
         $pdf->SetXY($posX, $posY);
+        $pdf->MultiCell($boxWidth, 0, $text, 0, $align, false, 1);
+        if ($linkUrl !== '') {
+            $pdf->Link($posX, $posY, $boxWidth, $pdf->GetY() - $posY, $linkUrl);
+        }
+    } else {
+        $strWidth = $pdf->GetStringWidth($text);
+        if ($align === 'C') {
+            $pdf->SetXY($posX - ($strWidth / 2), $posY);
+        } elseif ($align === 'R') {
+            $pdf->SetXY($posX - $strWidth, $posY);
+        } else {
+            $pdf->SetXY($posX, $posY);
+        }
+        $pdf->Cell($strWidth, 0, $text, 0, 0, 'L', false, $linkUrl);
     }
-    $pdf->Cell($strWidth, 0, $text, 0, 0, 'L');
 }
+
+// Calculate verification URL early for hyperlinks
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+$domainName = $_SERVER['HTTP_HOST'];
+$basePath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+if ($basePath === '/') $basePath = '';
+$verifyUrl = $protocol . $domainName . $basePath . '/verify/' . $certId;
 
 // Render the elements and QR code
 if (is_array($visualSettings)) {
@@ -143,7 +159,7 @@ if (is_array($visualSettings)) {
         renderElement($pdf, $visualSettings['name'], $fullName);
     }
     if (isset($visualSettings['certid'])) {
-        renderElement($pdf, $visualSettings['certid'], $certId);
+        renderElement($pdf, $visualSettings['certid'], $certId, $verifyUrl);
     }
     if (isset($visualSettings['date'])) {
         renderElement($pdf, $visualSettings['date'], $issueDate);
@@ -152,11 +168,6 @@ if (is_array($visualSettings)) {
         renderElement($pdf, $visualSettings['custom_text'], $certData['custom_certificate_text']);
     }
     if (isset($visualSettings['qrcode']) && !empty($visualSettings['qrcode']['enabled'])) {
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-        $domainName = $_SERVER['HTTP_HOST'];
-        $basePath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
-        if ($basePath === '/') $basePath = '';
-        $verifyUrl = $protocol . $domainName . $basePath . '/verify/' . $certId;
         
         $qr = $visualSettings['qrcode'];
         $qx = (float)$qr['pos_x'];
@@ -178,11 +189,17 @@ if (is_array($visualSettings)) {
             'bgcolor' => false, //transparent
         );
         $pdf->write2DBarcode($verifyUrl, 'QRCODE,L', $qx, $qy, $qsize, $qsize, $style, 'N');
+        $pdf->Link($qx, $qy, $qsize, $qsize, $verifyUrl);
     }
 }
 
+
+
 // Output
-$filename = "certificate-" . preg_replace('/[^a-z0-9]+/', '-', strtolower($fullName)) . ".pdf";
+// sanitizeForFilename() is defined in config.php so download.php and send-email.php stay consistent
+$safeFullName = sanitizeForFilename($fullName);
+$safeEventName = sanitizeForFilename($certData['event_name']);
+$filename = "{$safeFullName} - {$safeEventName} - Certificate.pdf";
 
 if ($preview) {
     // Show inline in browser for previews
