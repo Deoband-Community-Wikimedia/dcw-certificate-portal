@@ -192,13 +192,10 @@ if (is_array($visualSettings)) {
     }
 }
 
-// Sanitize a string for safe use in a downloaded file name (Windows/Mac/Linux)
-function sanitizeForFilename($str) {
-    $clean = preg_replace('/[\/\\\\:\*\?"<>\|]+/', '', trim($str));
-    return preg_replace('/\s+/', ' ', $clean); // collapse extra whitespace
-}
+
 
 // Output
+// sanitizeForFilename() is defined in config.php so download.php and send-email.php stay consistent
 $safeFullName = sanitizeForFilename($fullName);
 $safeEventName = sanitizeForFilename($certData['event_name']);
 $filename = "{$safeFullName} - {$safeEventName} - Certificate.pdf";
