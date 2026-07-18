@@ -21,9 +21,9 @@ jobs:
     - name: Run PHP Syntax Check (Linting)
       run: |
         echo "Checking PHP syntax for all files..."
-        find . -type f -name "*.php" -exec php -l {} \; | grep -v "No syntax errors detected" || true
+        find . -type f -name "*.php" -exec php -l {} \; 2>&1 | grep -v "No syntax errors detected" || true
         # If there are any syntax errors, fail the build
-        if find . -type f -name "*.php" -exec php -l {} \; | grep -q "Parse error"; then
+        if find . -type f -name "*.php" -exec php -l {} \; 2>&1 | grep -q "Parse error"; then
           echo "Syntax errors found! Please fix them before merging."
           exit 1
         fi
