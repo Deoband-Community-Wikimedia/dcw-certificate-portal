@@ -66,7 +66,7 @@ $pdf->SetAutoPageBreak(false, 0);
 $pdf->setCellPaddings(0, 0, 0, 0);
 
 $templatePath = __DIR__ . '/uploads/templates/' . $certData['template_file'];
-if (file_exists($templatePath)) {
+if (file_exists($templatePath) && is_readable($templatePath)) {
     $pdf->setSourceFile($templatePath);
     $tplIdx = $pdf->importPage(1);
     $size = $pdf->getTemplateSize($tplIdx);
@@ -159,7 +159,7 @@ if (file_exists($templatePath)) {
     if ($basePathPdf === '/') $basePathPdf = '';
     $verifyUrlPdf = $protocolPdf . $domainNamePdf . $basePathPdf . '/verify/' . $certId;
 
-    if (is_array($visualSettings)) {
+    if (is_array($visualSettings) && !empty($visualSettings)) {
         if (isset($visualSettings['name'])) {
             renderElementForEmail($pdf, $visualSettings['name'], $fullName);
         }
@@ -214,11 +214,11 @@ $mail = new PHPMailer(true);
 try {
     $mail->isSMTP();
     $mail->Host = $_ENV['SMTP_HOST'];
-    $mail->SMTPAuth = filter_var($_ENV['SMTP_AUTH'], FILTER_VALIDATE_BOOLEAN);
+    $mail->SMTPAuth = (bool)filter_var($_ENV['SMTP_AUTH'], FILTER_VALIDATE_BOOLEAN);
     $mail->Username = $_ENV['SMTP_USER'];
     $mail->Password = $_ENV['SMTP_PASS'];
-    $mail->SMTPSecure = $_ENV['SMTP_SECURE'];
-    $mail->Port = $_ENV['SMTP_PORT'];
+    $mail->SMTPSecure = $_ENV['SMTP_SECURE'] === 'tls' ? 'tls' : 'ssl';
+    $mail->Port = (int)$_ENV['SMTP_PORT'];
 
     $mail->setFrom($_ENV['SMTP_USER'], 'Deoband Community Wikimedia');
     $mail->addAddress($recipientEmail, $fullName);
