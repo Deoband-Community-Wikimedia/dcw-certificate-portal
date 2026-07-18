@@ -208,6 +208,10 @@ $safeFullName = sanitizeForFilename($fullName);
 $safeEventName = sanitizeForFilename($certData['event_name']);
 $filename = "{$safeFullName} - {$safeEventName} - Certificate.pdf";
 
+if (isset($outputAsString) && $outputAsString) {
+    return $pdf->Output($filename, 'S');
+}
+
 if ($preview) {
     // Show inline in browser for previews
     $pdf->Output($filename, 'I');

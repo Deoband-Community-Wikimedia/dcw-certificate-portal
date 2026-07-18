@@ -48,6 +48,9 @@ function verify_csrf_token($token) {
 // Security Configuration
 define('SUPER_ADMIN_PASSCODE', '1234');
 
+// Dynamic Thumbnails Configuration (For Social Sharing Previews)
+define('DYNAMIC_THUMBNAILS_ENABLED', true);
+
 // Audit Log Helper
 function log_audit_action($pdo, $action, $details = '') {
     if (!isset($_SESSION['admin_username'])) {

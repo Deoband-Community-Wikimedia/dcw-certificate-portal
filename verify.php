@@ -73,8 +73,13 @@ if (!empty($certData['partners'])) {
         content="Verified Credential: <?= htmlspecialchars($certData['full_name']) ?> - <?= htmlspecialchars($certData['event_name']) ?>">
     <meta property="og:description"
         content="This official credential was securely issued. Verify the authenticity of this certificate online.">
-    <meta property="og:image"
-        content="https://<?= htmlspecialchars($_SERVER['HTTP_HOST']) . $basePath ?>/assets/DCW_logo.png">
+    <?php
+    $thumbnailUrl = "https://" . htmlspecialchars($_SERVER['HTTP_HOST']) . $basePath . "/assets/DCW_logo.png";
+    if (defined('DYNAMIC_THUMBNAILS_ENABLED') && DYNAMIC_THUMBNAILS_ENABLED) {
+        $thumbnailUrl = "https://" . htmlspecialchars($_SERVER['HTTP_HOST']) . $basePath . "/thumbnail.php?id=" . urlencode($certId);
+    }
+    ?>
+    <meta property="og:image" content="<?= $thumbnailUrl ?>">
 
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url"
@@ -83,8 +88,7 @@ if (!empty($certData['partners'])) {
         content="Verified Credential: <?= htmlspecialchars($certData['full_name']) ?> - <?= htmlspecialchars($certData['event_name']) ?>">
     <meta property="twitter:description"
         content="This official credential was securely issued. Verify the authenticity of this certificate online.">
-    <meta property="twitter:image"
-        content="https://<?= htmlspecialchars($_SERVER['HTTP_HOST']) . $basePath ?>/assets/DCW_logo.png">
+    <meta property="twitter:image" content="<?= $thumbnailUrl ?>">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <style>
