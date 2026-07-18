@@ -51,7 +51,7 @@ $verificationText = !empty($certData['custom_verification_text'])
       )
     : "This verified credential confirms that " . htmlspecialchars($certData['full_name']) . " participated in " . htmlspecialchars($certData['event_name']) . ".";
 if (!empty($certData['partners'])) {
-    $verificationText .= " Issued in partnership with " . htmlspecialchars($certData['partners']) . ".";
+    $verificationText .= " The credential has been securely issued by the DCW in partnership with " . htmlspecialchars($certData['partners']) . ".";
 }
 ?>
 <!DOCTYPE html>
