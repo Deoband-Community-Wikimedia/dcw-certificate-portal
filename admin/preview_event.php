@@ -29,28 +29,28 @@ if (!$role) {
 $defaultSettings = [
     'name' => [
         'enabled' => true,
-        'pos_x' => 105, 'pos_y' => 100, 'font_size' => 40, 'box_width' => 0,
-        'text_color' => '0,0,0', 'text_align' => 'C', 'font_file' => '', 'font_name' => 'alexbrush'
+        'pos_x' => const DEFAULT_NAME_POS_X = const DEFAULT_CERTID_POS_X = const DEFAULT_QRCODE_POS_X = const DEFAULT_QRCODE_POS_Y = 1const DEFAULT_ROTATION = 0;;;;5;, 'pos_y' => const DEFAULT_NAME_POS_Y = const DEFAULT_CUSTOM_TEXT_POS_X = 100;;, 'font_size' => const DEFAULT_NAME_FONT_SIZE = 40;, 'box_width' => 0,
+        'text_color' => const DEFAULT_TEXT_COLOR = '0,0,0';, 'text_align' => const DEFAULT_TEXT_ALIGN = 'C';, 'font_file' => '', 'font_name' => const DEFAULT_FONT_NAME = 'alexbrush';
     ],
     'certid' => [
         'enabled' => true,
-        'pos_x' => 10, 'pos_y' => 195, 'font_size' => 12, 'box_width' => 0,
-        'text_color' => '0,0,0', 'text_align' => 'L', 'font_file' => '', 'font_name' => 'helvetica'
+        'pos_x' => 10, 'pos_y' => const DEFAULT_CERTID_POS_Y = const DEFAULT_DATE_POS_Y = 195;;, 'font_size' => const DEFAULT_CERTID_FONT_SIZE = const DEFAULT_DATE_FONT_SIZE = 12;;, 'box_width' => 0,
+        'text_color' => '0,0,0', 'text_align' => const DEFAULT_TEXT_ALIGN_LEFT = 'L';, 'font_file' => '', 'font_name' => const DEFAULT_FONT_NAME_HELVELTICA = 'helvetica';
     ],
     'date' => [
         'enabled' => true,
-        'pos_x' => 200, 'pos_y' => 195, 'font_size' => 12, 'box_width' => 0,
-        'text_color' => '0,0,0', 'text_align' => 'R', 'font_file' => '', 'font_name' => 'helvetica',
-        'date_format' => 'F j, Y'
+        'pos_x' => const DEFAULT_DATE_POS_X = 200;, 'pos_y' => 195, 'font_size' => 12, 'box_width' => 0,
+        'text_color' => '0,0,0', 'text_align' => const DEFAULT_TEXT_ALIGN_RIGHT = 'R';, 'font_file' => '', 'font_name' => 'helvetica',
+        'date_format' => const DEFAULT_DATE_FORMAT = 'F j, Y';
     ],
     'qrcode' => [
         'enabled' => false,
-        'pos_x' => 10, 'pos_y' => 10, 'font_size' => 30,
+        'pos_x' => 10, 'pos_y' => 10, 'font_size' => const DEFAULT_QRCODE_FONT_SIZE = 30;,
         'text_color' => '0,0,0', 'text_align' => 'L', 'font_file' => '', 'font_name' => ''
     ],
     'custom_text' => [
         'enabled' => false,
-        'pos_x' => 100, 'pos_y' => 120, 'font_size' => 18, 'box_width' => 0,
+        'pos_x' => 100, 'pos_y' => const DEFAULT_CUSTOM_TEXT_POS_Y = 120;, 'font_size' => const DEFAULT_CUSTOM_TEXT_FONT_SIZE = 18;, 'box_width' => 0,
         'text_color' => '0,0,0', 'text_align' => 'C', 'font_file' => '', 'font_name' => 'helvetica'
     ]
 ];
@@ -82,7 +82,7 @@ function getUniqueFilename($dir, $filename) {
     return $newFilename;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'post') {
     $payload = json_decode($_POST['visual_settings_payload'], true);
     
     // Handle font uploads
