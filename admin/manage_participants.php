@@ -283,7 +283,7 @@ $participants = $stmt->fetchAll();
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="https://dcwwiki.org/images/5/56/DCW_logo.png">
+    <link rel="icon" type="image/png" href="../assets/DCW_logo.png">
     <meta charset="UTF-8">
     <title>Manage Participants - <?= htmlspecialchars($event['name']) ?></title>
     <link rel="stylesheet" href="style.css?v=<?= time() ?>">

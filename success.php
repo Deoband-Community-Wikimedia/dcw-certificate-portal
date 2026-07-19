@@ -43,7 +43,7 @@ $linkedInShareMobile = "https://www.linkedin.com/sharing/share-offsite/?url=" . 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="https://dcwwiki.org/images/5/56/DCW_logo.png">
+    <link rel="icon" type="image/png" href="assets/DCW_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Credential Claimed - <?= htmlspecialchars($certData['event_name']) ?> - Deoband Community Wikimedia</title>
