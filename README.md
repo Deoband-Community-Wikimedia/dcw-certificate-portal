@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/Zaidusyy)
 
-A lightweight, highly secure, monolithic PHP application designed to bulk generate, distribute, and cryptographically verify digital certificates. This system allows organizations, communities, and educational institutions to handle end-to-end credential workflows without relying on expensive SaaS infrastructure like Credly.
+**DCW's Digital Certification Portal** is a highly secure, lightweight, and monolithic PHP application designed to bulk generate, distribute, and cryptographically verify digital certificates. Originally designed to issue verifiable credentials to participants in DCW events, this application allows communities, educational institutions, and organisations to handle end-to-end credential workflows without relying on expensive SaaS infrastructure like Credly.
 
 ---
 
@@ -16,7 +16,6 @@ A lightweight, highly secure, monolithic PHP application designed to bulk genera
 - **Public Verification Portal:** Includes a public-facing validation endpoint. Anyone can scan a certificate's QR code to instantly verify its authenticity against the central database.
 - **1-Click LinkedIn Integration:** Generated certificates provide participants with a dynamic "Add to LinkedIn Profile" button that securely pre-fills their credential data.
 - **Enterprise-Grade Security:** Hardened against SQL Injection (PDO prepared statements), CSRF attacks (strict token verification on state-changing endpoints), Session Fixation, and Brute-Force authentication attempts (server-side delays).
-
 ---
 
 ## Architecture & Tech Stack
@@ -98,6 +97,7 @@ Please ensure all new code adheres to the existing security paradigms (strictly 
 ## Author
 
 **[Zaid Sayyed](https://github.com/Zaidusyy)** 
+**and other DCW volunteers** 
 
 ## License
 
