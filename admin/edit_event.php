@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="https://dcwwiki.org/images/5/56/DCW_logo.png">
+    <link rel="icon" type="image/png" href="../assets/DCW_logo.png">
     <meta charset="UTF-8">
     <title>Edit Event</title>
     <link rel="stylesheet" href="style.css">

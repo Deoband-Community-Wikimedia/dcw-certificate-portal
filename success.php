@@ -39,11 +39,16 @@ $customCaption = trim($dbCaption) !== '' ? str_replace(['{EVENT_NAME}', '{URL}']
 
 $linkedInShareDesktop = "https://www.linkedin.com/feed/?shareActive=true&text=" . rawurlencode($customCaption);
 $linkedInShareMobile = "https://www.linkedin.com/sharing/share-offsite/?url=" . urlencode($verifyUrl);
+
+$basePath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+if ($basePath === '/') {
+    $basePath = '';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="https://dcwwiki.org/images/5/56/DCW_logo.png">
+    <link rel="icon" type="image/png" href="<?= $basePath ?>/assets/DCW_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Credential Claimed - <?= htmlspecialchars($certData['event_name']) ?> - Deoband Community Wikimedia</title>
@@ -537,7 +542,7 @@ $linkedInShareMobile = "https://www.linkedin.com/sharing/share-offsite/?url=" . 
     <footer class="site-footer">
         <div class="footer-container">
             <div class="footer-brand">
-                <img src="assets/DCW_logo.png" alt="DCW Logo" class="footer-logo">
+                <img src="<?= $basePath ?>/assets/DCW_logo.png" alt="DCW Logo" class="footer-logo">
                 <div class="footer-blurb">
                     Deoband Community Wikimedia is an independent affiliate of the Wikimedia Foundation with a focus on global Muslim academia and scholarship. All website content is released under the <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank">Creative Commons Attribution-ShareAlike License</a> unless otherwise stated.
                 </div>
