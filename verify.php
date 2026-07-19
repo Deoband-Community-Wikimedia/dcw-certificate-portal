@@ -26,6 +26,9 @@ $stmt = $pdo->prepare("
 $stmt->execute([$certId]);
 $certData = $stmt->fetch();
 
+// Instead of a bare 404 with no explanation (issue #77), we still send a 404
+// status code (correct for SEO/tooling) but render a proper, on-brand error
+// page so visitors understand what happened and who to contact.
 $notFound = !$certData;
 if ($notFound) {
     header("HTTP/1.0 404 Not Found");
@@ -45,7 +48,6 @@ if (!$notFound) {
 
     // Combined verification text: custom text (or default) + partnership suffix if partners exist.
     // Consolidates what used to be two separate, overlapping .meta blocks (see issue #30).
-    // Supports {name} and {event} placeholders in the admin-defined custom text.
     $verificationText = !empty($certData['custom_verification_text'])
         ? str_replace(
             ['{name}', '{event}'],
@@ -54,7 +56,7 @@ if (!$notFound) {
           )
         : "This verified credential confirms that " . htmlspecialchars($certData['full_name']) . " participated in " . htmlspecialchars($certData['event_name']) . ".";
     if (!empty($certData['partners'])) {
-        $verificationText .= " Issued in partnership with " . htmlspecialchars($certData['partners']) . ".";
+        $verificationText .= " The credential has been securely issued by the DCW in partnership with " . htmlspecialchars($certData['partners']) . ".";
     }
 }
 ?>
@@ -82,8 +84,13 @@ if (!$notFound) {
             content="Verified Credential: <?= htmlspecialchars($certData['full_name']) ?> - <?= htmlspecialchars($certData['event_name']) ?>">
         <meta property="og:description"
             content="This official credential was securely issued. Verify the authenticity of this certificate online.">
-        <meta property="og:image"
-            content="https://<?= htmlspecialchars($_SERVER['HTTP_HOST']) . $basePath ?>/assets/DCW_logo.png">
+        <?php
+        $thumbnailUrl = "https://" . htmlspecialchars($_SERVER['HTTP_HOST']) . $basePath . "/assets/DCW_logo.png";
+        if (defined('DYNAMIC_THUMBNAILS_ENABLED') && DYNAMIC_THUMBNAILS_ENABLED) {
+            $thumbnailUrl = "https://" . htmlspecialchars($_SERVER['HTTP_HOST']) . $basePath . "/thumbnail.php?id=" . urlencode($certId);
+        }
+        ?>
+        <meta property="og:image" content="<?= $thumbnailUrl ?>">
 
         <meta property="twitter:card" content="summary_large_image">
         <meta property="twitter:url"
@@ -92,8 +99,7 @@ if (!$notFound) {
             content="Verified Credential: <?= htmlspecialchars($certData['full_name']) ?> - <?= htmlspecialchars($certData['event_name']) ?>">
         <meta property="twitter:description"
             content="This official credential was securely issued. Verify the authenticity of this certificate online.">
-        <meta property="twitter:image"
-            content="https://<?= htmlspecialchars($_SERVER['HTTP_HOST']) . $basePath ?>/assets/DCW_logo.png">
+        <meta property="twitter:image" content="<?= $thumbnailUrl ?>">
     <?php endif; ?>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
@@ -104,7 +110,6 @@ if (!$notFound) {
             --primary-color: #106b9a;
             --primary-hover: #0c567a;
             --success-color: #059669;
-            --error-color: #dc2626;
             --background: #f4f6f8;
             --card-bg: #ffffff;
             --text-color: #1e293b;
@@ -358,7 +363,7 @@ if (!$notFound) {
             justify-content: center;
             gap: 8px;
             background: #fef2f2;
-            color: var(--error-color);
+            color: #dc2626;
             padding: 10px 16px;
             border-radius: 8px;
             font-weight: 600;
@@ -631,7 +636,7 @@ if (!$notFound) {
                     <?= htmlspecialchars($certData['full_name']) ?></div>
             </div>
 
-            <div class="details-grid" style="margin-bottom: 24px;">
+            <div class="details-grid">
                 <div class="detail-row">
                     <div class="detail-label">Credential ID</div>
                     <div class="detail-value"
@@ -764,4 +769,5 @@ if (!$notFound) {
         </div>
     </footer>
 </body>
+
 </html>
