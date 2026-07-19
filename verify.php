@@ -26,32 +26,38 @@ $stmt = $pdo->prepare("
 $stmt->execute([$certId]);
 $certData = $stmt->fetch();
 
-if (!$certData) {
-    die(header("HTTP/1.0 404 Not Found"));
+// Instead of a bare 404 with no explanation (issue #77), we still send a 404
+// status code (correct for SEO/tooling) but render a proper, on-brand error
+// page so visitors understand what happened and who to contact.
+$notFound = !$certData;
+if ($notFound) {
+    header("HTTP/1.0 404 Not Found");
 }
 
-// Date priority: participant-specific issue_date > event-level certificate_issue_date > created_at fallback
-if (!empty($certData['issue_date'])) {
-    $issueSource = $certData['issue_date'];
-} elseif (!empty($certData['certificate_issue_date'])) {
-    $issueSource = $certData['certificate_issue_date'];
-} else {
-    $issueSource = $certData['created_at'];
-}
-$issueDate = date('F j, Y', strtotime($issueSource));
-$roleName = $certData['role_name'] ? " as " . htmlspecialchars($certData['role_name']) : "";
+if (!$notFound) {
+    // Date priority: participant-specific issue_date > event-level certificate_issue_date > created_at fallback
+    if (!empty($certData['issue_date'])) {
+        $issueSource = $certData['issue_date'];
+    } elseif (!empty($certData['certificate_issue_date'])) {
+        $issueSource = $certData['certificate_issue_date'];
+    } else {
+        $issueSource = $certData['created_at'];
+    }
+    $issueDate = date('F j, Y', strtotime($issueSource));
+    $roleName = $certData['role_name'] ? " as " . htmlspecialchars($certData['role_name']) : "";
 
-// Combined verification text: custom text (or default) + partnership suffix if partners exist.
-// Consolidates what used to be two separate, overlapping .meta blocks (see issue #30).
-$verificationText = !empty($certData['custom_verification_text'])
-    ? str_replace(
-        ['{name}', '{event}'],
-        [htmlspecialchars($certData['full_name']), htmlspecialchars($certData['event_name'])],
-        htmlspecialchars($certData['custom_verification_text'])
-      )
-    : "This verified credential confirms that " . htmlspecialchars($certData['full_name']) . " participated in " . htmlspecialchars($certData['event_name']) . ".";
-if (!empty($certData['partners'])) {
-    $verificationText .= " The credential has been securely issued by the DCW in partnership with " . htmlspecialchars($certData['partners']) . ".";
+    // Combined verification text: custom text (or default) + partnership suffix if partners exist.
+    // Consolidates what used to be two separate, overlapping .meta blocks (see issue #30).
+    $verificationText = !empty($certData['custom_verification_text'])
+        ? str_replace(
+            ['{name}', '{event}'],
+            [htmlspecialchars($certData['full_name']), htmlspecialchars($certData['event_name'])],
+            htmlspecialchars($certData['custom_verification_text'])
+          )
+        : "This verified credential confirms that " . htmlspecialchars($certData['full_name']) . " participated in " . htmlspecialchars($certData['event_name']) . ".";
+    if (!empty($certData['partners'])) {
+        $verificationText .= " The credential has been securely issued by the DCW in partnership with " . htmlspecialchars($certData['partners']) . ".";
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -61,34 +67,40 @@ if (!empty($certData['partners'])) {
     <link rel="icon" type="image/png" href="https://dcwwiki.org/images/5/56/DCW_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Credential Verification - <?= htmlspecialchars($certData['full_name']) ?> - Deoband Community Wikimedia
-    </title>
-    <meta name="title"
-        content="Verified Credential: <?= htmlspecialchars($certData['full_name']) ?> - <?= htmlspecialchars($certData['event_name']) ?>">
-    <meta name="description"
-        content="This official credential was securely issued. Verify the authenticity of this certificate online.">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://<?= htmlspecialchars($_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']) ?>">
-    <meta property="og:title"
-        content="Verified Credential: <?= htmlspecialchars($certData['full_name']) ?> - <?= htmlspecialchars($certData['event_name']) ?>">
-    <meta property="og:description"
-        content="This official credential was securely issued. Verify the authenticity of this certificate online.">
-    <?php
-    $thumbnailUrl = "https://" . htmlspecialchars($_SERVER['HTTP_HOST']) . $basePath . "/assets/DCW_logo.png";
-    if (defined('DYNAMIC_THUMBNAILS_ENABLED') && DYNAMIC_THUMBNAILS_ENABLED) {
-        $thumbnailUrl = "https://" . htmlspecialchars($_SERVER['HTTP_HOST']) . $basePath . "/thumbnail.php?id=" . urlencode($certId);
-    }
-    ?>
-    <meta property="og:image" content="<?= $thumbnailUrl ?>">
+    <?php if ($notFound): ?>
+        <title>Certificate Not Found - Deoband Community Wikimedia</title>
+        <meta name="description" content="This certificate ID could not be recognized by our verification system.">
+        <meta name="robots" content="noindex">
+    <?php else: ?>
+        <title>Credential Verification - <?= htmlspecialchars($certData['full_name']) ?> - Deoband Community Wikimedia
+        </title>
+        <meta name="title"
+            content="Verified Credential: <?= htmlspecialchars($certData['full_name']) ?> - <?= htmlspecialchars($certData['event_name']) ?>">
+        <meta name="description"
+            content="This official credential was securely issued. Verify the authenticity of this certificate online.">
+        <meta property="og:type" content="website">
+        <meta property="og:url" content="https://<?= htmlspecialchars($_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']) ?>">
+        <meta property="og:title"
+            content="Verified Credential: <?= htmlspecialchars($certData['full_name']) ?> - <?= htmlspecialchars($certData['event_name']) ?>">
+        <meta property="og:description"
+            content="This official credential was securely issued. Verify the authenticity of this certificate online.">
+        <?php
+        $thumbnailUrl = "https://" . htmlspecialchars($_SERVER['HTTP_HOST']) . $basePath . "/assets/DCW_logo.png";
+        if (defined('DYNAMIC_THUMBNAILS_ENABLED') && DYNAMIC_THUMBNAILS_ENABLED) {
+            $thumbnailUrl = "https://" . htmlspecialchars($_SERVER['HTTP_HOST']) . $basePath . "/thumbnail.php?id=" . urlencode($certId);
+        }
+        ?>
+        <meta property="og:image" content="<?= $thumbnailUrl ?>">
 
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url"
-        content="https://<?= htmlspecialchars($_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']) ?>">
-    <meta property="twitter:title"
-        content="Verified Credential: <?= htmlspecialchars($certData['full_name']) ?> - <?= htmlspecialchars($certData['event_name']) ?>">
-    <meta property="twitter:description"
-        content="This official credential was securely issued. Verify the authenticity of this certificate online.">
-    <meta property="twitter:image" content="<?= $thumbnailUrl ?>">
+        <meta property="twitter:card" content="summary_large_image">
+        <meta property="twitter:url"
+            content="https://<?= htmlspecialchars($_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']) ?>">
+        <meta property="twitter:title"
+            content="Verified Credential: <?= htmlspecialchars($certData['full_name']) ?> - <?= htmlspecialchars($certData['event_name']) ?>">
+        <meta property="twitter:description"
+            content="This official credential was securely issued. Verify the authenticity of this certificate online.">
+        <meta property="twitter:image" content="<?= $thumbnailUrl ?>">
+    <?php endif; ?>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <style>
@@ -199,6 +211,18 @@ if (!empty($certData['partners'])) {
             width: 100%;
             max-width: 1000px;
             margin: 50px auto;
+            padding: 0 20px;
+            box-sizing: border-box;
+            flex: 1;
+        }
+
+        .error-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            width: 100%;
+            max-width: 600px;
+            margin: 60px auto;
             padding: 0 20px;
             box-sizing: border-box;
             flex: 1;
@@ -329,6 +353,23 @@ if (!empty($certData['partners'])) {
             font-size: 14px;
             margin-bottom: 24px;
             border: 1.5px solid #a7f3d0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .error-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 24px;
+            border: 1.5px solid #fecaca;
             width: 100%;
             box-sizing: border-box;
         }
@@ -526,6 +567,42 @@ if (!empty($certData['partners'])) {
         </div>
     </header>
 
+    <?php if ($notFound): ?>
+
+    <div class="error-wrapper">
+        <div class="container" style="text-align: center;">
+            <h1>Certificate Not Found</h1>
+
+            <div class="error-badge">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                Certificate ID Not Recognized
+            </div>
+
+            <p style="font-size: 15px; color: #64748b; line-height: 1.6; margin-bottom: 24px;">
+                We couldn't find a certificate matching the ID below. It may have been mistyped, or it might not exist in our records.
+            </p>
+
+            <div class="detail-row" style="text-align: center; margin-bottom: 30px;">
+                <div class="detail-label">Requested Credential ID</div>
+                <div class="detail-value" style="font-family: monospace; font-size: 15px; background: #f1f5f9; padding: 6px 10px; border-radius: 6px; display: inline-block; width: fit-content; margin: 4px auto 0; border: 1px solid var(--border-color);">
+                    <?= htmlspecialchars($certId) ?>
+                </div>
+            </div>
+
+            <p style="font-size: 14px; color: #64748b; line-height: 1.6; margin-bottom: 24px;">
+                If you believe this is an error, please reach out to
+                <a href="mailto:moderator@dcwwiki.org" style="color: var(--primary-color); font-weight: 600; text-decoration: none;">moderator@dcwwiki.org</a>
+                for assistance.
+            </p>
+
+            <a href="<?= $basePath ?>/index.php" class="btn-primary">
+                Return to Homepage
+            </a>
+        </div>
+    </div>
+
+    <?php else: ?>
+
     <div class="main-wrapper">
         <div class="container preview-container">
             <h1 class="preview-heading">Verified Credential</h1>
@@ -585,7 +662,9 @@ if (!empty($certData['partners'])) {
                 </div>
             </div>
 
-            <div class="meta">
+            <div class="event-description-box"
+                style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; font-size: 15px; color: #475569; line-height: 1.6; margin-bottom: 24px;">
+                <strong>Verification Statement:</strong><br>
                 <?= $verificationText ?>
             </div>
 
@@ -621,6 +700,8 @@ if (!empty($certData['partners'])) {
             document.getElementById('pdf-preview').style.display = 'none';
         });
     </script>
+
+    <?php endif; ?>
 
     <footer class="site-footer">
         <div class="footer-container">
