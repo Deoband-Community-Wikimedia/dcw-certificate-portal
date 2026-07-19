@@ -435,10 +435,7 @@ if (is_dir($fontDir)) {
                 <input type="hidden" id="visual_settings_payload" name="visual_settings_payload">
                 <input type="hidden" id="rotation" name="rotation" value="<?= htmlspecialchars($role['rotation'] ?? 0) ?>">
 
-                <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
-                    <input type="checkbox" id="field_enabled" style="width: auto; height: 18px;">
-                    <label for="field_enabled" style="margin-bottom: 0;">Show this element on PDF</label>
-                </div>
+
 
                 <div class="form-group" id="sample_text_group" style="display: none; padding-top: 10px; border-top: 1px solid #eaedf1;">
                     <label>Preview Sample Text <span style="font-size: 11px; font-weight: normal; color: #777;">(Not saved, for testing only)</span></label>
@@ -1291,7 +1288,6 @@ if (is_dir($fontDir)) {
         }
 
         const formInputs = {
-            enabled: document.getElementById('field_enabled'),
             pos_x: document.getElementById('pos_x'),
             pos_y: document.getElementById('pos_y'),
             font_size: document.getElementById('font_size'),
@@ -1325,7 +1321,6 @@ if (is_dir($fontDir)) {
         // Load active tab settings into form
         function loadSettingsIntoForm() {
             const s = settings[activeTab];
-            formInputs.enabled.checked = s.enabled;
             formInputs.pos_x.value = s.pos_x;
             formInputs.pos_y.value = s.pos_y;
             formInputs.font_size.value = s.font_size;
@@ -1403,7 +1398,6 @@ if (is_dir($fontDir)) {
         // Form Event Listeners to update JSON state immediately
         const syncState = () => {
             const s = settings[activeTab];
-            s.enabled = formInputs.enabled.checked;
             s.font_size = parseFloat(formInputs.font_size.value) || 12;
             s.text_color = formInputs.text_color.value;
             s.text_align = formInputs.text_align.value;
@@ -1908,7 +1902,6 @@ if (is_dir($fontDir)) {
         document.getElementById('tool_redo').addEventListener('click', redo);
 
         // Bind change events to push state
-        formInputs.enabled.addEventListener('change', pushState);
         formInputs.font_size.addEventListener('change', pushState);
         formInputs.box_width.addEventListener('change', pushState);
         formInputs.text_color.addEventListener('change', pushState);
