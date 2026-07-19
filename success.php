@@ -39,11 +39,16 @@ $customCaption = trim($dbCaption) !== '' ? str_replace(['{EVENT_NAME}', '{URL}']
 
 $linkedInShareDesktop = "https://www.linkedin.com/feed/?shareActive=true&text=" . rawurlencode($customCaption);
 $linkedInShareMobile = "https://www.linkedin.com/sharing/share-offsite/?url=" . urlencode($verifyUrl);
+
+$basePath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+if ($basePath === '/') {
+    $basePath = '';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="assets/DCW_logo.png">
+    <link rel="icon" type="image/png" href="<?= $basePath ?>/assets/DCW_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Credential Claimed - <?= htmlspecialchars($certData['event_name']) ?> - Deoband Community Wikimedia</title>

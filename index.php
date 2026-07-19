@@ -42,11 +42,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 // Fetch all events for the dropdown
 $stmt = $pdo->query("SELECT id, name FROM events ORDER BY created_at DESC");
 $events = $stmt->fetchAll();
+
+$basePath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+if ($basePath === '/') {
+    $basePath = '';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="assets/DCW_logo.png">
+    <link rel="icon" type="image/png" href="<?= $basePath ?>/assets/DCW_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Certificate Portal - Deoband Community Wikimedia</title>
