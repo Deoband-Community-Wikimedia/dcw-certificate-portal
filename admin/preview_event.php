@@ -202,12 +202,16 @@ if (is_dir($fontDir)) {
             <div class="editor-container">
                 <div id="pdf-container">
                     <!-- ===== START OF INSERTION 2: GRID & GUIDE HTML ELEMENTS ===== -->
-                    <div id="grid-overlay"></div>
-                    <div class="guide-line guide-center-v"></div>
-                    <div class="guide-line guide-center-h"></div>
-                    <div class="guide-line guide-element-v" id="guide_v"></div>
-                    <div class="guide-line guide-element-h" id="guide_h"></div>
-                    <!-- ===== END OF INSERTION 2 ===== -->
+    <div id="grid-overlay"></div>
+    <div class="guide-line guide-center-v"></div>
+    <div class="guide-line guide-center-h"></div>
+    <div class="guide-line guide-element-v" id="guide_v"></div>
+    <div class="guide-line guide-element-h" id="guide_h"></div>
+    
+    <!-- THE TWO NEW RED ALIGNMENT LINES -->
+    <div class="guide-line" id="align_match_v" style="top: 0; bottom: 0; border-left: 1.5px dashed red; display: none;"></div>
+    <div class="guide-line" id="align_match_h" style="left: 0; right: 0; border-top: 1.5px dashed red; display: none;"></div>
+    <!-- ===== END OF INSERTION 2 ===== -->
                     <canvas id="pdf-canvas"></canvas>
         
                     <div id="el_name" class="element-box active" data-id="name">Participant Name</div>
@@ -220,12 +224,19 @@ if (is_dir($fontDir)) {
         </div>
 
         <div class="controls">
-            <!-- ===== START OF INSERTION 3: GRID TOGGLE UI ===== -->
-            <div style="margin-bottom: 20px; padding: 12px; background: #eaedf1; border-radius: 6px; display: flex; align-items: center; gap: 10px;">
-                <input type="checkbox" id="toggle_grid" style="width: auto; height: 18px; cursor: pointer;"> 
-                <label for="toggle_grid" style="margin-bottom: 0; font-weight: bold; cursor: pointer;">Show Alignment Grid</label>
+            <!-- ===== START OF UI CONTROLS ===== -->
+            <div style="margin-bottom: 20px; padding: 12px; background: #eaedf1; border-radius: 6px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <input type="checkbox" id="toggle_grid" style="width: auto; height: 18px; cursor: pointer;"> 
+                    <label for="toggle_grid" style="margin-bottom: 0; font-weight: bold; cursor: pointer;">Grid</label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <input type="checkbox" id="toggle_snap" style="width: auto; height: 18px; cursor: pointer;"> 
+                    <label for="toggle_snap" style="margin-bottom: 0; font-weight: bold; cursor: pointer;">Snap to Grid (5mm)</label>
+                </div>
+                <button id="btn_center" style="background: #007bff; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Center Element</button>
             </div>
-            <!-- ===== END OF INSERTION 3 ===== -->
+            <!-- ===== END OF UI CONTROLS ===== -->
             <div class="tabs">
                 <div class="tab active" data-target="name">Name</div>
                 <div class="tab" data-target="certid">Cert ID</div>
@@ -340,7 +351,15 @@ if (is_dir($fontDir)) {
         let pdfDoc = null;
 
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-/* ===== START OF INSERTION 4A: GRID AND GUIDE FUNCTIONS ===== */
+// --- THE NEW CENTER BUTTON LOGIC ---
+        document.getElementById('btn_center').addEventListener('click', (e) => {
+            e.preventDefault(); // Prevent form submission
+            settings[activeTab].pos_x = parseFloat((pdfWidthMM / 2).toFixed(2));
+            settings[activeTab].pos_y = parseFloat((pdfHeightMM / 2).toFixed(2));
+            loadSettingsIntoForm();
+            syncState();
+        });
+        /* ===== START OF INSERTION 4A: GRID AND GUIDE FUNCTIONS ===== */
         // Listen for the grid toggle checkbox
         document.getElementById('toggle_grid').addEventListener('change', function() {
             const displayStyle = this.checked ? 'block' : 'none';
@@ -687,8 +706,51 @@ if (is_dir($fontDir)) {
             dragTarget.style.left = newLeft + 'px';
             dragTarget.style.top = newTop + 'px';
 
-            const x_mm = (newLeft / canvas.offsetWidth) * pdfWidthMM;
-            const y_mm = (newTop / canvas.offsetHeight) * pdfHeightMM;
+            let x_mm = (newLeft / canvas.offsetWidth) * pdfWidthMM;
+            let y_mm = (newTop / canvas.offsetHeight) * pdfHeightMM;
+
+            // --- THE NEW SNAP TO GRID LOGIC ---
+            if (document.getElementById('toggle_snap') && document.getElementById('toggle_snap').checked) {
+                const snapInterval = 5; // Snaps to the nearest 5mm
+                x_mm = Math.round(x_mm / snapInterval) * snapInterval;
+                y_mm = Math.round(y_mm / snapInterval) * snapInterval;
+                
+                // Recalculate the on-screen pixels based on the snapped mm
+                newLeft = (x_mm / pdfWidthMM) * canvas.offsetWidth;
+                newTop = (y_mm / pdfHeightMM) * canvas.offsetHeight;
+            }
+
+            // --- THE NEW ELEMENT ALIGNMENT LOGIC ---
+            const matchV = document.getElementById('align_match_v');
+            const matchH = document.getElementById('align_match_h');
+            if (matchV) matchV.style.display = 'none';
+            if (matchH) matchH.style.display = 'none';
+            
+            const tolerance = 3; // How close it needs to be to snap to another element
+            document.querySelectorAll('.element-box:not(.hidden)').forEach(otherEl => {
+                if (otherEl.id === dragTarget.id) return; // Don't align with itself
+                
+                let otherLeft = parseFloat(otherEl.style.left);
+                let otherTop = parseFloat(otherEl.style.top);
+
+                // Vertical alignment match (Y-axis)
+                if (Math.abs(newLeft - otherLeft) < tolerance) {
+                    newLeft = otherLeft; 
+                    x_mm = (newLeft / canvas.offsetWidth) * pdfWidthMM; 
+                    if (matchV) { matchV.style.display = 'block'; matchV.style.left = newLeft + 'px'; }
+                }
+                
+                // Horizontal alignment match (X-axis)
+                if (Math.abs(newTop - otherTop) < tolerance) {
+                    newTop = otherTop; 
+                    y_mm = (newTop / canvas.offsetHeight) * pdfHeightMM; 
+                    if (matchH) { matchH.style.display = 'block'; matchH.style.top = newTop + 'px'; }
+                }
+            });
+
+            // Apply the final calculated positions
+            dragTarget.style.left = newLeft + 'px';
+            dragTarget.style.top = newTop + 'px';
 
             formInputs.pos_x.value = x_mm.toFixed(2);
             formInputs.pos_y.value = y_mm.toFixed(2);
@@ -703,11 +765,15 @@ if (is_dir($fontDir)) {
         document.addEventListener('mousemove', performDrag);
         document.addEventListener('touchmove', performDrag, { passive: false });
 
-        function endDrag() {
+       function endDrag() {
             if (isDragging && dragTarget) {
                 dragTarget.style.cursor = 'move';
                 isDragging = false;
                 dragTarget = null;
+                
+                // --- THE NEW LOGIC TO HIDE RED LINES ON DROP ---
+                if (document.getElementById('align_match_v')) document.getElementById('align_match_v').style.display = 'none';
+                if (document.getElementById('align_match_h')) document.getElementById('align_match_h').style.display = 'none';
             }
         }
 
