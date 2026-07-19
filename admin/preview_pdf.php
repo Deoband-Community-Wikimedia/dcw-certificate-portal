@@ -1,58 +1,106 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+session_start();
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
 
-// Define explicit font path to avoid Linux path resolution bugs
-define('K_PATH_FONTS', __DIR__ . '/vendor/tecnickcom/tcpdf/fonts/');
-
-if (!isset($_GET['id'])) {
-    die("Certificate ID is required.");
+if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+    die("Unauthorized access.");
 }
 
-$certId = trim($_GET['id']);
-$preview = isset($_GET['preview']) && $_GET['preview'] == 1;
+define('K_PATH_FONTS', dirname(__DIR__) . '/vendor/tecnickcom/tcpdf/fonts/');
 
-require_once 'config.php';
-require_once 'helpers.php';
-require_once 'vendor/autoload.php';
+require_once '../config.php';
+require_once '../helpers.php';
+require_once '../vendor/autoload.php';
 
 use setasign\Fpdi\Tcpdf\Fpdi;
 
-// 1. Verify certificate ID exists
+$roleId = $_GET['role_id'] ?? null;
+if (!$roleId) {
+    die("Role ID is required.");
+}
+
 $stmt = $pdo->prepare("
-    SELECT ep.*, p.full_name, p.email, e.name as event_name, e.certificate_issue_date, er.template_file, er.visual_settings, er.rotation 
-    FROM event_participants ep
-    JOIN participants p ON ep.participant_id = p.id
-    JOIN events e ON ep.event_id = e.id
-    JOIN event_roles er ON ep.role_id = er.id
-    WHERE ep.certificate_id = ?
+    SELECT er.*, e.name as event_name, e.certificate_issue_date 
+    FROM event_roles er 
+    JOIN events e ON er.event_id = e.id 
+    WHERE er.id = ?
 ");
-$stmt->execute([$certId]);
-$certData = $stmt->fetch();
+$stmt->execute([$roleId]);
+$role = $stmt->fetch();
 
-if (!$certData) {
-    die("Invalid Certificate ID.");
+if (!$role) {
+    die("Role not found.");
 }
 
-$fullName = $certData['full_name'];
-$visualSettingsStr = !empty($certData['visual_settings']) ? $certData['visual_settings'] : '{}';
-$visualSettings = json_decode($visualSettingsStr, true);
-$rotation = (int)($certData['rotation'] ?? 0);
+// Visual settings fallback
+$defaultSettings = [
+    'name' => [
+        'enabled' => true,
+        'pos_x' => 105, 'pos_y' => 100, 'font_size' => 40, 'box_width' => 0,
+        'text_color' => '0,0,0', 'text_align' => 'C', 'font_file' => '', 'font_name' => 'alexbrush'
+    ],
+    'certid' => [
+        'enabled' => true,
+        'pos_x' => 10, 'pos_y' => 195, 'font_size' => 12, 'box_width' => 0,
+        'text_color' => '0,0,0', 'text_align' => 'L', 'font_file' => '', 'font_name' => 'helvetica'
+    ],
+    'date' => [
+        'enabled' => true,
+        'pos_x' => 200, 'pos_y' => 195, 'font_size' => 12, 'box_width' => 0,
+        'text_color' => '0,0,0', 'text_align' => 'R', 'font_file' => '', 'font_name' => 'helvetica',
+        'date_format' => 'F j, Y'
+    ],
+    'qrcode' => [
+        'enabled' => false,
+        'pos_x' => 10, 'pos_y' => 10, 'font_size' => 30,
+        'text_color' => '0,0,0', 'text_align' => 'L', 'font_file' => '', 'font_name' => ''
+    ],
+    'custom_text' => [
+        'enabled' => false,
+        'pos_x' => 100, 'pos_y' => 120, 'font_size' => 18, 'box_width' => 0,
+        'text_color' => '0,0,0', 'text_align' => 'C', 'font_file' => '', 'font_name' => 'helvetica'
+    ]
+];
 
-$dateFormat = 'F j, Y';
-if (isset($visualSettings['date']['date_format'])) {
-    $dateFormat = $visualSettings['date']['date_format'];
+$visualSettings = !empty($role['visual_settings']) ? json_decode($role['visual_settings'], true) : $defaultSettings;
+
+// Override with live editor settings if passed in request
+if (isset($_GET['settings'])) {
+    $decoded = json_decode($_GET['settings'], true);
+    if (is_array($decoded)) {
+        $visualSettings = $decoded;
+    }
 }
-// Date priority: participant-specific issue_date > event-level certificate_issue_date > created_at fallback
-if (!empty($certData['issue_date'])) {
-    $issueSource = $certData['issue_date'];
-} elseif (!empty($certData['certificate_issue_date'])) {
-    $issueSource = $certData['certificate_issue_date'];
-} else {
-    $issueSource = $certData['created_at'];
+
+// Ensure all keys exist
+foreach (['name', 'certid', 'date', 'qrcode', 'custom_text'] as $key) {
+    if (!isset($visualSettings[$key])) {
+        $visualSettings[$key] = $defaultSettings[$key];
+    }
+    if ($key !== 'qrcode' && !isset($visualSettings[$key]['box_width'])) {
+        $visualSettings[$key]['box_width'] = 0;
+    }
 }
-$issueDate = date($dateFormat, strtotime($issueSource));
+
+$rotation = isset($_GET['rotation']) ? (int)$_GET['rotation'] : (int)($role['rotation'] ?? 0);
+
+$dateFormat = $visualSettings['date']['date_format'] ?? 'F j, Y';
+$issueDate = date($dateFormat, strtotime($role['certificate_issue_date'] ?? 'now'));
+
+$customTexts = [];
+if (isset($_GET['custom_texts'])) {
+    $decodedTexts = json_decode($_GET['custom_texts'], true);
+    if (is_array($decodedTexts)) {
+        $customTexts = $decodedTexts;
+    }
+}
+
+$nameText = !empty($customTexts['name']) ? $customTexts['name'] : 'John Doe (Sample Name)';
+$certidText = !empty($customTexts['certid']) ? $customTexts['certid'] : 'CERT-SAMPLE123';
+$dateText = !empty($customTexts['date']) ? $customTexts['date'] : $issueDate;
+$customText = !empty($customTexts['custom_text']) ? $customTexts['custom_text'] : "Sample Custom Certificate Text";
 
 $pdf = new Fpdi();
 $pdf->setPrintHeader(false);
@@ -61,11 +109,11 @@ $pdf->SetMargins(0, 0, 0);
 $pdf->SetAutoPageBreak(false, 0);
 $pdf->setCellPaddings(0, 0, 0, 0);
 
-// Load Template to determine size
-$templatePath = __DIR__ . '/uploads/templates/' . $certData['template_file'];
+$templatePath = dirname(__DIR__) . '/uploads/templates/' . $role['template_file'];
 if (!file_exists($templatePath)) {
     die("Template file missing.");
 }
+
 $pdf->setSourceFile($templatePath);
 $tplIdx = $pdf->importPage(1);
 $size = $pdf->getTemplateSize($tplIdx);
@@ -81,7 +129,6 @@ if ($rotation == 90 || $rotation == 270) {
 $orientation = ($w > $h) ? 'L' : 'P';
 $pdf->AddPage($orientation, [$w, $h]);
 
-// Apply rotation to the template if needed
 if ($rotation != 0) {
     $pdf->StartTransform();
     $pdf->Rotate(-$rotation, $w / 2, $h / 2);
@@ -91,8 +138,7 @@ if ($rotation != 0) {
     $pdf->useTemplate($tplIdx, 0, 0, $w, $h);
 }
 
-// Function to render text element
-function renderElement($pdf, $settings, $text, $linkUrl = '') {
+function renderElement($pdf, $settings, $text) {
     if (!isset($settings['enabled']) || !$settings['enabled']) return;
 
     $fontName = $settings['font_name'] ?? 'helvetica';
@@ -107,7 +153,7 @@ function renderElement($pdf, $settings, $text, $linkUrl = '') {
     $fontLoaded = false;
 
     if (!empty($settings['font_file'])) {
-        $fontPath = __DIR__ . '/uploads/fonts/' . $settings['font_file'];
+        $fontPath = dirname(__DIR__) . '/uploads/fonts/' . $settings['font_file'];
         if (file_exists($fontPath)) {
             $compiledFont = TCPDF_FONTS::addTTFfont($fontPath, 'TrueTypeUnicode', '', 96);
             if ($compiledFont !== false) {
@@ -156,9 +202,6 @@ function renderElement($pdf, $settings, $text, $linkUrl = '') {
     if ($boxWidth > 0) {
         $pdf->SetXY($posX, $posY);
         $pdf->MultiCell($boxWidth, 0, $text, 0, $align, false, 1);
-        if ($linkUrl !== '') {
-            $pdf->Link($posX, $posY, $boxWidth, $pdf->GetY() - $posY, $linkUrl);
-        }
     } else {
         $strWidth = $pdf->GetStringWidth($text);
         if ($align === 'C') {
@@ -168,33 +211,27 @@ function renderElement($pdf, $settings, $text, $linkUrl = '') {
         } else {
             $pdf->SetXY($posX, $posY);
         }
-        $pdf->Cell($strWidth, 0, $text, 0, 0, 'L', false, $linkUrl);
+        $pdf->Cell($strWidth, 0, $text, 0, 0, 'L', false);
     }
 }
 
-// Calculate verification URL early for hyperlinks
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-$domainName = $_SERVER['HTTP_HOST'];
-$basePath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
-if ($basePath === '/') $basePath = '';
-$verifyUrl = $protocol . $domainName . $basePath . '/verify/' . $certId;
+// Generate a dummy verification URL
+$mockVerifyUrl = 'https://dcwwiki.org/verify/mock_preview_id';
 
-// Render the elements and QR code
 if (is_array($visualSettings)) {
     if (isset($visualSettings['name'])) {
-        renderElement($pdf, $visualSettings['name'], $fullName);
+        renderElement($pdf, $visualSettings['name'], $nameText);
     }
     if (isset($visualSettings['certid'])) {
-        renderElement($pdf, $visualSettings['certid'], $certId, $verifyUrl);
+        renderElement($pdf, $visualSettings['certid'], $certidText);
     }
     if (isset($visualSettings['date'])) {
-        renderElement($pdf, $visualSettings['date'], $issueDate);
+        renderElement($pdf, $visualSettings['date'], $dateText);
     }
-    if (isset($visualSettings['custom_text']) && !empty($certData['custom_certificate_text'])) {
-        renderElement($pdf, $visualSettings['custom_text'], $certData['custom_certificate_text']);
+    if (isset($visualSettings['custom_text'])) {
+        renderElement($pdf, $visualSettings['custom_text'], $customText);
     }
     if (isset($visualSettings['qrcode']) && !empty($visualSettings['qrcode']['enabled'])) {
-        
         $qr = $visualSettings['qrcode'];
         $qx = (float)$qr['pos_x'];
         $qy = (float)$qr['pos_y'];
@@ -212,29 +249,10 @@ if (is_array($visualSettings)) {
             'border' => 0,
             'padding' => 0,
             'fgcolor' => $fgColor,
-            'bgcolor' => false, //transparent
+            'bgcolor' => false,
         );
-        $pdf->write2DBarcode($verifyUrl, 'QRCODE,L', $qx, $qy, $qsize, $qsize, $style, 'N');
-        $pdf->Link($qx, $qy, $qsize, $qsize, $verifyUrl);
+        $pdf->write2DBarcode($mockVerifyUrl, 'QRCODE,L', $qx, $qy, $qsize, $qsize, $style, 'N');
     }
 }
 
-
-
-// Output
-// sanitizeForFilename() is defined in config.php so download.php and send-email.php stay consistent
-$safeFullName = sanitizeForFilename($fullName);
-$safeEventName = sanitizeForFilename($certData['event_name']);
-$filename = "{$safeFullName} - {$safeEventName} - Certificate.pdf";
-
-if (isset($outputAsString) && $outputAsString) {
-    return $pdf->Output($filename, 'S');
-}
-
-if ($preview) {
-    // Show inline in browser for previews
-    $pdf->Output($filename, 'I');
-} else {
-    // Force download
-    $pdf->Output($filename, 'D');
-}
+$pdf->Output('certificate_preview.pdf', 'I');

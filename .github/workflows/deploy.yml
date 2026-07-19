@@ -29,7 +29,16 @@ jobs:
           
     - name: Install Composer Dependencies
       run: composer install --no-dev --optimize-autoloader --prefer-dist --no-progress
-    
+
+    - name: Copy missing TCPDF fonts (Alex Brush)
+      run: |
+        # Ensure the Alex Brush precompiled font files are available to the Composer TCPDF instance.
+        # These fonts exist in vendor/TCPDF-main but not in vendor/tecnickcom/tcpdf/fonts by default.
+        cp vendor/TCPDF-main/fonts/alexbrush.php vendor/tecnickcom/tcpdf/fonts/alexbrush.php
+        cp vendor/TCPDF-main/fonts/alexbrush.z vendor/tecnickcom/tcpdf/fonts/alexbrush.z
+        cp vendor/TCPDF-main/fonts/alexbrush.ctg.z vendor/tecnickcom/tcpdf/fonts/alexbrush.ctg.z
+        echo "Alex Brush fonts copied successfully."
+
     - name: Sync files via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
