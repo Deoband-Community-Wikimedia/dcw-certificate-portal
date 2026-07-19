@@ -155,6 +155,8 @@ if (is_dir($fontDir)) {
         .guide-center-h { top: 50%; left: 0; right: 0; border-top: 1.5px dashed #9933ff; opacity: 0.7; display: none; }
         .guide-element-v { top: 0; bottom: 0; border-left: 1.5px dashed #00beff; opacity: 0.8; display: none; }
         .guide-element-h { left: 0; right: 0; border-top: 1.5px dashed #00beff; opacity: 0.8; display: none; }
+        .guide-align-v { top: 0; bottom: 0; border-left: 1.5px dashed #ff5722; opacity: 0.8; display: none; }
+        .guide-align-h { left: 0; right: 0; border-top: 1.5px dashed #ff5722; opacity: 0.8; display: none; }
         /* ===== END OF INSERTION 1 ===== */
         /* Mobile responsiveness for editor */
         @media (max-width: 900px) {
@@ -207,6 +209,8 @@ if (is_dir($fontDir)) {
                     <div class="guide-line guide-center-h"></div>
                     <div class="guide-line guide-element-v" id="guide_v"></div>
                     <div class="guide-line guide-element-h" id="guide_h"></div>
+                    <div class="guide-line guide-align-v" id="guide_align_v"></div>
+                    <div class="guide-line guide-align-h" id="guide_align_h"></div>
                     <!-- ===== END OF INSERTION 2 ===== -->
                     <canvas id="pdf-canvas"></canvas>
         
@@ -221,9 +225,21 @@ if (is_dir($fontDir)) {
 
         <div class="controls">
             <!-- ===== START OF INSERTION 3: GRID TOGGLE UI ===== -->
-            <div style="margin-bottom: 20px; padding: 12px; background: #eaedf1; border-radius: 6px; display: flex; align-items: center; gap: 10px;">
-                <input type="checkbox" id="toggle_grid" style="width: auto; height: 18px; cursor: pointer;"> 
-                <label for="toggle_grid" style="margin-bottom: 0; font-weight: bold; cursor: pointer;">Show Alignment Grid</label>
+            <div style="margin-bottom: 20px; padding: 12px; background: #eaedf1; border-radius: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 15px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="toggle_grid" style="width: auto; height: 18px; cursor: pointer;"> 
+                    <label for="toggle_grid" style="margin-bottom: 0; font-weight: bold; cursor: pointer;">Show Grid</label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label for="snap_interval" style="margin-bottom: 0; font-weight: bold;">Snap:</label>
+                    <select id="snap_interval" style="width: auto; padding: 4px; font-weight: bold; border-radius: 4px; background: white; border: 1.5px solid #cbd5e1; height: auto;">
+                        <option value="0">None</option>
+                        <option value="1">1mm</option>
+                        <option value="2">2mm</option>
+                        <option value="5" selected>5mm</option>
+                        <option value="10">10mm</option>
+                    </select>
+                </div>
             </div>
             <!-- ===== END OF INSERTION 3 ===== -->
             <div class="tabs">
@@ -311,6 +327,15 @@ if (is_dir($fontDir)) {
                     </select>
                 </div>
 
+                <!-- Quick Actions Center/Align Buttons -->
+                <div class="form-group" style="padding-top: 15px; border-top: 1px solid #eaedf1;">
+                    <label style="font-weight: bold; margin-bottom: 8px;">Quick Actions</label>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" id="btn_center_x" class="btn btn-sm" style="flex: 1; padding: 8px; font-size: 12px; font-weight: bold; text-align: center;">Center Horizontally</button>
+                        <button type="button" id="btn_center_y" class="btn btn-sm" style="flex: 1; padding: 8px; font-size: 12px; font-weight: bold; text-align: center;">Center Vertically</button>
+                    </div>
+                </div>
+
                 <!-- Hidden actual file inputs for form submission -->
                 <input type="file" name="font_file_name" id="real_file_name" style="display:none" accept=".ttf">
                 <input type="file" name="font_file_certid" id="real_file_certid" style="display:none" accept=".ttf">
@@ -338,6 +363,11 @@ if (is_dir($fontDir)) {
         let currentScale = 1.0;
         let currentRotation = parseInt(document.getElementById('rotation').value) || 0;
         let pdfDoc = null;
+
+        // Caching performance variables during drag operations to avoid DOM layout thrashing
+        let cachedTargetRects = [];
+        let activeRectWidth = 0;
+        let activeRectHeight = 0;
 
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 /* ===== START OF INSERTION 4A: GRID AND GUIDE FUNCTIONS ===== */
@@ -368,6 +398,164 @@ if (is_dir($fontDir)) {
             guideH.style.display = 'block';
             guideV.style.left = el.style.left;
             guideH.style.top = el.style.top;
+
+            // Also check and update element-to-element alignment guides
+            checkElementAlignment();
+        }
+
+        // Helper function to calculate an element's rectangle in millimeters (mm)
+        function getElementRectMM(key) {
+            const el = document.getElementById('el_' + key);
+            const s = settings[key];
+            if (!el || !s.enabled || el.classList.contains('hidden')) return null;
+            
+            let w_mm = 0;
+            let h_mm = 0;
+            
+            if (key === 'qrcode') {
+                w_mm = parseFloat(s.font_size);
+                h_mm = parseFloat(s.font_size);
+            } else {
+                w_mm = (el.offsetWidth / canvas.offsetWidth) * pdfWidthMM;
+                h_mm = (el.offsetHeight / canvas.offsetHeight) * pdfHeightMM;
+            }
+            
+            const left_px = el.offsetLeft;
+            const top_px = el.offsetTop;
+            
+            const x_mm = (left_px / canvas.offsetWidth) * pdfWidthMM;
+            const y_mm = (top_px / canvas.offsetHeight) * pdfHeightMM;
+            
+            return {
+                key: key,
+                left: x_mm,
+                top: y_mm,
+                right: x_mm + w_mm,
+                bottom: y_mm + h_mm,
+                centerX: x_mm + w_mm / 2,
+                centerY: y_mm + h_mm / 2,
+                width: w_mm,
+                height: h_mm
+            };
+        }
+
+        // High-performance check for element-to-element alignment and guides drawing
+        function checkElementAlignment() {
+            const activeEl = document.getElementById('el_' + activeTab);
+            const guideAlignV = document.getElementById('guide_align_v');
+            const guideAlignH = document.getElementById('guide_align_h');
+            
+            if (!activeEl || activeEl.classList.contains('hidden')) {
+                guideAlignV.style.display = 'none';
+                guideAlignH.style.display = 'none';
+                return;
+            }
+
+            // Get active element's rectangle parameters
+            let w_mm = 0;
+            let h_mm = 0;
+            if (isDragging) {
+                // Use cached values during drag to prevent forcing layout recalculation
+                w_mm = (activeRectWidth / canvas.offsetWidth) * pdfWidthMM;
+                h_mm = (activeRectHeight / canvas.offsetHeight) * pdfHeightMM;
+            } else {
+                w_mm = (activeEl.offsetWidth / canvas.offsetWidth) * pdfWidthMM;
+                h_mm = (activeEl.offsetHeight / canvas.offsetHeight) * pdfHeightMM;
+            }
+            
+            const x_mm = (activeEl.offsetLeft / canvas.offsetWidth) * pdfWidthMM;
+            const y_mm = (activeEl.offsetTop / canvas.offsetHeight) * pdfHeightMM;
+            
+            const activeRect = {
+                left: x_mm,
+                top: y_mm,
+                right: x_mm + w_mm,
+                bottom: y_mm + h_mm,
+                centerX: x_mm + w_mm / 2,
+                centerY: y_mm + h_mm / 2,
+                width: w_mm,
+                height: h_mm
+            };
+            
+            const thresholdMM = 2.0; // Snapping and guide threshold in millimeters
+            
+            let matchV = null;
+            let matchH = null;
+            
+            // Loop through targets (use cached targets during dragging for performance)
+            const targets = isDragging ? cachedTargetRects : [];
+            if (!isDragging) {
+                const keys = ['name', 'certid', 'date', 'qrcode', 'custom_text'];
+                for (const key of keys) {
+                    if (key === activeTab) continue;
+                    const r = getElementRectMM(key);
+                    if (r) targets.push(r);
+                }
+            }
+            
+            for (const target of targets) {
+                // Vertical check (matching left, center, or right X coordinate)
+                if (Math.abs(activeRect.left - target.left) < thresholdMM) {
+                    matchV = { x_mm: target.left, type: 'left' };
+                } else if (Math.abs(activeRect.centerX - target.centerX) < thresholdMM) {
+                    matchV = { x_mm: target.centerX, type: 'centerX' };
+                } else if (Math.abs(activeRect.right - target.right) < thresholdMM) {
+                    matchV = { x_mm: target.right, type: 'right' };
+                }
+                
+                // Horizontal check (matching top, center, or bottom Y coordinate)
+                if (Math.abs(activeRect.top - target.top) < thresholdMM) {
+                    matchH = { y_mm: target.top, type: 'top' };
+                } else if (Math.abs(activeRect.centerY - target.centerY) < thresholdMM) {
+                    matchH = { y_mm: target.centerY, type: 'centerY' };
+                } else if (Math.abs(activeRect.bottom - target.bottom) < thresholdMM) {
+                    matchH = { y_mm: target.bottom, type: 'bottom' };
+                }
+            }
+            
+            // Draw & Snap vertical line
+            if (matchV) {
+                const pxX = (matchV.x_mm / pdfWidthMM) * canvas.offsetWidth;
+                guideAlignV.style.left = pxX + 'px';
+                guideAlignV.style.display = 'block';
+                
+                if (isDragging) {
+                    let snappedLeft = pxX;
+                    if (matchV.type === 'centerX') {
+                        snappedLeft = pxX - (activeRect.width / 2 / pdfWidthMM) * canvas.offsetWidth;
+                    } else if (matchV.type === 'right') {
+                        snappedLeft = pxX - (activeRect.width / pdfWidthMM) * canvas.offsetWidth;
+                    }
+                    activeEl.style.left = snappedLeft + 'px';
+                    const snappedXMM = (snappedLeft / canvas.offsetWidth) * pdfWidthMM;
+                    settings[activeTab].pos_x = parseFloat(snappedXMM.toFixed(2));
+                    formInputs.pos_x.value = settings[activeTab].pos_x;
+                }
+            } else {
+                guideAlignV.style.display = 'none';
+            }
+            
+            // Draw & Snap horizontal line
+            if (matchH) {
+                const pxY = (matchH.y_mm / pdfHeightMM) * canvas.offsetHeight;
+                guideAlignH.style.top = pxY + 'px';
+                guideAlignH.style.display = 'block';
+                
+                if (isDragging) {
+                    let snappedTop = pxY;
+                    if (matchH.type === 'centerY') {
+                        snappedTop = pxY - (activeRect.height / 2 / pdfHeightMM) * canvas.offsetHeight;
+                    } else if (matchH.type === 'bottom') {
+                        snappedTop = pxY - (activeRect.height / pdfHeightMM) * canvas.offsetHeight;
+                    }
+                    activeEl.style.top = snappedTop + 'px';
+                    const snappedYMM = (snappedTop / canvas.offsetHeight) * pdfHeightMM;
+                    settings[activeTab].pos_y = parseFloat(snappedYMM.toFixed(2));
+                    formInputs.pos_y.value = settings[activeTab].pos_y;
+                }
+            } else {
+                guideAlignH.style.display = 'none';
+            }
         }
         /* ===== END OF INSERTION 4A ===== */
         // Init PDF
@@ -658,6 +846,21 @@ if (is_dir($fontDir)) {
             initialLeft = el.offsetLeft;
             initialTop = el.offsetTop;
             el.style.cursor = 'grabbing';
+
+            // Cache dimensions and other elements' positions for high-performance dragging (no DOM thrashing)
+            activeRectWidth = el.offsetWidth;
+            activeRectHeight = el.offsetHeight;
+            
+            cachedTargetRects = [];
+            const keys = ['name', 'certid', 'date', 'qrcode', 'custom_text'];
+            for (const key of keys) {
+                if (key === activeTab) continue;
+                const targetRect = getElementRectMM(key);
+                if (targetRect) {
+                    cachedTargetRects.push(targetRect);
+                }
+            }
+
             // Prevent default behavior if it's a touch to prevent scrolling while dragging
             if (e.type === 'touchstart') e.preventDefault();
         }
@@ -684,11 +887,22 @@ if (is_dir($fontDir)) {
             let newLeft = initialLeft + dx;
             let newTop = initialTop + dy;
 
+            let x_mm = (newLeft / canvas.offsetWidth) * pdfWidthMM;
+            let y_mm = (newTop / canvas.offsetHeight) * pdfHeightMM;
+
+            // Grid snapping logic
+            const snapInterval = parseFloat(document.getElementById('snap_interval').value) || 0;
+            if (snapInterval > 0) {
+                x_mm = Math.round(x_mm / snapInterval) * snapInterval;
+                y_mm = Math.round(y_mm / snapInterval) * snapInterval;
+                
+                // Adjust visually mapped left/top positions
+                newLeft = (x_mm / pdfWidthMM) * canvas.offsetWidth;
+                newTop = (y_mm / pdfHeightMM) * canvas.offsetHeight;
+            }
+
             dragTarget.style.left = newLeft + 'px';
             dragTarget.style.top = newTop + 'px';
-
-            const x_mm = (newLeft / canvas.offsetWidth) * pdfWidthMM;
-            const y_mm = (newTop / canvas.offsetHeight) * pdfHeightMM;
 
             formInputs.pos_x.value = x_mm.toFixed(2);
             formInputs.pos_y.value = y_mm.toFixed(2);
@@ -708,6 +922,10 @@ if (is_dir($fontDir)) {
                 dragTarget.style.cursor = 'move';
                 isDragging = false;
                 dragTarget = null;
+                
+                // Clear alignment guides on drag end
+                document.getElementById('guide_align_v').style.display = 'none';
+                document.getElementById('guide_align_h').style.display = 'none';
             }
         }
 
@@ -748,38 +966,108 @@ if (is_dir($fontDir)) {
             }
         });
 
-        // Keyboard Nudging (Pixel-Perfect Precision)
+        // Keyboard Nudging (Millimeter-based snapping/precision)
         document.addEventListener('keydown', (e) => {
-            // Prevent scrolling when using arrow keys, unless user is typing in an input field
             if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
                 e.preventDefault();
                 const el = document.getElementById('el_' + activeTab);
                 if (!el || el.classList.contains('hidden')) return;
 
-                let left = el.offsetLeft;
-                let top = el.offsetTop;
-                let nudgeAmount = e.shiftKey ? 10 : 1;
-
-                if (e.key === 'ArrowUp') top -= nudgeAmount;
-                if (e.key === 'ArrowDown') top += nudgeAmount;
-                if (e.key === 'ArrowLeft') left -= nudgeAmount;
-                if (e.key === 'ArrowRight') left += nudgeAmount;
-
-                el.style.left = left + 'px';
-                el.style.top = top + 'px';
-
-                const x_mm = (left / canvas.offsetWidth) * pdfWidthMM;
-                const y_mm = (top / canvas.offsetHeight) * pdfHeightMM;
-
-                formInputs.pos_x.value = x_mm.toFixed(2);
-                formInputs.pos_y.value = y_mm.toFixed(2);
+                let x_mm = parseFloat(settings[activeTab].pos_x) || 0;
+                let y_mm = parseFloat(settings[activeTab].pos_y) || 0;
                 
-                settings[activeTab].pos_x = parseFloat(x_mm.toFixed(2));
-                settings[activeTab].pos_y = parseFloat(y_mm.toFixed(2));
+                const snapInterval = parseFloat(document.getElementById('snap_interval').value) || 0;
+                let nudgeMM = 1;
+                
+                if (snapInterval > 0) {
+                    nudgeMM = snapInterval;
+                } else {
+                    nudgeMM = e.shiftKey ? 5.0 : 0.5;
+                }
+
+                if (e.key === 'ArrowUp') y_mm -= nudgeMM;
+                if (e.key === 'ArrowDown') y_mm += nudgeMM;
+                if (e.key === 'ArrowLeft') x_mm -= nudgeMM;
+                if (e.key === 'ArrowRight') x_mm += nudgeMM;
+
+                if (snapInterval > 0) {
+                    x_mm = Math.round(x_mm / snapInterval) * snapInterval;
+                    y_mm = Math.round(y_mm / snapInterval) * snapInterval;
+                }
+
+                // Clamp within bounds
+                x_mm = Math.max(0, Math.min(pdfWidthMM, x_mm));
+                y_mm = Math.max(0, Math.min(pdfHeightMM, y_mm));
+
+                x_mm = parseFloat(x_mm.toFixed(2));
+                y_mm = parseFloat(y_mm.toFixed(2));
+
+                settings[activeTab].pos_x = x_mm;
+                settings[activeTab].pos_y = y_mm;
+                formInputs.pos_x.value = x_mm;
+                formInputs.pos_y.value = y_mm;
+
+                applyStyleToElement(activeTab);
                 /* ===== START OF INSERTION 4F: UPDATE GUIDES ON KEYBOARD NUDGE ===== */
                 updateElementGuides();
                 /* ===== END OF INSERTION 4F ===== */
             }
+        });
+
+        // Quick Actions Event Listeners
+        document.getElementById('btn_center_x').addEventListener('click', () => {
+            const el = document.getElementById('el_' + activeTab);
+            if (!el || el.classList.contains('hidden')) return;
+            
+            const s = settings[activeTab];
+            let newX = 0;
+            
+            if (activeTab === 'qrcode') {
+                const qrSize = parseFloat(s.font_size) || 30;
+                newX = (pdfWidthMM - qrSize) / 2;
+            } else {
+                const boxWidth = parseFloat(s.box_width) || 0;
+                if (boxWidth > 0) {
+                    newX = (pdfWidthMM - boxWidth) / 2;
+                } else {
+                    if (s.text_align === 'C') {
+                        newX = pdfWidthMM / 2;
+                    } else {
+                        const w_mm = (el.offsetWidth / canvas.offsetWidth) * pdfWidthMM;
+                        newX = (pdfWidthMM - w_mm) / 2;
+                    }
+                }
+            }
+            
+            newX = parseFloat(newX.toFixed(2));
+            s.pos_x = newX;
+            formInputs.pos_x.value = newX;
+            
+            applyStyleToElement(activeTab);
+            updateElementGuides();
+        });
+
+        document.getElementById('btn_center_y').addEventListener('click', () => {
+            const el = document.getElementById('el_' + activeTab);
+            if (!el || el.classList.contains('hidden')) return;
+            
+            const s = settings[activeTab];
+            let newY = 0;
+            
+            if (activeTab === 'qrcode') {
+                const qrSize = parseFloat(s.font_size) || 30;
+                newY = (pdfHeightMM - qrSize) / 2;
+            } else {
+                const h_mm = (el.offsetHeight / canvas.offsetHeight) * pdfHeightMM;
+                newY = (pdfHeightMM - h_mm) / 2;
+            }
+            
+            newY = parseFloat(newY.toFixed(2));
+            s.pos_y = newY;
+            formInputs.pos_y.value = newY;
+            
+            applyStyleToElement(activeTab);
+            updateElementGuides();
         });
 
     </script>
