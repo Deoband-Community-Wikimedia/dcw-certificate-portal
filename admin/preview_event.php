@@ -956,6 +956,9 @@ if (is_dir($fontDir)) {
                 visBtn.title = isHidden ? "Show Element" : "Hide Element";
                 visBtn.addEventListener('click', () => {
                     settings[key].enabled = isHidden ? 1 : 0;
+                    if (key === activeTab) {
+                        formInputs.enabled.checked = isHidden;
+                    }
                     
                     const targetEl = document.getElementById('el_' + key);
                     if (isHidden) {
