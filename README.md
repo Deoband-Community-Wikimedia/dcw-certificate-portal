@@ -1,4 +1,4 @@
-# PHP Certificate Management System
+# DCW Digital Certification Portal
 
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D%208.0-8892BF.svg)](https://php.net/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
