@@ -30,11 +30,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf_token($csrf);
     
     $eventName = trim($_POST['name'] ?? '');
+    $category = trim($_POST['category'] ?? '');
+    if ($category === '' || !in_array($category, event_categories(), true)) {
+        $category = null;
+    }
     $linkedinCaption = trim($_POST['linkedin_caption'] ?? '');
     $customVerificationText = trim($_POST['custom_verification_text'] ?? '');
     $certificateIssueDate = trim($_POST['certificate_issue_date'] ?? '');
     if ($certificateIssueDate === '') {
         $certificateIssueDate = null;
+    }
+    $completionDate = trim($_POST['completion_date'] ?? '');
+    if ($completionDate === '') {
+        $completionDate = null;
     }
 
     $passcode = trim($_POST['super_admin_passcode'] ?? '');
@@ -53,17 +61,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $stmtUpdate = $pdo->prepare("UPDATE events SET name = ?, linkedin_caption = ?, custom_verification_text = ? WHERE id = ?");
         $stmtUpdate->execute([$eventName, $linkedinCaption, $customVerificationText, $eventId]);
-        $stmtUpdate = $pdo->prepare("UPDATE events SET name = ?, linkedin_caption = ?, certificate_issue_date = ?, description = ?, partners = ? WHERE id = ?");
-        $stmtUpdate->execute([$eventName, $linkedinCaption, $certificateIssueDate, $description, $partners, $eventId]);
-        
+        $stmtUpdate = $pdo->prepare("UPDATE events SET name = ?, category = ?, linkedin_caption = ?, certificate_issue_date = ?, completion_date = ?, description = ?, partners = ? WHERE id = ?");
+        $stmtUpdate->execute([$eventName, $category, $linkedinCaption, $certificateIssueDate, $completionDate, $description, $partners, $eventId]);
+
         log_audit_action($pdo, 'Edited Event', "Event ID: {$eventId}, New Name: {$eventName}");
-        
+
         $success = "Event updated successfully.";
         // Refresh event data
         $event['name'] = $eventName;
+        $event['category'] = $category;
         $event['linkedin_caption'] = $linkedinCaption;
         $event['custom_verification_text'] = $customVerificationText;
         $event['certificate_issue_date'] = $certificateIssueDate;
+        $event['completion_date'] = $completionDate;
         $event['description'] = $description;
         $event['partners'] = $partners;
     }
@@ -103,7 +113,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label>Event Name</label>
             <input type="text" name="name" id="eventNameInput" required value="<?= htmlspecialchars($event['name']) ?>">
         </div>
-        
+
+        <div class="form-group">
+            <label>Event Category (Optional)</label>
+            <select name="category" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                <option value="">-- Uncategorised --</option>
+                <?php foreach (event_categories() as $cat): ?>
+                    <option value="<?= htmlspecialchars($cat) ?>" <?= (($event['category'] ?? '') === $cat) ? 'selected' : '' ?>><?= htmlspecialchars($cat) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <div style="font-size: 11px; color: #777; margin-top: 5px;">
+                Used to group and sort events on the public portal dropdown.
+            </div>
+        </div>
+
         <div class="form-group">
             <label>Certificate Prefix <span style="font-size: 11px; color: #999; font-weight: normal;">(Cannot be changed after creation)</span></label>
             <input type="text" name="cert_prefix" value="<?= htmlspecialchars($event['cert_prefix'] ?? 'DCW') ?>" readonly style="background-color: #e9ecef; color: #6c757d; cursor: not-allowed; text-transform: uppercase;">
@@ -113,10 +136,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label>Custom Certificate Verification Text (Optional)</label>
             <textarea name="custom_verification_text" rows="3" placeholder="e.g. This digital credential was securely issued by our partner organization, [Partner Name], and verified by Deoband Community Wikimedia." style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit; resize: vertical;"><?= htmlspecialchars($event['custom_verification_text'] ?? '') ?></textarea>
             <div style="font-size: 11px; color: #777; margin-top: 5px;">
+                Placeholders: <strong>{name}</strong>, <strong>{event}</strong>, <strong>{category}</strong>, <strong>{issue_date}</strong>, <strong>{completion_date}</strong> (blank unless a completion date is set).<br>
                 If left blank, defaults to: <em>This digital credential has been securely issued and verified by Deoband Community Wikimedia.</em>
             </div>
         </div>
-        
+
         <div class="form-group">
             <label>LinkedIn Share Message (Optional)</label>
             <textarea name="linkedin_caption" rows="4" placeholder="e.g. I'm thrilled to announce I've completed the {EVENT_NAME} workshop! Check out my verified credential here: {URL} #DCW2026" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit; resize: vertical;"><?= htmlspecialchars($event['linkedin_caption'] ?? '') ?></textarea>
@@ -129,7 +153,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label>Certificate Issue Date (Optional)</label>
             <input type="date" name="certificate_issue_date" value="<?= htmlspecialchars($event['certificate_issue_date'] ?? '') ?>">
             <div style="font-size: 11px; color: #777; margin-top: 5px;">
-                Leave empty to use the event creation date.
+                When the credential is issued. Leave empty to use the event creation date.
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Completion Date (Optional)</label>
+            <input type="date" name="completion_date" value="<?= htmlspecialchars($event['completion_date'] ?? '') ?>">
+            <div style="font-size: 11px; color: #777; margin-top: 5px;">
+                When participants actually finished the event &mdash; meant for courses and
+                internships. Distinct from the issue date above. Leave empty if it does not apply.
             </div>
         </div>
 

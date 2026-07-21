@@ -16,14 +16,26 @@ ON DUPLICATE KEY UPDATE id=id;
 CREATE TABLE IF NOT EXISTS events (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
+    category VARCHAR(50) NULL,
     linkedin_caption TEXT NULL,
     custom_verification_text TEXT NULL,
     cert_prefix VARCHAR(50) DEFAULT 'DCW',
     certificate_issue_date DATE NULL,
+    completion_date DATE NULL,
     description TEXT NULL,
     partners VARCHAR(255) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- completion_date is the date the participants actually finished the event
+-- (e.g. a course or internship). It is deliberately separate from
+-- certificate_issue_date (when the credential was issued) and created_at (when
+-- the event row was added), which are unrelated to completion. Leave it NULL
+-- for events where a completion date has no meaning (conferences, editathons).
+
+-- Migration for existing installs (run once; on MariaDB you may add IF NOT EXISTS after ADD COLUMN):
+-- ALTER TABLE events ADD COLUMN category VARCHAR(50) NULL AFTER name;
+-- ALTER TABLE events ADD COLUMN completion_date DATE NULL AFTER certificate_issue_date;
 
 -- Create Event Roles Table
 CREATE TABLE IF NOT EXISTS event_roles (

@@ -16,7 +16,7 @@ if ($basePath === '/')
     $basePath = '';
 
 $stmt = $pdo->prepare("
-    SELECT p.full_name, e.name as event_name, e.custom_verification_text, e.certificate_issue_date, e.description, e.partners, ep.created_at, ep.issue_date, er.role_name
+    SELECT p.full_name, e.name as event_name, e.category, e.custom_verification_text, e.certificate_issue_date, e.completion_date, e.description, e.partners, ep.created_at, ep.issue_date, er.role_name
     FROM event_participants ep
     JOIN participants p ON ep.participant_id = p.id
     JOIN events e ON ep.event_id = e.id
@@ -46,12 +46,32 @@ if (!$notFound) {
     $issueDate = date('F j, Y', strtotime($issueSource));
     $roleName = $certData['role_name'] ? " as " . htmlspecialchars($certData['role_name']) : "";
 
+    // Completion date is the date the participant actually finished the event and is
+    // stored separately from the issue/creation dates (issue #59 review). It only
+    // applies to events that certify completion (courses, internships), so it stays
+    // blank when unset - we deliberately do NOT fall back to the issue date, which
+    // is a different thing.
+    $completionDate = !empty($certData['completion_date'])
+        ? date('F j, Y', strtotime($certData['completion_date']))
+        : '';
+
     // Combined verification text: custom text (or default) + partnership suffix if partners exist.
     // Consolidates what used to be two separate, overlapping .meta blocks (see issue #30).
+    // Supported placeholders (issue #59): {name}, {event}, {category}, {issue_date}/{date}
+    // (the credential issue date) and {completion_date} (course/internship completion date,
+    // blank when not set).
+    $categoryLabel = !empty($certData['category']) ? htmlspecialchars($certData['category']) : '';
     $verificationText = !empty($certData['custom_verification_text'])
         ? str_replace(
-            ['{name}', '{event}'],
-            [htmlspecialchars($certData['full_name']), htmlspecialchars($certData['event_name'])],
+            ['{name}', '{event}', '{category}', '{issue_date}', '{date}', '{completion_date}'],
+            [
+                htmlspecialchars($certData['full_name']),
+                htmlspecialchars($certData['event_name']),
+                $categoryLabel,
+                $issueDate,
+                $issueDate,
+                $completionDate,
+            ],
             htmlspecialchars($certData['custom_verification_text'])
           )
         : "This verified credential confirms that " . htmlspecialchars($certData['full_name']) . " participated in " . htmlspecialchars($certData['event_name']) . ".";
