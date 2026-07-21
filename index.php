@@ -39,9 +39,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// Fetch all events for the dropdown
-$stmt = $pdo->query("SELECT id, name FROM events ORDER BY created_at DESC");
+// Fetch all events for the dropdown, grouped by category then name (issue #59).
+// Ordering by category keeps the <optgroup> blocks together; uncategorised events
+// (NULL) sort last so they land in a trailing "Other Events" group.
+$stmt = $pdo->query("SELECT id, name, category FROM events ORDER BY (category IS NULL), category ASC, name ASC");
 $events = $stmt->fetchAll();
+
+// Bucket events by category so the dropdown can render <optgroup> sections.
+// $hasCategorisedEvents drives whether we group at all: grouping kicks in as soon
+// as a single event carries a real category (so a lone "Internship" event still
+// shows its group), and we only fall back to a flat list when nothing is
+// categorised at all - avoiding a pointless solitary "Other Events" wrapper.
+$eventsByCategory = [];
+$hasCategorisedEvents = false;
+foreach ($events as $e) {
+    if (!empty($e['category'])) {
+        $hasCategorisedEvents = true;
+        $cat = $e['category'];
+    } else {
+        $cat = 'Other Events';
+    }
+    $eventsByCategory[$cat][] = $e;
+}
 
 $basePath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
 if ($basePath === '/') {
@@ -462,9 +481,19 @@ if ($basePath === '/') {
                     <label for="event_id">Select Event</label>
                     <select id="event_id" name="event_id" required>
                         <option value="">-- Choose Event --</option>
-                        <?php foreach ($events as $e): ?>
-                            <option value="<?= htmlspecialchars($e['id']) ?>"><?= htmlspecialchars($e['name']) ?></option>
-                        <?php endforeach; ?>
+                        <?php if (!$hasCategorisedEvents): ?>
+                            <?php foreach ($events as $e): ?>
+                                <option value="<?= htmlspecialchars($e['id']) ?>"><?= htmlspecialchars($e['name']) ?></option>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <?php foreach ($eventsByCategory as $catName => $catEvents): ?>
+                                <optgroup label="<?= htmlspecialchars($catName) ?>">
+                                    <?php foreach ($catEvents as $e): ?>
+                                        <option value="<?= htmlspecialchars($e['id']) ?>"><?= htmlspecialchars($e['name']) ?></option>
+                                    <?php endforeach; ?>
+                                </optgroup>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </select>
                 </div>
 
