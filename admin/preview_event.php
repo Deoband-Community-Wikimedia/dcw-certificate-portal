@@ -798,12 +798,6 @@ if (is_dir($fontDir)) {
             const canvasWidth = canvas.offsetWidth;
             const canvasHeight = canvas.offsetHeight;
             
-            // Bounding box dimensions
-            let w_mm = (activeRectWidth / canvasWidth) * pdfWidthMM;
-            let h_mm = (activeRectHeight / canvasHeight) * pdfHeightMM;
-            let x_mm = parseFloat(settings[activeTab].pos_x) || 0;
-            let y_mm = parseFloat(settings[activeTab].pos_y) || 0;
-            
             // Calculate absolute visual boundaries in pixels
             let elLeftPx = el.offsetLeft;
             let elTopPx = el.offsetTop;
@@ -823,11 +817,16 @@ if (is_dir($fontDir)) {
             const elCenterXPx = elLeftPx + el.offsetWidth / 2;
             const elCenterYPx = elTopPx + el.offsetHeight / 2;
             
-            // Calculate distances in mm
-            const distLeftMM = Math.max(0, x_mm);
-            const distTopMM = Math.max(0, y_mm);
-            const distRightMM = Math.max(0, pdfWidthMM - (x_mm + w_mm));
-            const distBottomMM = Math.max(0, pdfHeightMM - (y_mm + h_mm));
+            // Distances in mm, derived from the same visual pixel edges used to draw the
+            // measurement lines below. Deriving them from pos_x/pos_y + width instead breaks
+            // for centre/right-aligned text, whose offsetLeft anchor is not the visual left
+            // edge - so the left badge showed the distance to the anchor, not the edge, and
+            // left/right no longer added up (issue #89). Pixel edges already account for the
+            // alignment transform, so every badge now matches the line it labels.
+            const distLeftMM = Math.max(0, (elLeftPx / canvasWidth) * pdfWidthMM);
+            const distTopMM = Math.max(0, (elTopPx / canvasHeight) * pdfHeightMM);
+            const distRightMM = Math.max(0, ((canvasWidth - elRightPx) / canvasWidth) * pdfWidthMM);
+            const distBottomMM = Math.max(0, ((canvasHeight - elBottomPx) / canvasHeight) * pdfHeightMM);
             
             // 1. TOP LINE
             mTop.style.display = 'block';
