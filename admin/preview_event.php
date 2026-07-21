@@ -293,7 +293,17 @@ if (is_dir($fontDir)) {
         .swatch:hover {
             transform: scale(1.2);
         }
-        
+        /* Custom cross-platform colour picker (issue #92) */
+        #custom_color_ui { margin-top: 10px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; background: #f8fafc; }
+        #custom_color_ui .cc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        #color_preview { width: 28px; height: 28px; border-radius: 5px; border: 1px solid #cbd5e1; background: #000; flex: 0 0 auto; }
+        #color_hex_readout { font-size: 12px; font-family: monospace; color: #334155; }
+        #eyedropper_btn { margin-left: auto; display: none; align-items: center; gap: 4px; font-size: 11px; padding: 5px 9px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; cursor: pointer; }
+        #eyedropper_btn:hover { background: #f1f5f9; }
+        #custom_color_ui .cc-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+        #custom_color_ui .cc-row span { width: 38px; font-size: 11px; color: #475569; flex: 0 0 auto; }
+        #custom_color_ui .cc-row input[type="range"] { flex: 1; height: 22px; accent-color: #106b9a; cursor: pointer; }
+
         /* Locked layer state */
         .element-box.locked {
             cursor: not-allowed !important;
@@ -484,6 +494,20 @@ if (is_dir($fontDir)) {
                             <div class="swatch" data-color="#334155" style="background: #334155;" title="Charcoal"></div>
                             <div class="swatch" data-color="#b91c1c" style="background: #b91c1c;" title="Red"></div>
                         </div>
+                    </div>
+                    <!-- Custom cross-platform picker (issue #92): the native <input type=color> falls
+                         back to a limited OS swatch list on mobile/tablet. These touch-friendly HSL
+                         sliders + eyedropper give the same fine control everywhere and write the
+                         canonical "r,g,b" value. -->
+                    <div id="custom_color_ui">
+                        <div class="cc-head">
+                            <div id="color_preview" title="Current colour"></div>
+                            <span id="color_hex_readout">#000000</span>
+                            <button type="button" id="eyedropper_btn" title="Pick a colour from anywhere on screen">&#128269; Eyedropper</button>
+                        </div>
+                        <label class="cc-row"><span>Hue</span><input type="range" id="cc_hue" min="0" max="360" step="1" value="0"></label>
+                        <label class="cc-row"><span>Sat</span><input type="range" id="cc_sat" min="0" max="100" step="1" value="0"></label>
+                        <label class="cc-row"><span>Light</span><input type="range" id="cc_light" min="0" max="100" step="1" value="0"></label>
                     </div>
                 </div>
 
@@ -1186,6 +1210,13 @@ if (is_dir($fontDir)) {
         }
 
         function rgbToHex(r, g, b) { return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase(); }
+        // Colour conversion helpers for the custom cross-platform picker (issue #92).
+        function clampByte(n) { n = Math.round(n); return n < 0 ? 0 : (n > 255 ? 255 : n); }
+        function hexToRgb(hex) { hex = String(hex).replace('#', ''); if (hex.length === 3) hex = hex.split('').map(c => c + c).join(''); return [parseInt(hex.substr(0, 2), 16), parseInt(hex.substr(2, 2), 16), parseInt(hex.substr(4, 2), 16)]; }
+        function rgbToHsl(r, g, b) { r /= 255; g /= 255; b /= 255; const max = Math.max(r, g, b), min = Math.min(r, g, b); let h, s, l = (max + min) / 2; if (max === min) { h = s = 0; } else { const d = max - min; s = l > 0.5 ? d / (2 - max - min) : d / (max + min); switch (max) { case r: h = (g - b) / d + (g < b ? 6 : 0); break; case g: h = (b - r) / d + 2; break; default: h = (r - g) / d + 4; } h /= 6; } return [h * 360, s * 100, l * 100]; }
+        function hslToRgb(h, s, l) { h /= 360; s /= 100; l /= 100; let r, g, b; if (s === 0) { r = g = b = l; } else { const hue2rgb = (p, q, t) => { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1/6) return p + (q - p) * 6 * t; if (t < 1/2) return q; if (t < 2/3) return p + (q - p) * (2/3 - t) * 6; return p; }; const q = l < 0.5 ? l * (1 + s) : l + s - l * s; const p = 2 * l - q; r = hue2rgb(p, q, h + 1/3); g = hue2rgb(p, q, h); b = hue2rgb(p, q, h - 1/3); } return [clampByte(r * 255), clampByte(g * 255), clampByte(b * 255)]; }
+        // Parse the stored text_color ("r,g,b" or "#hex") into [r,g,b], or null if incomplete/invalid.
+        function colorStrToRgb(str) { str = (str || '').trim(); if (str.startsWith('#') && (str.length === 4 || str.length === 7)) { return hexToRgb(str); } const p = str.split(','); if (p.length === 3) { const r = +p[0], g = +p[1], b = +p[2]; if ([r, g, b].every(n => Number.isFinite(n))) return [clampByte(r), clampByte(g), clampByte(b)]; } return null; }
         function parseColorToHex(str) {
             if (str.startsWith('#')) return str.substring(0, 7);
             const parts = str.split(',');
@@ -1331,6 +1362,7 @@ if (is_dir($fontDir)) {
             formInputs.font_size.value = s.font_size;
             formInputs.text_color.value = s.text_color;
             formInputs.color_picker.value = parseColorToHex(s.text_color);
+            syncColorUI(s.text_color);
             formInputs.text_align.value = s.text_align;
             formInputs.font_file.value = s.font_file;
             document.getElementById('lbl_current_tab').innerText = activeTab.toUpperCase();
@@ -1432,6 +1464,7 @@ if (is_dir($fontDir)) {
         formInputs.box_width.addEventListener('input', syncState);
         formInputs.text_color.addEventListener('input', (e) => {
             formInputs.color_picker.value = parseColorToHex(e.target.value);
+            syncColorUI(e.target.value);
             syncState();
         });
         formInputs.color_picker.addEventListener('input', (e) => {
@@ -1440,6 +1473,7 @@ if (is_dir($fontDir)) {
             const g = parseInt(hex.substr(3, 2), 16);
             const b = parseInt(hex.substr(5, 2), 16);
             formInputs.text_color.value = `${r},${g},${b}`;
+            syncColorUI(formInputs.text_color.value);
             syncState();
         });
         formInputs.text_align.addEventListener('change', syncState);
@@ -1466,10 +1500,70 @@ if (is_dir($fontDir)) {
                 const g = parseInt(hex.substr(3, 2), 16);
                 const b = parseInt(hex.substr(5, 2), 16);
                 formInputs.text_color.value = `${r},${g},${b}`;
+                syncColorUI(formInputs.text_color.value);
                 syncState();
                 pushState();
             });
         });
+
+        // ===== Custom cross-platform colour picker wiring (issue #92) =====
+        // syncColorUI reflects a colour value onto the preview, hex readout and the H/S/L
+        // sliders. It never touches text_color/settings, so it is safe to call from any
+        // existing handler to keep the custom UI in sync.
+        function syncColorUI(colorStr) {
+            const rgb = colorStrToRgb(colorStr);
+            if (!rgb) return; // ignore partial/invalid input while typing
+            const [r, g, b] = rgb;
+            const hex = rgbToHex(r, g, b);
+            const prev = document.getElementById('color_preview');
+            const read = document.getElementById('color_hex_readout');
+            if (prev) prev.style.background = hex;
+            if (read) read.textContent = hex;
+            const [h, s, l] = rgbToHsl(r, g, b);
+            const hEl = document.getElementById('cc_hue'), sEl = document.getElementById('cc_sat'), lEl = document.getElementById('cc_light');
+            if (hEl) hEl.value = Math.round(h);
+            if (sEl) sEl.value = Math.round(s);
+            if (lEl) lEl.value = Math.round(l);
+        }
+        // Slider drag -> derive rgb from H/S/L and commit it. Deliberately does NOT re-sync the
+        // slider positions (that would fight the user at S=0/L=0 where hue is ambiguous).
+        function commitSliderColor() {
+            const h = +document.getElementById('cc_hue').value;
+            const s = +document.getElementById('cc_sat').value;
+            const l = +document.getElementById('cc_light').value;
+            const [r, g, b] = hslToRgb(h, s, l);
+            const hex = rgbToHex(r, g, b);
+            formInputs.text_color.value = `${r},${g},${b}`;
+            formInputs.color_picker.value = hex;
+            const prev = document.getElementById('color_preview');
+            const read = document.getElementById('color_hex_readout');
+            if (prev) prev.style.background = hex;
+            if (read) read.textContent = hex;
+            syncState();
+        }
+        ['cc_hue', 'cc_sat', 'cc_light'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('input', commitSliderColor);
+            el.addEventListener('change', pushState); // one undo step per drag
+        });
+        // Eyedropper: only browsers that support the EyeDropper API (feature-detected).
+        (function () {
+            const btn = document.getElementById('eyedropper_btn');
+            if (!btn || !window.EyeDropper) return; // stays hidden where unsupported
+            btn.style.display = 'inline-flex';
+            btn.addEventListener('click', async () => {
+                try {
+                    const result = await new EyeDropper().open();
+                    const [r, g, b] = hexToRgb(result.sRGBHex);
+                    formInputs.text_color.value = `${r},${g},${b}`;
+                    formInputs.color_picker.value = rgbToHex(r, g, b);
+                    syncColorUI(formInputs.text_color.value);
+                    syncState();
+                    pushState();
+                } catch (e) { /* user cancelled the eyedropper */ }
+            });
+        })();
 
         // Proxy file input to real file inputs
         formInputs.file_proxy.addEventListener('change', (e) => {
