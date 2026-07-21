@@ -29,6 +29,27 @@ if (!$role) {
     die("Role not found");
 }
 
+// Custom colour presets are stored per-event (issue #90). Read defensively so an install
+// that has not yet added the events.color_presets column still loads the editor fine.
+$colorPresets = [];
+try {
+    $psStmt = $pdo->prepare("SELECT color_presets FROM events WHERE id = ?");
+    $psStmt->execute([$role['event_id']]);
+    $psVal = $psStmt->fetchColumn();
+    if (!empty($psVal)) {
+        $decoded = json_decode($psVal, true);
+        if (is_array($decoded)) {
+            foreach ($decoded as $hex) {
+                if (is_string($hex) && preg_match('/^#[0-9a-fA-F]{6}$/', $hex)) {
+                    $colorPresets[] = strtoupper($hex);
+                }
+            }
+        }
+    }
+} catch (PDOException $e) {
+    $colorPresets = []; // column not present yet — feature is simply inactive
+}
+
 $defaultSettings = [
     'name' => [
         'enabled' => true,
@@ -110,6 +131,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $jsonStr = json_encode($payload);
     $stmt = $pdo->prepare("UPDATE event_roles SET visual_settings = ?, rotation = ? WHERE id = ?");
     $stmt->execute([$jsonStr, $_POST['rotation'] ?? 0, $roleId]);
+
+    // Persist custom colour presets per-event (issue #90). Validate to a clean list of
+    // #RRGGBB strings and save defensively so a missing column never breaks the layout save.
+    $presetsRaw = json_decode($_POST['color_presets_payload'] ?? '[]', true);
+    $cleanPresets = [];
+    if (is_array($presetsRaw)) {
+        foreach ($presetsRaw as $hex) {
+            if (is_string($hex) && preg_match('/^#[0-9a-fA-F]{6}$/', $hex)) {
+                $cleanPresets[] = strtoupper($hex);
+            }
+        }
+    }
+    $cleanPresets = array_slice(array_values(array_unique($cleanPresets)), 0, 12);
+    try {
+        $psSave = $pdo->prepare("UPDATE events SET color_presets = ? WHERE id = ?");
+        $psSave->execute([json_encode($cleanPresets), $role['event_id']]);
+    } catch (PDOException $e) { /* column not migrated yet — presets simply not saved */ }
 
     header("Location: preview_event.php?role_id=" . $roleId);
     exit;
@@ -485,6 +523,15 @@ if (is_dir($fontDir)) {
                             <div class="swatch" data-color="#b91c1c" style="background: #b91c1c;" title="Red"></div>
                         </div>
                     </div>
+                    <!-- Custom brand presets (issue #90): organiser-saved colours, stored per-event. -->
+                    <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap;">
+                        <span style="font-size: 11px; color: #64748b;">Brand:</span>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;" id="custom_swatches"></div>
+                        <button type="button" id="add_preset_btn" title="Save the current colour as a reusable brand preset"
+                            style="font-size: 11px; padding: 3px 8px; border: 1px dashed #cbd5e1; border-radius: 4px; background: #fff; cursor: pointer; color: #475569;">+ Save current</button>
+                    </div>
+                    <div style="font-size: 10px; color: #94a3b8; margin-top: 4px;">Click a brand colour to apply it; right-click (or long-press) to remove. Saved with "Save All Layouts".</div>
+                    <input type="hidden" id="color_presets_payload" name="color_presets_payload">
                 </div>
 
                 <div class="form-group" id="group_align">
@@ -637,6 +684,8 @@ if (is_dir($fontDir)) {
 
         // State
         const settings = <?= json_encode($visualSettings) ?>;
+        // Custom per-event brand colour presets (issue #90).
+        let colorPresets = <?= json_encode($colorPresets) ?>;
         let activeTab = 'name';
         
         // Locked states for Canva/Figma element locking
@@ -1471,6 +1520,67 @@ if (is_dir($fontDir)) {
             });
         });
 
+        // ===== Custom brand colour presets (issue #90) =====
+        // Apply a #RRGGBB colour to the active element, mirroring the built-in swatch behaviour.
+        function applyPresetColor(hex) {
+            formInputs.color_picker.value = hex;
+            const r = parseInt(hex.substr(1, 2), 16);
+            const g = parseInt(hex.substr(3, 2), 16);
+            const b = parseInt(hex.substr(5, 2), 16);
+            formInputs.text_color.value = `${r},${g},${b}`;
+            syncState();
+            pushState();
+        }
+        // Current editor colour as #RRGGBB (text_color is the canonical "r,g,b" / hex value).
+        function currentColorHex() {
+            return parseColorToHex(formInputs.text_color.value || '0,0,0').toUpperCase();
+        }
+        function renderCustomPresets() {
+            const box = document.getElementById('custom_swatches');
+            if (!box) return;
+            box.innerHTML = '';
+            if (!colorPresets.length) {
+                box.innerHTML = '<span style="font-size:10px;color:#cbd5e1;">none yet</span>';
+            }
+            colorPresets.forEach(hex => {
+                const sw = document.createElement('div');
+                sw.className = 'swatch';
+                sw.style.background = hex;
+                sw.title = hex + ' — click to apply, right-click to remove';
+                sw.dataset.color = hex;
+                sw.addEventListener('click', () => applyPresetColor(hex));
+                sw.addEventListener('contextmenu', (e) => { e.preventDefault(); removePreset(hex); });
+                // Long-press removal for touch devices (no right-click).
+                let lpTimer = null;
+                sw.addEventListener('touchstart', () => { lpTimer = setTimeout(() => removePreset(hex), 600); }, { passive: true });
+                sw.addEventListener('touchend', () => clearTimeout(lpTimer));
+                sw.addEventListener('touchmove', () => clearTimeout(lpTimer));
+                box.appendChild(sw);
+            });
+            syncPresetPayload();
+        }
+        function addCurrentAsPreset() {
+            const hex = currentColorHex();
+            if (!/^#[0-9A-F]{6}$/.test(hex)) return;
+            if (colorPresets.includes(hex)) return;      // no duplicates
+            if (colorPresets.length >= 12) colorPresets.shift(); // cap at 12, drop oldest
+            colorPresets.push(hex);
+            renderCustomPresets();
+        }
+        function removePreset(hex) {
+            colorPresets = colorPresets.filter(c => c !== hex);
+            renderCustomPresets();
+        }
+        function syncPresetPayload() {
+            const inp = document.getElementById('color_presets_payload');
+            if (inp) inp.value = JSON.stringify(colorPresets);
+        }
+        (function () {
+            const btn = document.getElementById('add_preset_btn');
+            if (btn) btn.addEventListener('click', addCurrentAsPreset);
+            renderCustomPresets();
+        })();
+
         // Proxy file input to real file inputs
         formInputs.file_proxy.addEventListener('change', (e) => {
             const realInput = document.getElementById('real_file_' + activeTab);
@@ -1642,6 +1752,7 @@ if (is_dir($fontDir)) {
         // Form submission
         document.getElementById('settings-form').addEventListener('submit', () => {
             document.getElementById('visual_settings_payload').value = JSON.stringify(settings);
+            syncPresetPayload(); // ensure custom brand presets (issue #90) are submitted
         });
 
         // Initial Load

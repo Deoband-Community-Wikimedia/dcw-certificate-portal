@@ -22,8 +22,16 @@ CREATE TABLE IF NOT EXISTS events (
     certificate_issue_date DATE NULL,
     description TEXT NULL,
     partners VARCHAR(255) NULL,
+    color_presets TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- color_presets stores a small JSON array of "#RRGGBB" strings (issue #90): custom
+-- brand colours an organiser saves in the visual editor so certificate elements can
+-- reuse the template's palette. Editor reads/writes it defensively, so an install that
+-- has not run the migration below simply shows no custom presets rather than erroring.
+-- Migration for existing installs (run once):
+-- ALTER TABLE events ADD COLUMN color_presets TEXT NULL AFTER partners;
 
 -- Create Event Roles Table
 CREATE TABLE IF NOT EXISTS event_roles (
