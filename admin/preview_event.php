@@ -226,6 +226,13 @@ if (is_dir($fontDir)) {
             transform: translateX(-50%);
         }
         
+        /* Measurement rulers (issue #91) */
+        .editor-ruler-wrap { flex: 1; position: relative; display: flex; min-height: 0; }
+        .editor-ruler-wrap > .editor-container { flex: 1; margin-left: 22px; margin-top: 22px; }
+        .ruler { position: absolute; z-index: 6; background: #f1f5f9; display: block; pointer-events: none; }
+        #ruler_top { top: 0; left: 22px; height: 22px; border-bottom: 1px solid #cbd5e1; }
+        #ruler_left { top: 22px; left: 0; width: 22px; border-right: 1px solid #cbd5e1; }
+        #ruler_corner { position: absolute; top: 0; left: 0; width: 22px; height: 22px; z-index: 7; background: #e2e8f0; border-right: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1; font-size: 8px; color: #64748b; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
         /* Canvas Measurement Lines to Margins */
         .measure-line {
             position: absolute;
@@ -349,6 +356,13 @@ if (is_dir($fontDir)) {
                 <button type="button" id="tool_pdf_preview" title="Live PDF Preview" style="background: #106b9a; color: white; padding: 4px 10px; font-size: 11px; font-weight: bold; border-radius: 4px; display: flex; align-items: center; gap: 4px; height: auto; margin-right: 8px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>Preview</button>
                 <button type="button" id="tool_help" title="Keyboard Shortcuts & Help" style="padding: 5px;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></button>
             </div>
+            <!-- Measurement rulers (issue #91): pinned to the canvas viewport edges;
+                 tick positions are computed from live bounding rects so they stay aligned
+                 through zoom, scroll and centring. -->
+            <div class="editor-ruler-wrap">
+                <div id="ruler_corner">mm</div>
+                <canvas id="ruler_top" class="ruler ruler-h"></canvas>
+                <canvas id="ruler_left" class="ruler ruler-v"></canvas>
             <div class="editor-container">
                 <div id="pdf-container">
                     <!-- ===== START OF INSERTION 2: GRID & GUIDE HTML ELEMENTS ===== -->
@@ -391,6 +405,7 @@ if (is_dir($fontDir)) {
                     <div id="el_qrcode" class="element-box" data-id="qrcode" style="background: url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg') no-repeat center; background-size: 100% 100%;"></div>
                     <div id="el_custom_text" class="element-box hidden" data-id="custom_text">Participant's Custom Text</div>
                 </div>
+            </div>
             </div>
         </div>
 
@@ -1672,9 +1687,100 @@ if (is_dir($fontDir)) {
                     renderLayersPanel();
                     updateElementGuides();
                     updateGridOverlay();
+                    drawRulers();
                 });
             });
         };
+
+        // ===== Measurement rulers (issue #91) =====
+        // Ticks are computed from live bounding rects each redraw, so they stay aligned with
+        // the canvas through zoom (re-render), scroll and the text-align:center offset.
+        const RULER_SIZE = 22;
+        let rulerCursor = { x: null, y: null }; // position under cursor in mm, or null
+        function sizeRulerCanvas(cv, cssW, cssH) {
+            const dpr = window.devicePixelRatio || 1;
+            cv.style.width = cssW + 'px';
+            cv.style.height = cssH + 'px';
+            cv.width = Math.max(1, Math.round(cssW * dpr));
+            cv.height = Math.max(1, Math.round(cssH * dpr));
+            const g = cv.getContext('2d');
+            g.setTransform(dpr, 0, 0, dpr, 0, 0);
+            return g;
+        }
+        // Pick a "nice" mm interval so labels stay ~>= 45px apart at the current zoom.
+        function rulerNiceStep(pxPerMM) {
+            const steps = [1, 2, 5, 10, 20, 25, 50, 100, 200];
+            for (const s of steps) { if (s * pxPerMM >= 45) return s; }
+            return 500;
+        }
+        function drawRulerAxis(g, dir, w, h, origin, pxPerMM, maxMM, cursorMM) {
+            g.clearRect(0, 0, w, h);
+            g.fillStyle = '#f1f5f9'; g.fillRect(0, 0, w, h);
+            g.font = '8px sans-serif'; g.textBaseline = 'top';
+            const step = rulerNiceStep(pxPerMM);
+            g.strokeStyle = '#94a3b8'; g.lineWidth = 1;
+            g.beginPath();
+            for (let mm = 0; mm <= maxMM + 0.001; mm += step) {
+                const p = origin + mm * pxPerMM;
+                if (dir === 'h') {
+                    if (p < 0 || p > w) continue;
+                    g.moveTo(p + 0.5, h); g.lineTo(p + 0.5, h - 7);
+                } else {
+                    if (p < 0 || p > h) continue;
+                    g.moveTo(w, p + 0.5); g.lineTo(w - 7, p + 0.5);
+                }
+            }
+            g.stroke();
+            g.fillStyle = '#475569';
+            for (let mm = 0; mm <= maxMM + 0.001; mm += step) {
+                const p = origin + mm * pxPerMM;
+                if (dir === 'h') { if (p < 0 || p > w - 2) continue; g.fillText(String(Math.round(mm)), p + 2, 2); }
+                else { if (p < 0 || p > h - 2) continue; g.fillText(String(Math.round(mm)), 2, p + 2); }
+            }
+            if (cursorMM != null) {
+                const p = origin + cursorMM * pxPerMM;
+                g.strokeStyle = '#e11d48'; g.beginPath();
+                if (dir === 'h' && p >= 0 && p <= w) { g.moveTo(p + 0.5, 0); g.lineTo(p + 0.5, h); }
+                else if (dir === 'v' && p >= 0 && p <= h) { g.moveTo(0, p + 0.5); g.lineTo(w, p + 0.5); }
+                g.stroke();
+            }
+        }
+        function drawRulers() {
+            const rt = document.getElementById('ruler_top');
+            const rl = document.getElementById('ruler_left');
+            const wrap = document.querySelector('.editor-ruler-wrap');
+            if (!rt || !rl || !wrap || !canvas) return;
+            const wrapRect = wrap.getBoundingClientRect();
+            const topW = Math.max(0, wrapRect.width - RULER_SIZE);
+            const leftH = Math.max(0, wrapRect.height - RULER_SIZE);
+            const gt = sizeRulerCanvas(rt, topW, RULER_SIZE);
+            const gl = sizeRulerCanvas(rl, RULER_SIZE, leftH);
+            const cRect = canvas.getBoundingClientRect();
+            if (cRect.width < 1 || pdfWidthMM < 1) return; // not rendered yet
+            const rtRect = rt.getBoundingClientRect();
+            const rlRect = rl.getBoundingClientRect();
+            const pxPerMMx = cRect.width / pdfWidthMM;
+            const pxPerMMy = cRect.height / pdfHeightMM;
+            drawRulerAxis(gt, 'h', topW, RULER_SIZE, cRect.left - rtRect.left, pxPerMMx, pdfWidthMM, rulerCursor.x);
+            drawRulerAxis(gl, 'v', RULER_SIZE, leftH, cRect.top - rlRect.top, pxPerMMy, pdfHeightMM, rulerCursor.y);
+        }
+        let rulerRAF = null;
+        function scheduleRulers() { if (rulerRAF) return; rulerRAF = requestAnimationFrame(() => { rulerRAF = null; drawRulers(); }); }
+        const editorScrollEl = document.querySelector('.editor-container');
+        if (editorScrollEl) editorScrollEl.addEventListener('scroll', scheduleRulers, { passive: true });
+        window.addEventListener('resize', scheduleRulers);
+        const pdfContainerEl = document.getElementById('pdf-container');
+        if (pdfContainerEl) {
+            pdfContainerEl.addEventListener('mousemove', (e) => {
+                const cRect = canvas.getBoundingClientRect();
+                if (cRect.width < 1) return;
+                rulerCursor.x = (e.clientX - cRect.left) / (cRect.width / pdfWidthMM);
+                rulerCursor.y = (e.clientY - cRect.top) / (cRect.height / pdfHeightMM);
+                scheduleRulers();
+            });
+            pdfContainerEl.addEventListener('mouseleave', () => { rulerCursor.x = rulerCursor.y = null; scheduleRulers(); });
+        }
+        drawRulers(); // initial (redraws again once the PDF finishes rendering)
 
         formInputs.sample_text.addEventListener('input', (e) => {
             if (activeTab === 'name' || activeTab === 'certid' || activeTab === 'custom_text') {
