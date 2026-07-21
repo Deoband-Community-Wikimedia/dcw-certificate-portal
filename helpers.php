@@ -143,3 +143,100 @@ if (!function_exists('sendAvailabilityEmail')) {
     }
 }
 
+if (!function_exists('adminPortalBaseUrl')) {
+    /**
+     * Builds the public base URL of the portal (works from the /admin directory too).
+     *
+     * @return string e.g. https://example.org/certs
+     */
+    function adminPortalBaseUrl() {
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)) ? "https://" : "http://";
+        $baseDir = str_replace('\\', '/', dirname($_SERVER['PHP_SELF']));
+        // Strip the /admin segment so links point at the portal root.
+        $portalDir = preg_replace('/\/admin(\/|$)/', '/', $baseDir);
+        $portalDir = rtrim($portalDir, '/');
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        return $protocol . $host . $portalDir;
+    }
+}
+
+if (!function_exists('sendAdminResetEmail')) {
+    /**
+     * Emails a password-reset link to an admin user.
+     *
+     * @param string $recipientEmail
+     * @param string $username
+     * @param string $resetUrl   Fully-qualified reset link (includes the raw token).
+     * @return array{success: bool, message: string}
+     */
+    function sendAdminResetEmail($recipientEmail, $username, $resetUrl) {
+        $portalUrl = adminPortalBaseUrl();
+        $logoUrl = $portalUrl . '/assets/DCW_logo.png';
+
+        $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+
+        try {
+            $mail->isSMTP();
+            $mail->Host = $_ENV['SMTP_HOST'];
+            $mail->SMTPAuth = filter_var($_ENV['SMTP_AUTH'], FILTER_VALIDATE_BOOLEAN);
+            $mail->Username = $_ENV['SMTP_USER'];
+            $mail->Password = $_ENV['SMTP_PASS'];
+            $mail->SMTPSecure = $_ENV['SMTP_SECURE'];
+            $mail->Port = $_ENV['SMTP_PORT'];
+
+            $mail->setFrom($_ENV['SMTP_USER'], 'Deoband Community Wikimedia');
+            $mail->addAddress($recipientEmail, $username);
+            $mail->isHTML(true);
+            $mail->Subject = "Password Reset Request - DCW Admin Portal";
+
+            $mail->Body = '
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <style>
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+                    .email-wrapper { max-width: 600px; margin: 40px auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+                    .email-header { background-color: #106b9a; padding: 32px 24px; text-align: center; }
+                    .email-header img { height: 50px; width: auto; }
+                    .email-body { padding: 40px 32px; color: #1e293b; line-height: 1.6; }
+                    h1 { font-size: 22px; color: #0f172a; margin-top: 0; font-weight: 700; }
+                    p { font-size: 15px; color: #475569; margin-bottom: 24px; }
+                    .btn-portal { display: inline-block; background-color: #106b9a; color: #ffffff !important; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 15px; font-weight: 600; text-align: center; }
+                    .email-footer { background-color: #0f172a; padding: 24px; text-align: center; font-size: 12px; color: #94a3b8; }
+                    .email-footer a { color: #38bdf8; text-decoration: none; }
+                </style>
+            </head>
+            <body>
+                <div class="email-wrapper">
+                    <div class="email-header">
+                        <img src="' . htmlspecialchars($logoUrl) . '" alt="Deoband Community Wikimedia Logo">
+                    </div>
+                    <div class="email-body">
+                        <h1>Password Reset Requested</h1>
+                        <p>Hello <strong>' . htmlspecialchars($username) . '</strong>, we received a request to reset the password for your DCW Admin account.</p>
+                        <p>Click the button below to choose a new password. This link will expire in <strong>60 minutes</strong> and can only be used once.</p>
+                        <div style="text-align: center; margin: 32px 0;">
+                            <a href="' . htmlspecialchars($resetUrl) . '" target="_blank" class="btn-portal">Reset My Password</a>
+                        </div>
+                        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 32px 0;">
+                        <p style="font-size: 13px; color: #64748b; margin: 0;">If you did not request this, you can safely ignore this email &mdash; your password will remain unchanged.</p>
+                    </div>
+                    <div class="email-footer">
+                        &copy; ' . date('Y') . ' <a href="https://dcwwiki.org/">Deoband Community Wikimedia</a>. All Rights Reserved.
+                    </div>
+                </div>
+            </body>
+            </html>';
+
+            $mail->AltBody = "Hello {$username},\n\nReset your DCW Admin password using this link (valid for 60 minutes):\n{$resetUrl}\n\nIf you did not request this, ignore this email.";
+
+            $mail->send();
+            return ['success' => true, 'message' => 'Reset email sent successfully.'];
+        } catch (\Exception $e) {
+            $errorMsg = $mail->ErrorInfo ?: $e->getMessage();
+            return ['success' => false, 'message' => 'Mail dispatch failed: ' . $errorMsg];
+        }
+    }
+}
+
