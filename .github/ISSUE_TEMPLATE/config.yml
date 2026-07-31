@@ -1,0 +1,13 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability (private)
+    url: https://github.com/Deoband-Community-Wikimedia/dcw-certificate-portal/security/advisories/new
+    about: Never report a security problem in a public issue. Use this private form instead — see SECURITY.md for what we're looking for.
+
+  - name: Question, idea, or "am I doing this right?"
+    url: https://github.com/Deoband-Community-Wikimedia/dcw-certificate-portal/discussions
+    about: Setup trouble, questions about how something works, or an idea you'd like to talk through before writing it up. No question is too basic here.
+
+  - name: About Deoband Community Wikimedia
+    url: https://dcwwiki.org/
+    about: Who we are and what else we work on.

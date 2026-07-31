@@ -1,0 +1,84 @@
+name: Feature or improvement
+description: Suggest something the portal should do, or do better
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Good ideas are welcome, including ones you don't intend to build yourself.
+
+        The most useful thing you can tell us is the *problem*. We can usually think of
+        several solutions once we understand what's actually getting in someone's way.
+
+        If you just want to talk an idea through first, [Discussions](https://github.com/Deoband-Community-Wikimedia/dcw-certificate-portal/discussions)
+        is a lower-pressure place to do that.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you running into?
+      description: >
+        Describe the situation, not the solution. Who is stuck, doing what, and what does
+        it cost them right now?
+      placeholder: |
+        When an event has 300 participants, finding one person to correct a spelling
+        mistake means scrolling through the whole list. Organisers usually give up and
+        re-import the entire CSV instead, which regenerates every certificate.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to see happen?
+      description: Your suggested solution, if you have one in mind. It's fine to say you don't.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the portal would this touch?
+      options:
+        - Admin panel — login or user management
+        - Admin panel — events, roles, or participants
+        - Admin panel — CSV import
+        - The drag-and-drop PDF template editor
+        - Certificate generation or download
+        - Public verification page
+        - Email sending
+        - Documentation
+        - Something else / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Is there a way to work around it today?
+      description: >
+        If organisers already have a workaround, tell us what it is and how painful it is.
+        That helps us judge how urgent this is.
+
+  - type: dropdown
+    id: help
+    attributes:
+      label: Would you like to work on this yourself?
+      description: >
+        Saying no is completely fine — plenty of the best ideas here came from people who
+        never wrote a line of the code.
+      options:
+        - "Yes, I'd like to try — I'll read CONTRIBUTING.md"
+        - "Maybe, if someone can point me at the right files"
+        - "No, I'm just suggesting it"
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: >
+        Sketches, screenshots of how another tool solves this, or links to a related
+        issue. Blur any real participant data in screenshots.

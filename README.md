@@ -70,7 +70,7 @@ Boot up your server (or run `php -S localhost:8000` locally) and navigate to the
 - **Default Username:** `admin`
 - **Default Password:** `password123`
 
-> **[CAUTION] Security Warning:** You must immediately navigate to the **"Manage Users"** tab to rotate the default administrator credentials before exposing the portal to public traffic.
+> **[CAUTION] Security Warning:** These credentials are published in this repository and in `database.sql`, so anyone can read them. They exist only so that a brand-new operator can log in once. Go straight to the **"Manage Users"** tab and change the password before the portal is reachable from the internet.
 
 ---
 
@@ -83,14 +83,23 @@ An `.htaccess` file is included in this repository to automatically block access
 
 ## Contributing
 
-We welcome pull requests, bug reports, and feature ideas. To contribute:
-1. Fork the repository.
-2. Create a feature branch (`git checkout -b feature/your-amazing-feature`).
-3. Commit your changes (`git commit -m 'feat: added something amazing'`).
-4. Push to the branch (`git push origin feature/your-amazing-feature`).
-5. Open a Pull Request.
+We welcome pull requests, bug reports, and feature ideas, including from people who have
+never contributed to an open source project before.
 
-Please ensure all new code adheres to the existing security paradigms (strictly use PDO for database queries and include CSRF tokens on all `POST` forms).
+**[CONTRIBUTING.md](CONTRIBUTING.md)** has everything you need: local setup, the coding
+standards reviewers check for, how to handle a database schema change, and what happens
+after you open a pull request. **[TESTING.md](TESTING.md)** covers what to test and how.
+
+In short: fork the repository, branch off `main`, and open a pull request against `main`.
+All new code must use PDO prepared statements for database queries, include a CSRF token
+on every `POST` form, and escape anything echoed to the page.
+
+By taking part you agree to follow our [Code of Conduct](CODE_OF_CONDUCT.md).
+
+### Found a security problem?
+
+Please don't open a public issue. **[SECURITY.md](SECURITY.md)** explains how to report
+it privately.
 
 ---
 
