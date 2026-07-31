@@ -7,9 +7,12 @@ CREATE TABLE IF NOT EXISTS admin_users (
     password_hash VARCHAR(255) NOT NULL
 );
 
--- Insert Default Admin (username: Zaidusyy, password: password123)
-INSERT INTO admin_users (username, password_hash) 
-VALUES ('Zaidusyy', '$2y$10$p0Bv6TvSUHEQ6X86NOFaQ.LcuBV8EmkkZhGx51GPUJRx8huMP.GFW')
+-- Insert Default Admin (username: admin, password: password123)
+-- This account exists only so a new operator can log in the first time.
+-- Change the password from "Manage Users" before the portal is reachable
+-- from the internet. See the Quick Start Guide in README.md.
+INSERT INTO admin_users (username, password_hash)
+VALUES ('admin', '$2y$10$p0Bv6TvSUHEQ6X86NOFaQ.LcuBV8EmkkZhGx51GPUJRx8huMP.GFW')
 ON DUPLICATE KEY UPDATE id=id;
 
 -- Create Events Table
