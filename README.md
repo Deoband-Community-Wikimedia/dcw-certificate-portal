@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/Zaidusyy)
 
-**DCW's Digital Certification Portal** is a highly secure, lightweight, and monolithic PHP application designed to bulk generate, distribute, and cryptographically verify digital certificates. Originally designed to issue verifiable credentials to participants in DCW events, this application allows communities, educational institutions, and organisations to handle end-to-end credential workflows without relying on expensive SaaS infrastructure like Credly.
+**DCW's Digital Certification Portal** is a highly secure, lightweight, and monolithic PHP application designed to bulk generate and distribute verifiable digital certificates. Originally designed to issue verifiable credentials to participants in DCW events, this application allows communities, educational institutions, and organisations to handle end-to-end credential workflows without relying on expensive SaaS infrastructure like Credly.
 
 ---
 
