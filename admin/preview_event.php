@@ -53,8 +53,8 @@ $defaultSettings = [
     ],
     'custom_text' => [
         'enabled' => false,
-        'pos_x' => 100, 'pos_y' => 120, 'font_size' => 18, 'box_width' => 0,
-        'text_color' => '0,0,0', 'text_align' => 'C', 'font_file' => '', 'font_name' => 'helvetica'
+        'pos_x' => 100, 'pos_y' => 120, 'font_size' => 18, 'box_width' => 120,
+        'text_color' => '0,0,0', 'text_align' => 'L', 'font_file' => '', 'font_name' => 'helvetica'
     ]
 ];
 
@@ -169,12 +169,76 @@ if (is_dir($fontDir)) {
         .handle-tr { top: -4px; right: -4px; cursor: nesw-resize; }
         .handle-bl { bottom: -4px; left: -4px; cursor: nesw-resize; }
         .handle-br { bottom: -4px; right: -4px; cursor: nwse-resize; }
+        .handle-mr {
+            top: 50%;
+            right: -6px;
+            transform: translateY(-50%);
+            width: 10px;
+            height: 20px;
+            border-radius: 3px;
+            background: #2563eb;
+            border: 1.5px solid white;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+            cursor: ew-resize !important;
+            pointer-events: auto !important;
+            z-index: 25;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .handle-mr::after {
+            content: '';
+            display: block;
+            width: 2px;
+            height: 8px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 1px;
+        }
+        .handle-mr:hover {
+            background: #1d4ed8;
+            transform: translateY(-50%) scale(1.15);
+        }
         
         #selection-frame.locked {
             border-color: #ef4444;
         }
         #selection-frame.locked .selection-handle {
             border-color: #ef4444;
+        }
+        #selection-frame.locked .handle-mr {
+            display: none !important;
+        }
+
+        .variant-chip {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            padding: 3px 8px;
+            font-size: 11px;
+            font-weight: 500;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .variant-chip:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+            border-color: #94a3b8;
+        }
+        .width-preset-btn {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 3px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: 500;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .width-preset-btn:hover {
+            background: #e2e8f0;
+            color: #1e293b;
         }
         
         #selection-lock-badge {
@@ -375,6 +439,7 @@ if (is_dir($fontDir)) {
                         <div class="selection-handle handle-tr"></div>
                         <div class="selection-handle handle-bl"></div>
                         <div class="selection-handle handle-br"></div>
+                        <div class="selection-handle handle-mr" id="handle_resize_r" title="Drag to adjust max width (text wrapping)"></div>
                         <div id="selection-lock-badge">Locked</div>
                     </div>
                     
@@ -453,6 +518,7 @@ if (is_dir($fontDir)) {
                 <div class="form-group" id="sample_text_group" style="display: none; padding-top: 10px; border-top: 1px solid #eaedf1;">
                     <label>Preview Sample Text <span style="font-size: 11px; font-weight: normal; color: #777;">(Not saved, for testing only)</span></label>
                     <input type="text" id="sample_text_input" placeholder="Type to preview length..." style="width: 100%; padding: 10px; box-sizing: border-box; border: 1.5px solid #cbd5e1; border-radius: 6px; font-family: monospace;">
+                    <div id="sample_text_chips" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;"></div>
                 </div>
 
                 <!-- Coordinates Group (Horizontal Row) -->
@@ -474,8 +540,17 @@ if (is_dir($fontDir)) {
                         <input type="number" id="font_size" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1.5px solid #cbd5e1; border-radius: 6px; background: #f8fafc; font-size: 13px;">
                     </div>
                     <div class="form-group" id="group_box_width" style="margin-bottom: 0;">
-                        <label style="font-weight: bold; font-size: 11px; margin-bottom: 4px; color: #475569; display: block;">Max Width (mm)</label>
-                        <input type="number" id="box_width" step="1" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1.5px solid #cbd5e1; border-radius: 6px; background: #f8fafc; font-size: 13px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <label style="font-weight: bold; font-size: 11px; color: #475569; margin-bottom: 0;">Max Width (mm)</label>
+                            <span style="font-size: 10px; color: #64748b;" id="box_width_mode_badge">0 = Auto</span>
+                        </div>
+                        <input type="number" id="box_width" step="1" min="0" placeholder="0 (Auto)" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1.5px solid #cbd5e1; border-radius: 6px; background: #f8fafc; font-size: 13px;">
+                        <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;">
+                            <button type="button" class="width-preset-btn" data-width="0">Auto</button>
+                            <button type="button" class="width-preset-btn" data-width="80">80mm</button>
+                            <button type="button" class="width-preset-btn" data-width="120">120mm</button>
+                            <button type="button" class="width-preset-btn" data-width="160">160mm</button>
+                        </div>
                     </div>
                 </div>
 
@@ -797,6 +872,15 @@ if (is_dir($fontDir)) {
             const isLocked = lockedStates[activeTab];
             frame.classList.toggle('locked', isLocked);
             badge.style.display = isLocked ? 'block' : 'none';
+
+            const handleMr = document.getElementById('handle_resize_r');
+            if (handleMr) {
+                if (activeTab === 'qrcode' || isLocked) {
+                    handleMr.style.display = 'none';
+                } else {
+                    handleMr.style.display = 'flex';
+                }
+            }
         }
 
         // Draw and update measurement lines from active element to canvas margins
@@ -1374,6 +1458,7 @@ if (is_dir($fontDir)) {
             if (activeTab === 'name' || activeTab === 'certid' || activeTab === 'custom_text') {
                 document.getElementById('sample_text_group').style.display = 'block';
                 formInputs.sample_text.value = document.getElementById('el_' + activeTab).innerText;
+                updateSampleChips(activeTab);
             } else {
                 document.getElementById('sample_text_group').style.display = 'none';
             }
@@ -1398,6 +1483,10 @@ if (is_dir($fontDir)) {
                 document.getElementById('font_upload_group').style.display = 'block';
                 document.getElementById('group_box_width').style.display = 'block';
                 formInputs.box_width.value = s.box_width || 0;
+                
+                const boxW = parseFloat(s.box_width) || 0;
+                const badge = document.getElementById('box_width_mode_badge');
+                if (badge) badge.innerText = boxW > 0 ? `${boxW}mm (Wrapping)` : '0 = Auto';
             }
             
             // Clear proxy input
@@ -1422,6 +1511,54 @@ if (is_dir($fontDir)) {
             updateElementGuides();
         }
 
+        // Dynamic Sample Text Variant Chips
+        function updateSampleChips(tabKey) {
+            const chipsContainer = document.getElementById('sample_text_chips');
+            if (!chipsContainer) return;
+            
+            let chips = [];
+            if (tabKey === 'custom_text') {
+                chips = [
+                    { label: 'Short Date', text: '16 January 2026 to 30 June 2026.' },
+                    { label: 'Long Date (2-Lines)', text: '01 January 2025 to 31 December 2026.' },
+                    { label: 'Detailed Text', text: 'Completed the DCW Graphic Design Internship from 01 Jan 2025 to 31 Dec 2026.' },
+                    { label: 'Default', text: 'Participant\'s Custom Text' }
+                ];
+            } else if (tabKey === 'name') {
+                chips = [
+                    { label: 'Short Name', text: 'Ali Smith' },
+                    { label: 'Medium Name', text: 'Muhammad Abdullah' },
+                    { label: 'Long Name', text: 'Prof. Dr. Mohammad Abdul Rahman Al-Qasimi' },
+                    { label: 'Default', text: 'Participant Name' }
+                ];
+            } else if (tabKey === 'certid') {
+                chips = [
+                    { label: 'Standard ID', text: 'DCW26-K9X4M7' },
+                    { label: 'Long ID', text: 'DCW-GRAPHIC-2026-X89Y12' },
+                    { label: 'Default', text: 'CERT-1A2B3C4D' }
+                ];
+            }
+            
+            chipsContainer.innerHTML = '';
+            chips.forEach(c => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'variant-chip';
+                btn.textContent = c.label;
+                btn.title = c.text;
+                btn.addEventListener('click', () => {
+                    formInputs.sample_text.value = c.text;
+                    const el = document.getElementById('el_' + activeTab);
+                    if (el) {
+                        el.innerText = c.text;
+                        applyStyleToElement(activeTab);
+                        updateElementGuides();
+                    }
+                });
+                chipsContainer.appendChild(btn);
+            });
+        }
+
         // Per-element default font names (used when reverting to Default Font)
         const elementDefaultFonts = {
             name: 'alexbrush',
@@ -1444,6 +1581,9 @@ if (is_dir($fontDir)) {
             s.font_name = selectedFontFile ? 'custom' : (elementDefaultFonts[activeTab] || 'helvetica');
             if (activeTab !== 'qrcode') {
                 s.box_width = parseFloat(formInputs.box_width.value) || 0;
+                const boxW = s.box_width;
+                const badge = document.getElementById('box_width_mode_badge');
+                if (badge) badge.innerText = boxW > 0 ? `${boxW}mm (Wrapping)` : '0 = Auto';
             }
             if (activeTab === 'date') {
                 s.date_format = formInputs.date_format.value;
@@ -1563,6 +1703,17 @@ if (is_dir($fontDir)) {
                 } catch (e) { /* user cancelled the eyedropper */ }
             });
         })();
+
+        // Max Width Preset Buttons click events
+        document.querySelectorAll('.width-preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const w = parseFloat(btn.dataset.width) || 0;
+                formInputs.box_width.value = w;
+                settings[activeTab].box_width = w;
+                syncState();
+                pushState();
+            });
+        });
 
         // Proxy file input to real file inputs
         formInputs.file_proxy.addEventListener('change', (e) => {
@@ -1702,6 +1853,93 @@ if (is_dir($fontDir)) {
         document.addEventListener('mouseup', endDrag);
         document.addEventListener('touchend', endDrag);
         document.addEventListener('touchcancel', endDrag);
+
+        // Interactive Bounding Box Width Resizing (East Handle)
+        let isResizing = false;
+        let resizeStartX = 0;
+        let resizeStartWidthMM = 0;
+
+        const handleResizeR = document.getElementById('handle_resize_r');
+
+        function startResize(e) {
+            if (lockedStates[activeTab] === true || activeTab === 'qrcode') return;
+            
+            e.stopPropagation();
+            e.preventDefault();
+            
+            isResizing = true;
+            resizeStartX = e.clientX !== undefined ? e.clientX : (e.touches ? e.touches[0].clientX : 0);
+            
+            const s = settings[activeTab];
+            const el = document.getElementById('el_' + activeTab);
+            
+            if (parseFloat(s.box_width) > 0) {
+                resizeStartWidthMM = parseFloat(s.box_width);
+            } else {
+                resizeStartWidthMM = (el.offsetWidth / canvas.offsetWidth) * pdfWidthMM;
+            }
+            
+            document.body.style.cursor = 'ew-resize';
+        }
+
+        if (handleResizeR) {
+            handleResizeR.addEventListener('mousedown', startResize);
+            handleResizeR.addEventListener('touchstart', startResize, { passive: false });
+        }
+
+        function performResize(e) {
+            if (!isResizing) return;
+            
+            const currentX = e.clientX !== undefined ? e.clientX : (e.touches ? e.touches[0].clientX : undefined);
+            if (currentX === undefined) return;
+            
+            if (e.type === 'touchmove') e.preventDefault();
+            
+            const deltaXPx = currentX - resizeStartX;
+            const deltaXMM = (deltaXPx / canvas.offsetWidth) * pdfWidthMM;
+            
+            let newWidthMM = Math.max(10, Math.round(resizeStartWidthMM + deltaXMM));
+            
+            const snap = getSnapInterval();
+            if (snap > 0) {
+                newWidthMM = Math.max(snap, Math.round(newWidthMM / snap) * snap);
+            }
+            
+            settings[activeTab].box_width = newWidthMM;
+            formInputs.box_width.value = newWidthMM;
+            
+            applyStyleToElement(activeTab);
+            updateElementGuides();
+            
+            const badge = document.getElementById('box_width_mode_badge');
+            if (badge) badge.innerText = `${newWidthMM}mm (Wrapping)`;
+            
+            const tooltip = document.getElementById('drag-tooltip');
+            const el = document.getElementById('el_' + activeTab);
+            if (tooltip && el) {
+                tooltip.textContent = `Max Width: ${newWidthMM}mm (Wrap)`;
+                tooltip.style.left = (el.offsetLeft + el.offsetWidth / 2) + 'px';
+                tooltip.style.top = (el.offsetTop - 28) + 'px';
+                tooltip.style.display = 'block';
+            }
+        }
+
+        document.addEventListener('mousemove', performResize);
+        document.addEventListener('touchmove', performResize, { passive: false });
+
+        function endResize() {
+            if (isResizing) {
+                isResizing = false;
+                document.body.style.cursor = 'default';
+                const tooltip = document.getElementById('drag-tooltip');
+                if (tooltip) tooltip.style.display = 'none';
+                pushState();
+            }
+        }
+
+        document.addEventListener('mouseup', endResize);
+        document.addEventListener('touchend', endResize);
+        document.addEventListener('touchcancel', endResize);
 
         // Zoom & Rotate & Fit
         document.getElementById('tool_zoom_in').addEventListener('click', () => {

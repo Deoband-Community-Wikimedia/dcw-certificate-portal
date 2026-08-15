@@ -59,8 +59,8 @@ $defaultSettings = [
     ],
     'custom_text' => [
         'enabled' => false,
-        'pos_x' => 100, 'pos_y' => 120, 'font_size' => 18, 'box_width' => 0,
-        'text_color' => '0,0,0', 'text_align' => 'C', 'font_file' => '', 'font_name' => 'helvetica'
+        'pos_x' => 100, 'pos_y' => 120, 'font_size' => 18, 'box_width' => 120,
+        'text_color' => '0,0,0', 'text_align' => 'L', 'font_file' => '', 'font_name' => 'helvetica'
     ]
 ];
 
