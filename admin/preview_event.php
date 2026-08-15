@@ -70,21 +70,6 @@ foreach (['name', 'certid', 'date', 'qrcode', 'custom_text'] as $key) {
     }
 }
 
-function getUniqueFilename($dir, $filename) {
-    $filename = preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $filename);
-    $info = pathinfo($filename);
-    $name = $info['filename'];
-    $ext = isset($info['extension']) ? '.' . $info['extension'] : '';
-
-    $counter = 1;
-    $newFilename = $filename;
-    while (file_exists($dir . $newFilename)) {
-        $newFilename = $name . '(' . $counter . ')' . $ext;
-        $counter++;
-    }
-    return $newFilename;
-}
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $payload = json_decode($_POST['visual_settings_payload'], true);
     
