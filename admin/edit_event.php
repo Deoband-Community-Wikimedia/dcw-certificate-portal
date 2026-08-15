@@ -51,11 +51,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!$eventName) {
         $error = "Event name is required.";
     } else {
-        $stmtUpdate = $pdo->prepare("UPDATE events SET name = ?, linkedin_caption = ?, custom_verification_text = ? WHERE id = ?");
-        $stmtUpdate->execute([$eventName, $linkedinCaption, $customVerificationText, $eventId]);
-        $stmtUpdate = $pdo->prepare("UPDATE events SET name = ?, linkedin_caption = ?, certificate_issue_date = ?, description = ?, partners = ? WHERE id = ?");
-        $stmtUpdate->execute([$eventName, $linkedinCaption, $certificateIssueDate, $description, $partners, $eventId]);
+        $oldEventName = $event['name'];
+
+        $stmtUpdate = $pdo->prepare("UPDATE events SET name = ?, linkedin_caption = ?, custom_verification_text = ?, certificate_issue_date = ?, description = ?, partners = ? WHERE id = ?");
+        $stmtUpdate->execute([$eventName, $linkedinCaption, $customVerificationText, $certificateIssueDate, $description, $partners, $eventId]);
         
+        if ($nameChanged) {
+            syncEventTemplateFolder($pdo, $eventId, $oldEventName);
+        }
+
         log_audit_action($pdo, 'Edited Event', "Event ID: {$eventId}, New Name: {$eventName}");
         
         $success = "Event updated successfully.";

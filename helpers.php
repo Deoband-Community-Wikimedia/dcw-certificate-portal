@@ -22,6 +22,211 @@ if (!function_exists('sanitizeForFilename')) {
     }
 }
 
+if (!function_exists('getUniqueFilename')) {
+    /**
+     * Generates a unique filename in the target directory by appending numbers if collisions exist.
+     *
+     * @param string $dir Target directory with trailing slash
+     * @param string $filename Original file name
+     * @return string
+     */
+    function getUniqueFilename($dir, $filename) {
+        $filename = preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $filename);
+        $info = pathinfo($filename);
+        $name = $info['filename'];
+        $ext  = isset($info['extension']) ? '.' . $info['extension'] : '';
+        
+        $counter = 1;
+        $newFilename = $filename;
+        while (file_exists($dir . $newFilename)) {
+            $newFilename = $name . '(' . $counter . ')' . $ext;
+            $counter++;
+        }
+        return $newFilename;
+    }
+}
+
+if (!function_exists('syncEventTemplateFolder')) {
+    /**
+     * Synchronizes and renames template folders on disk and updates template_file paths in database.
+     *
+     * @param PDO $pdo
+     * @param int $eventId
+     * @param string|null $oldEventName Previous event name if renamed in current request
+     * @return array Summary of actions performed
+     */
+    function syncEventTemplateFolder($pdo, $eventId, $oldEventName = null) {
+        $summary = [
+            'event_id' => $eventId,
+            'folders_renamed' => 0,
+            'files_moved' => 0,
+            'roles_updated' => 0,
+            'directories_removed' => 0
+        ];
+
+        // Fetch current event info
+        $stmt = $pdo->prepare("SELECT id, name FROM events WHERE id = ?");
+        $stmt->execute([$eventId]);
+        $event = $stmt->fetch();
+        if (!$event) {
+            return $summary;
+        }
+
+        $expectedFolderName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $event['name']);
+        $tplBaseDir = rtrim(__DIR__ . '/uploads/templates', '/\\') . '/';
+        $expectedDir = $tplBaseDir . $expectedFolderName . '/';
+
+        // 1. If oldEventName is explicitly provided and differs from expected
+        if (!empty($oldEventName)) {
+            $oldFolderName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $oldEventName);
+            if ($oldFolderName !== $expectedFolderName) {
+                $oldDir = $tplBaseDir . $oldFolderName . '/';
+                if (is_dir($oldDir)) {
+                    if (!is_dir($expectedDir)) {
+                        // Direct rename of entire directory
+                        if (@rename(rtrim($oldDir, '/\\'), rtrim($expectedDir, '/\\'))) {
+                            $summary['folders_renamed']++;
+                        }
+                    } else {
+                        // Target already exists, move files over
+                        $items = @scandir($oldDir) ?: [];
+                        foreach ($items as $item) {
+                            if ($item === '.' || $item === '..') continue;
+                            $src = $oldDir . $item;
+                            if (is_file($src)) {
+                                $destFilename = file_exists($expectedDir . $item) ? getUniqueFilename($expectedDir, $item) : $item;
+                                if (@rename($src, $expectedDir . $destFilename)) {
+                                    $summary['files_moved']++;
+                                    // Update DB if filename changed
+                                    if ($destFilename !== $item) {
+                                        $stmtUpd = $pdo->prepare("UPDATE event_roles SET template_file = ? WHERE event_id = ? AND template_file = ?");
+                                        $stmtUpd->execute([$expectedFolderName . '/' . $destFilename, $eventId, $oldFolderName . '/' . $item]);
+                                    }
+                                }
+                            }
+                        }
+                        $remaining = array_diff(@scandir($oldDir) ?: [], ['.', '..']);
+                        if (empty($remaining)) {
+                            if (@rmdir($oldDir)) {
+                                $summary['directories_removed']++;
+                            }
+                        }
+                    }
+                }
+
+                // Update database references for oldFolderName
+                $stmtRolesOld = $pdo->prepare("SELECT id, template_file FROM event_roles WHERE event_id = ?");
+                $stmtRolesOld->execute([$eventId]);
+                $rolesOld = $stmtRolesOld->fetchAll();
+                foreach ($rolesOld as $r) {
+                    if (strpos($r['template_file'], $oldFolderName . '/') === 0) {
+                        $newTf = $expectedFolderName . '/' . substr($r['template_file'], strlen($oldFolderName . '/'));
+                        $stmtUpd = $pdo->prepare("UPDATE event_roles SET template_file = ? WHERE id = ?");
+                        $stmtUpd->execute([$newTf, $r['id']]);
+                        $summary['roles_updated']++;
+                    }
+                }
+            }
+        }
+
+        // 2. Reconcile all roles for this event against expected folder structure
+        $stmtRoles = $pdo->prepare("SELECT id, template_file FROM event_roles WHERE event_id = ?");
+        $stmtRoles->execute([$eventId]);
+        $roles = $stmtRoles->fetchAll();
+
+        foreach ($roles as $role) {
+            $tf = $role['template_file'];
+            if (empty($tf)) continue;
+
+            if (strpos($tf, '/') !== false) {
+                list($currentFolder, $filename) = explode('/', $tf, 2);
+                if ($currentFolder !== $expectedFolderName) {
+                    $srcDir = $tplBaseDir . $currentFolder . '/';
+                    $srcFile = $srcDir . $filename;
+                    $destFile = $expectedDir . $filename;
+
+                    if (!is_dir($expectedDir)) {
+                        @mkdir($expectedDir, 0777, true);
+                    }
+
+                    $finalFilename = $filename;
+                    if (file_exists($srcFile)) {
+                        if (file_exists($destFile)) {
+                            if (md5_file($srcFile) === md5_file($destFile)) {
+                                @unlink($srcFile);
+                            } else {
+                                $finalFilename = getUniqueFilename($expectedDir, $filename);
+                                @rename($srcFile, $expectedDir . $finalFilename);
+                                $summary['files_moved']++;
+                            }
+                        } else {
+                            if (@rename($srcFile, $destFile)) {
+                                $summary['files_moved']++;
+                            }
+                        }
+                    }
+
+                    // Clean up src directory if empty
+                    if (is_dir($srcDir)) {
+                        $rem = array_diff(@scandir($srcDir) ?: [], ['.', '..']);
+                        if (empty($rem)) {
+                            if (@rmdir($srcDir)) {
+                                $summary['directories_removed']++;
+                            }
+                        }
+                    }
+
+                    // Update DB record
+                    $newTemplateFile = $expectedFolderName . '/' . $finalFilename;
+                    if ($newTemplateFile !== $tf) {
+                        $stmtUpd = $pdo->prepare("UPDATE event_roles SET template_file = ? WHERE id = ?");
+                        $stmtUpd->execute([$newTemplateFile, $role['id']]);
+                        $summary['roles_updated']++;
+                    }
+                }
+            }
+        }
+
+        // 3. Known legacy aliases check (e.g. Devs_Dummy_Event -> DCW_Dummy_Testing_Event)
+        $legacyAliases = [
+            'DCW_Dummy_Testing_Event' => ['Devs_Dummy_Event', 'Devs_Dummy', 'DCW_Dummy']
+        ];
+        if (isset($legacyAliases[$expectedFolderName])) {
+            foreach ($legacyAliases[$expectedFolderName] as $legacyFolder) {
+                $legacyDir = $tplBaseDir . $legacyFolder . '/';
+                if (is_dir($legacyDir)) {
+                    if (!is_dir($expectedDir)) {
+                        @mkdir($expectedDir, 0777, true);
+                    }
+                    $items = @scandir($legacyDir) ?: [];
+                    foreach ($items as $item) {
+                        if ($item === '.' || $item === '..') continue;
+                        $src = $legacyDir . $item;
+                        if (is_file($src)) {
+                            $destFilename = file_exists($expectedDir . $item) ? getUniqueFilename($expectedDir, $item) : $item;
+                            if (@rename($src, $expectedDir . $destFilename)) {
+                                $summary['files_moved']++;
+                                // Update any roles still referencing this legacy path
+                                $stmtUpd = $pdo->prepare("UPDATE event_roles SET template_file = ? WHERE event_id = ? AND template_file = ?");
+                                $stmtUpd->execute([$expectedFolderName . '/' . $destFilename, $eventId, $legacyFolder . '/' . $item]);
+                            }
+                        }
+                    }
+                    $rem = array_diff(@scandir($legacyDir) ?: [], ['.', '..']);
+                    if (empty($rem)) {
+                        if (@rmdir($legacyDir)) {
+                            $summary['directories_removed']++;
+                        }
+                    }
+                }
+            }
+        }
+
+        return $summary;
+    }
+}
+
+
 if (!function_exists('sendAvailabilityEmail')) {
     /**
      * Sends an email notification to the participant that their certificate is available to claim.
