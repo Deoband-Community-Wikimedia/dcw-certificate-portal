@@ -421,7 +421,7 @@ if ($basePath === '/') {
     <header class="site-header">
         <div class="header-container">
             <div class="header-brand">
-                <a href="<?= ORG_URL_HOME ?>index.php" class="brand-link">
+                <a href="<?= ORG_URL_HOME ?>" class="brand-link">
     <img src="<?= $basePath ?>/assets/DCW_logo.png" alt="DCW Logo" class="brand-logo">
     <span class="brand-name"><?= __e('site.name') ?></span>
 </a>
