@@ -56,13 +56,10 @@ The portal will automatically inject these URLs into the navigation bar, footer,
 ## 2. Branding (Logo & Name)
 
 ### The Logo
-The portal provides two ways to customize your logo:
-
-1. **Convention (Zero Code):** Replace `assets/logo.png` with your organization's logo file.
-2. **Environment Variable (`.env`):** Set `ORG_LOGO_PATH` in your `.env` file to point to a custom path or external CDN URL:
-   ```env
-   ORG_LOGO_PATH="assets/my_custom_logo.png"
-   ```
+Navigate to the `assets/` directory and replace the default logo:
+1. Delete `assets/DCW_logo.png`.
+2. Upload your own organization's logo.
+3. **Important:** Name your file exactly `DCW_logo.png` so the UI picks it up automatically (or manually update the path in `index.php`, `verify.php`, and `success.php`).
 
 ### The Organization Name & Footer Text
 The organization name and footer description are powered by the translation engine.

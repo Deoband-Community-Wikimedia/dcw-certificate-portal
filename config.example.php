@@ -29,8 +29,7 @@ $user = $_ENV['DB_USER'] ?? 'root';
 $pass = $_ENV['DB_PASS'] ?? '';
 $charset = 'utf8mb4';
 
-// Organization URLs & Assets (Configurable via .env for forks to prevent merge conflicts)
-define('ORG_LOGO_PATH', $_ENV['ORG_LOGO_PATH'] ?? 'assets/logo.png');
+// Organization URLs (Configurable via .env for forks to prevent merge conflicts)
 define('ORG_URL_HOME', $_ENV['ORG_URL_HOME'] ?? 'https://dcwwiki.org/');
 define('ORG_URL_ABOUT', $_ENV['ORG_URL_ABOUT'] ?? 'https://dcwwiki.org/About');
 define('ORG_URL_PROGRAMS', $_ENV['ORG_URL_PROGRAMS'] ?? 'https://dcwwiki.org/Programs');
