@@ -19,7 +19,7 @@ $stmt->execute([$certId]);
 $certData = $stmt->fetch();
 
 if (!$certData) {
-    die("Invalid Certificate ID");
+    die(__('page.download.error.not-found'));
 }
 
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
@@ -46,12 +46,13 @@ if ($basePath === '/') {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= htmlspecialchars(i18n_get_lang(), ENT_QUOTES | ENT_HTML5, 'UTF-8') ?>" dir="<?= i18n_get_dir() ?>">
 <head>
     <link rel="icon" type="image/png" href="<?= $basePath ?>/assets/DCW_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Credential Claimed - <?= htmlspecialchars($certData['event_name']) ?> - Deoband Community Wikimedia</title>
+    <title><?= __e('page.success.title') ?> - <?= htmlspecialchars($certData['event_name']) ?> - <?= __e('site.name') ?></title>
+    <?php i18n_lang_switcher_css(); ?>
     <!-- PDF.js for crisp previews -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <style>
@@ -401,19 +402,20 @@ if ($basePath === '/') {
     <header class="site-header">
         <div class="header-container">
             <div class="header-brand">
-                <a href="<?= $basePath ?>/index.php" class="brand-link">
+                <a href="<?= ORG_URL_HOME ?>index.php" class="brand-link">
     <img src="<?= $basePath ?>/assets/DCW_logo.png" alt="DCW Logo" class="brand-logo">
-    <span class="brand-name">Deoband Community Wikimedia</span>
+    <span class="brand-name"><?= __e('site.name') ?></span>
 </a>
-                <span class="portal-badge">Certificate Portal</span>
+                <span class="portal-badge"><?= __e('site.portal-badge') ?></span>
             </div>
             <nav class="header-nav">
-                <a href="https://dcwwiki.org/About" target="_blank">About</a>
-                <a href="https://dcwwiki.org/Programs" target="_blank">Programs</a>
-                <a href="https://dcwwiki.org/Partnerships" target="_blank">Partnerships</a>
-                <a href="https://dcwwiki.org/News" target="_blank">News</a>
-                <a href="https://dcwwiki.org/Vision_%26_Objectives" target="_blank">Vision</a>
+                <a href="<?= ORG_URL_ABOUT ?>" target="_blank"><?= __e('nav.about') ?></a>
+                <a href="<?= ORG_URL_PROGRAMS ?>" target="_blank"><?= __e('nav.programs') ?></a>
+                <a href="<?= ORG_URL_PARTNERSHIPS ?>" target="_blank"><?= __e('nav.partnerships') ?></a>
+                <a href="<?= ORG_URL_NEWS ?>" target="_blank"><?= __e('nav.news') ?></a>
+                <a href="<?= ORG_URL_VISION ?>" target="_blank"><?= __e('nav.vision') ?></a>
             </nav>
+            <?php i18n_lang_switcher(); ?>
         </div>
     </header>
 
@@ -425,31 +427,31 @@ if ($basePath === '/') {
         </div>
 
         <div class="container">
-            <h1>Credential Claimed</h1>
-            <p>Congratulations, <strong><?= htmlspecialchars($certData['full_name']) ?></strong>! Your official certificate for <strong><?= htmlspecialchars($certData['event_name']) ?></strong> has been successfully generated and permanently recorded in our system.</p>
+            <h1><?= __e('page.success.title') ?></h1>
+            <p><?= __e('page.success.subtitle') ?></p>
 
            <a href="download.php?id=<?= htmlspecialchars($certId) ?>" id="downloadBtn" class="btn-primary">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                Download PDF
+                <?= __e('page.success.download-btn') ?>
             </a>
 
             <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
 
-            <h3 style="margin-top: 0; color: #0f172a; font-size: 18px; font-weight: 700;">Add to your Profile</h3>
-            <p style="font-size: 14px; margin-bottom: 24px; text-align: left;">Showcase your achievement to your professional network. We've pre-filled all the information for you!</p>
+            <h3 style="margin-top: 0; color: #0f172a; font-size: 18px; font-weight: 700;"><?= __e('page.success.add-profile') ?></h3>
+            <p style="font-size: 14px; margin-bottom: 24px; text-align: left;"><?= __e('page.success.add-profile-desc') ?></p>
 
             <a href="<?= $linkedInAddUrl ?>" target="_blank" class="btn-linkedin">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h4.969v-8.399c0-4.67 6.029-5.052 6.029 0v8.399h4.988v-10.131c0-7.88-8.922-7.593-11.018-3.714v-2.155z"/></svg>
-                Add to LinkedIn Profile
+                <?= __e('page.success.add-linkedin') ?>
             </a>
 
             <a href="<?= $linkedInShareDesktop ?>" target="_blank" class="btn-linkedin-outline" onclick="return handleLinkedInShare(event, '<?= $linkedInShareMobile ?>');">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h4.969v-8.399c0-4.67 6.029-5.052 6.029 0v8.399h4.988v-10.131c0-7.88-8.922-7.593-11.018-3.714v-2.155z"/></svg>
-                Post on LinkedIn
+                <?= __e('page.success.post-linkedin') ?>
             </a>
 
             <div class="form-group" style="margin-top: 20px;">
-                <label>Credential ID</label>
+                <label><?= __e('page.verify.label.cert-id') ?></label>
                 <div class="input-group">
                     <input type="text" id="certId" value="<?= htmlspecialchars($certId) ?>" readonly>
                     <button type="button" onclick="copyText('certId', this)" title="Copy Credential ID" style="display:flex; align-items:center; justify-content:center; padding: 0 15px;">
@@ -459,7 +461,7 @@ if ($basePath === '/') {
             </div>
 
             <div class="form-group">
-                <label>Verification URL</label>
+                <label><?= __e('page.success.verify-link') ?></label>
                 <div class="input-group">
                     <input type="text" id="verifyUrl" value="<?= htmlspecialchars($verifyUrl) ?>" readonly>
                     <button type="button" onclick="copyText('verifyUrl', this)" title="Copy Verification URL" style="display:flex; align-items:center; justify-content:center; padding: 0 15px;">
@@ -544,40 +546,43 @@ if ($basePath === '/') {
             <div class="footer-brand">
                 <img src="<?= $basePath ?>/assets/DCW_logo.png" alt="DCW Logo" class="footer-logo">
                 <div class="footer-blurb">
-                    Deoband Community Wikimedia is an independent affiliate of the Wikimedia Foundation with a focus on global Muslim academia and scholarship. All website content is released under the <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank">Creative Commons Attribution-ShareAlike License</a> unless otherwise stated.
+                    <?= __e('footer.blurb') ?>
                 </div>
             </div>
             <div class="footer-middle">
                 <div class="footer-socials">
-                    <!-- Admins do add suitable icons and links -->
-                    <a href="https://wikis.world/@dcwwiki" target="_blank" title="Follow us on Mastodon">
+                    <a href="<?= ORG_URL_MASTODON ?>" target="_blank" title="Follow us on Mastodon">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M23.268 5.313c-.35-2.578-2.617-4.61-5.304-4.96C14.94.003 12 .003 12 .003s-2.94 0-5.964.35C3.352.703 1.085 2.735.736 5.313.382 7.912.35 10.825.35 12c0 1.175.032 4.088.386 6.687.35 2.578 2.617 4.61 5.304 4.96 3.023.35 5.96.35 5.96.35s2.937 0 5.96-.35c2.687-.35 4.954-2.735 5.304-4.96.354-2.6.386-5.512.386-6.687 0-1.175-.032-4.088-.386-6.687zM17.42 16.295h-2.316v-6.398c0-1.298-.553-1.956-1.656-1.956-1.22 0-1.83.79-1.83 2.37v3.473H9.3v-3.473c0-1.58-.61-2.37-1.83-2.37-1.103 0-1.656.658-1.656 1.956v6.398H3.502v-6.398c0-2.368 1.517-3.565 3.966-3.565 1.442 0 2.54.55 3.25 1.626L12 9.548l1.282-1.616c.71-1.077 1.808-1.626 3.25-1.626 2.45 0 3.966 1.197 3.966 3.565v6.398z"/></svg>
                     </a>
-                    <a href="https://www.facebook.com/dcwwiki" target="_blank" title="Follow us on Facebook">
+                    <a href="<?= ORG_URL_FACEBOOK ?>" target="_blank" title="Follow us on Facebook">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z"/></svg>
                     </a>
-                    <a href="https://www.instagram.com/dcwwiki/" target="_blank" title="Follow us on Instagram">
+                    <a href="<?= ORG_URL_INSTAGRAM ?>" target="_blank" title="Follow us on Instagram">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
                     </a>
-                    <a href="https://www.linkedin.com/company/deoband-community-wikimedia" target="_blank" title="Follow us on LinkedIn">
+                    <a href="<?= ORG_URL_LINKEDIN ?>" target="_blank" title="Follow us on LinkedIn">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.779-1.75-1.75s.784-1.75 1.75-1.75 1.75.779 1.75 1.75-.784 1.75-1.75 1.75zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
                     </a>
-                    <a href="https://twitter.com/dcwwiki" target="_blank" title="Follow us on X">
+                    <a href="<?= ORG_URL_TWITTER ?>" target="_blank" title="Follow us on X">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
                     </a>
-                    <a href="https://www.youtube.com/@dcwwiki" target="_blank" title="Follow us on YouTube">
+                    <a href="<?= ORG_URL_YOUTUBE ?>" target="_blank" title="Follow us on YouTube">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M23.498 6.163a3.003 3.003 0 00-2.11-2.11C19.517 3.545 12 3.545 12 3.545s-7.516 0-9.387.507a3.003 3.003 0 00-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 002.11 2.11c1.871.507 9.387.507 9.387.507s7.517 0 9.387-.507a3.003 3.003 0 002.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
                     </a>
                 </div>
                 <div class="footer-links">
-                    <a href="https://dcwwiki.org/Subscribe" target="_blank">Subscribe</a>
-                    <a href="https://dcwwiki.org/Membership" target="_blank">Become a member</a>
-                    <a href="https://dcwwiki.org/Friendly_space_policy" target="_blank">Friendly space policy</a>
-                    <a href="https://dcwwiki.org/Contact" target="_blank">Contact</a>
+                    <a href="<?= ORG_URL_SUBSCRIBE ?>" target="_blank"><?= __e('footer.link.subscribe') ?></a>
+                    <a href="<?= ORG_URL_MEMBERSHIP ?>" target="_blank"><?= __e('footer.link.membership') ?></a>
+                    <a href="<?= ORG_URL_POLICY ?>" target="_blank"><?= __e('footer.link.policy') ?></a>
+                    <a href="<?= ORG_URL_CONTACT ?>" target="_blank"><?= __e('footer.link.contact') ?></a>
                 </div>
             </div>
             <div class="footer-bottom">
-                &copy; <?= date('Y') ?> <a href="https://dcwwiki.org/" target="_blank">Deoband Community Wikimedia</a>. All Rights Reserved.
+                &copy; <?= date('Y') ?> <a href="<?= ORG_URL_HOME ?>" target="_blank"><?= __e('site.name') ?></a>. All Rights Reserved.<br>
+                <!-- Core Engine Built by Zaidusyy and DCW Volunteers -->
+                <span style="font-size: 12px; opacity: 0.7; display: block; margin-top: 8px;">
+                    Powered by <a href="https://github.com/Deoband-Community-Wikimedia/dcw-certificate-portal" target="_blank" title="Built by Zaidusyy and DCW Volunteers" style="color: inherit; text-decoration: underline;">DCW Certificate Engine</a>
+                </span>
             </div>
         </div>
     </footer>
