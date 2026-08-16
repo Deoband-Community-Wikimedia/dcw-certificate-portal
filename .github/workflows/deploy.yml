@@ -46,7 +46,7 @@ jobs:
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         protocol: ftps       # Enforce secure TLS encryption
-        server-dir: domains/dcwwiki.org/public_html/certificates/ # Target specific certificates subdirectory
+        server-dir: ./ # FTP login is already locked to /public_html/certificates/
         timeout: 300000 # Increased to 5 minutes to prevent Hostinger timeout errors
         
         # Protect production files from being overwritten or deleted!
