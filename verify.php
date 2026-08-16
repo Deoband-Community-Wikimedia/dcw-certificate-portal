@@ -553,7 +553,7 @@ if (!$notFound) {
         <div class="header-container">
             <div class="header-brand">
                 <a href="<?= ORG_URL_HOME ?>" class="brand-link">
-                    <img src="<?= $basePath ?>/assets/DCW_logo.png" alt="DCW Logo" class="brand-logo">
+                    <img src="<?= $basePath ?>/<?= ORG_LOGO_PATH ?>" alt="Logo" class="brand-logo">
                     <span class="brand-name"><?= __e('site.name') ?></span>
                 </a>
                 <span class="portal-badge"><?= __e('site.portal-badge') ?></span>
@@ -707,7 +707,7 @@ if (!$notFound) {
     <footer class="site-footer">
         <div class="footer-container">
             <div class="footer-brand">
-                <img src="<?= $basePath ?>/assets/DCW_logo.png" alt="DCW Logo" class="footer-logo">
+                <img src="<?= $basePath ?>/<?= ORG_LOGO_PATH ?>" alt="Logo" class="footer-logo">
                 <div class="footer-blurb">
                     <?= __e('footer.blurb') ?>
                 </div>
