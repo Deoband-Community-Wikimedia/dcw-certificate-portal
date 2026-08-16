@@ -16,6 +16,15 @@
 - **Public Verification Portal:** Includes a public-facing validation endpoint. Anyone can scan a certificate's QR code to instantly verify its authenticity against the central database.
 - **1-Click LinkedIn Integration:** Generated certificates provide participants with a dynamic "Add to LinkedIn Profile" button that securely pre-fills their credential data.
 - **Enterprise-Grade Security:** Hardened against SQL Injection (PDO prepared statements), CSRF attacks (strict token verification on state-changing endpoints), Session Fixation, and Brute-Force authentication attempts (server-side delays).
+
+---
+
+## 🌍 Adapting for Your Community (White-Labeling)
+
+This portal is built to be instantly adaptable by other Wikimedia chapters, educational institutions, or organizations. We have decoupled all organization-specific assets so you can fork and use this software without dealing with messy merge conflicts.
+
+- **[How to White-Label for your Organization](WHITE_LABELING.md)**: A simple 4-step guide on configuring your custom URLs, changing the logo, and setting the default language.
+- **[Translation & i18n Guide](i18n/README.md)**: A complete guide on how to add a new language bundle to the portal (fully compatible with Translatewiki.net).
 ---
 
 ## Architecture & Tech Stack

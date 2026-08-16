@@ -7,7 +7,7 @@ error_reporting(E_ALL);
 define('K_PATH_FONTS', __DIR__ . '/vendor/tecnickcom/tcpdf/fonts/');
 
 if (!isset($_GET['id'])) {
-    die("Certificate ID is required.");
+    die(__('page.download.error.invalid-id'));
 }
 
 $certId = trim($_GET['id']);
@@ -32,7 +32,7 @@ $stmt->execute([$certId]);
 $certData = $stmt->fetch();
 
 if (!$certData) {
-    die("Invalid Certificate ID.");
+    die(__('page.download.error.not-found'));
 }
 
 $fullName = $certData['full_name'];
@@ -64,7 +64,7 @@ $pdf->setCellPaddings(0, 0, 0, 0);
 // Load Template to determine size
 $templatePath = __DIR__ . '/uploads/templates/' . $certData['template_file'];
 if (!file_exists($templatePath)) {
-    die("Template file missing.");
+    die(__('page.download.error.no-template'));
 }
 $pdf->setSourceFile($templatePath);
 $tplIdx = $pdf->importPage(1);
