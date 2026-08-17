@@ -3,8 +3,13 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// Define explicit font path to avoid Linux path resolution bugs
-define('K_PATH_FONTS', __DIR__ . '/vendor/tecnickcom/tcpdf/fonts/');
+if (!defined('K_PATH_FONTS')) {
+    define('K_PATH_FONTS', __DIR__ . '/vendor/tecnickcom/tcpdf/fonts/');
+}
+
+if (defined('TEST_RUNNING')) {
+    return;
+}
 
 if (!isset($_GET['id'])) {
     die(__('page.download.error.invalid-id'));
@@ -148,16 +153,28 @@ function renderElement($pdf, $settings, $text, $linkUrl = '') {
     }
     $pdf->SetTextColor($r, $g, $b);
 
-    $posX = $settings['pos_x'];
-    $posY = $settings['pos_y'];
+    $posX = (float)$settings['pos_x'];
+    $posY = (float)$settings['pos_y'];
     $align = $settings['text_align'] ?? 'L';
     $boxWidth = isset($settings['box_width']) ? (float)$settings['box_width'] : 0;
 
     if ($boxWidth > 0) {
+        // Measure string width at initial font size
+        $strWidth = $pdf->GetStringWidth($text);
+
+        // Smart Auto-Scaling: If string width exceeds box width, dynamically scale font size down
+        if ($strWidth > $boxWidth && $boxWidth > 0) {
+            $minFontSize = max(7.5, (float)($settings['min_font_size'] ?? 8));
+            $scaledFontSize = floor(($fontSize * ($boxWidth / $strWidth) * 0.97) * 10) / 10;
+            $effectiveFontSize = max($minFontSize, $scaledFontSize);
+
+            $pdf->SetFont($fontName, '', $effectiveFontSize);
+        }
+
         $pdf->SetXY($posX, $posY);
         $pdf->MultiCell($boxWidth, 0, $text, 0, $align, false, 1);
         if ($linkUrl !== '') {
-            $pdf->Link($posX, $posY, $boxWidth, $pdf->GetY() - $posY, $linkUrl);
+            $pdf->Link($posX, $posY, $boxWidth, max(5, $pdf->GetY() - $posY), $linkUrl);
         }
     } else {
         $strWidth = $pdf->GetStringWidth($text);

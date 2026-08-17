@@ -194,12 +194,24 @@ function renderElement($pdf, $settings, $text) {
     }
     $pdf->SetTextColor($r, $g, $b);
 
-    $posX = $settings['pos_x'];
-    $posY = $settings['pos_y'];
+    $posX = (float)$settings['pos_x'];
+    $posY = (float)$settings['pos_y'];
     $align = $settings['text_align'] ?? 'L';
     $boxWidth = isset($settings['box_width']) ? (float)$settings['box_width'] : 0;
 
     if ($boxWidth > 0) {
+        // Measure string width at initial font size
+        $strWidth = $pdf->GetStringWidth($text);
+
+        // Smart Auto-Scaling: If string width exceeds box width, dynamically scale font size down
+        if ($strWidth > $boxWidth && $boxWidth > 0) {
+            $minFontSize = max(7.5, (float)($settings['min_font_size'] ?? 8));
+            $scaledFontSize = floor(($fontSize * ($boxWidth / $strWidth) * 0.97) * 10) / 10;
+            $effectiveFontSize = max($minFontSize, $scaledFontSize);
+
+            $pdf->SetFont($fontName, '', $effectiveFontSize);
+        }
+
         $pdf->SetXY($posX, $posY);
         $pdf->MultiCell($boxWidth, 0, $text, 0, $align, false, 1);
     } else {
