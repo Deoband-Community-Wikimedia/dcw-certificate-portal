@@ -17,6 +17,7 @@ $offset = ($page - 1) * $limit;
 // Filters
 $search = $_GET['search'] ?? '';
 $statusFilter = $_GET['status'] ?? '';
+$triggerFilter = $_GET['trigger_type'] ?? '';
 $eventFilter = $_GET['event_id'] ?? '';
 $startDate = $_GET['start_date'] ?? '';
 $endDate = $_GET['end_date'] ?? '';
@@ -32,6 +33,10 @@ if ($search !== '') {
 if ($statusFilter !== '') {
     $whereClauses[] = "el.status = ?";
     $params[] = $statusFilter;
+}
+if ($triggerFilter !== '') {
+    $whereClauses[] = "el.trigger_type = ?";
+    $params[] = $triggerFilter;
 }
 if ($eventFilter !== '') {
     $whereClauses[] = "ep.event_id = ?";
@@ -158,6 +163,14 @@ $searchParam = $queryString ? '&' . $queryString : '';
             </select>
         </div>
         <div class="filter-group">
+            <label>Trigger</label>
+            <select name="trigger_type">
+                <option value="">All Triggers</option>
+                <option value="notification" <?= $triggerFilter === 'notification' ? 'selected' : '' ?>>Admin Notification</option>
+                <option value="download" <?= $triggerFilter === 'download' ? 'selected' : '' ?>>Participant Download</option>
+            </select>
+        </div>
+        <div class="filter-group">
             <label>Start Date</label>
             <input type="date" name="start_date" value="<?= htmlspecialchars($startDate) ?>">
         </div>
@@ -181,6 +194,7 @@ $searchParam = $queryString ? '&' . $queryString : '';
                         <th>Event Name</th>
                         <th>Recipient Email</th>
                         <th>Status</th>
+                        <th>Trigger</th>
                         <th>Error Message</th>
                         <th>Timestamp</th>
                     </tr>
@@ -197,6 +211,13 @@ $searchParam = $queryString ? '&' . $queryString : '';
                                     <span style="background-color: #d1fae5; color: #065f46; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">Success</span>
                                 <?php else: ?>
                                     <span style="background-color: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">Failed</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if ($log['trigger_type'] === 'download'): ?>
+                                    <span style="background-color: #e0f2fe; color: #075985; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">Download</span>
+                                <?php else: ?>
+                                    <span style="background-color: #ede9fe; color: #5b21b6; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">Notification</span>
                                 <?php endif; ?>
                             </td>
                             <td style="color: #64748b; font-size: 13px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?= htmlspecialchars($log['error_message']) ?>">

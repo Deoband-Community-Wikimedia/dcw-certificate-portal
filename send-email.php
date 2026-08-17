@@ -293,14 +293,14 @@ try {
     $mail->send();
     
     // Log success
-    $stmtLog = $pdo->prepare("INSERT INTO email_logs (certificate_id, recipient_email, status, error_message) VALUES (?, ?, 'Success', NULL)");
+    $stmtLog = $pdo->prepare("INSERT INTO email_logs (certificate_id, recipient_email, status, trigger_type, error_message) VALUES (?, ?, 'Success', 'download', NULL)");
     $stmtLog->execute([$certId, $recipientEmail]);
 
     echo json_encode(['success' => true, 'message' => 'Notification email fired successfully.']);
 } catch (Exception $e) {
     // Log failure
     $errorMsg = $mail->ErrorInfo;
-    $stmtLog = $pdo->prepare("INSERT INTO email_logs (certificate_id, recipient_email, status, error_message) VALUES (?, ?, 'Failed', ?)");
+    $stmtLog = $pdo->prepare("INSERT INTO email_logs (certificate_id, recipient_email, status, trigger_type, error_message) VALUES (?, ?, 'Failed', 'download', ?)");
     $stmtLog->execute([$certId, $recipientEmail, $errorMsg]);
 
     echo json_encode(['success' => false, 'message' => "Mail dispatch failed: {$errorMsg}"]);
