@@ -1357,23 +1357,26 @@ if (is_dir($fontDir)) {
                 // Base font size in canvas pixels
                 let baseFontSizePx = (s.font_size / docHeightPt) * canvas.offsetHeight;
 
-                // Auto-scale font size on canvas if text width exceeds bounding box
-                let textContent = el.innerText || '';
-                let tempSpan = document.createElement('span');
-                tempSpan.style.visibility = 'hidden';
-                tempSpan.style.position = 'absolute';
-                tempSpan.style.fontFamily = el.style.fontFamily || 'sans-serif';
-                tempSpan.style.fontSize = baseFontSizePx + 'px';
-                tempSpan.style.whiteSpace = 'nowrap';
-                tempSpan.innerText = textContent;
-                document.body.appendChild(tempSpan);
-                let measuredWidth = tempSpan.offsetWidth;
-                document.body.removeChild(tempSpan);
+                if (s.wrap_mode === 'shrink') {
+                    let textContent = el.innerText || '';
+                    let tempSpan = document.createElement('span');
+                    tempSpan.style.visibility = 'hidden';
+                    tempSpan.style.position = 'absolute';
+                    tempSpan.style.fontFamily = el.style.fontFamily || 'sans-serif';
+                    tempSpan.style.fontSize = baseFontSizePx + 'px';
+                    tempSpan.style.whiteSpace = 'nowrap';
+                    tempSpan.innerText = textContent;
+                    document.body.appendChild(tempSpan);
+                    let measuredWidth = tempSpan.offsetWidth;
+                    document.body.removeChild(tempSpan);
 
-                if (measuredWidth > pxWidth && pxWidth > 0) {
-                    let scale = (pxWidth / measuredWidth) * 0.97;
-                    let effectiveFontSizePx = Math.max(baseFontSizePx * 0.5, baseFontSizePx * scale);
-                    el.style.fontSize = effectiveFontSizePx + 'px';
+                    if (measuredWidth > pxWidth && pxWidth > 0) {
+                        let scale = (pxWidth / measuredWidth) * 0.97;
+                        let effectiveFontSizePx = Math.max(baseFontSizePx * 0.5, baseFontSizePx * scale);
+                        el.style.fontSize = effectiveFontSizePx + 'px';
+                    } else {
+                        el.style.fontSize = baseFontSizePx + 'px';
+                    }
                 } else {
                     el.style.fontSize = baseFontSizePx + 'px';
                 }

@@ -198,35 +198,20 @@ function renderElement($pdf, $settings, $text) {
     $posY = (float)$settings['pos_y'];
     $align = $settings['text_align'] ?? 'L';
     $boxWidth = isset($settings['box_width']) ? (float)$settings['box_width'] : 0;
-    $wrapMode = $settings['wrap_mode'] ?? 'auto_next_line';
+    $wrapMode = $settings['wrap_mode'] ?? 'wrap_words';
 
     if ($boxWidth > 0) {
-        $strWidth = $pdf->GetStringWidth($text);
-
-        if ($wrapMode === 'auto_next_line' && $strWidth > $boxWidth) {
-            // Move entire custom text box to next line to prevent left-text overlap
-            $lineHeightMM = max(6, $fontSize * 0.45);
-            $posY += $lineHeightMM;
-
-            if ($strWidth > $boxWidth * 1.3) {
+        if ($wrapMode === 'shrink') {
+            $strWidth = $pdf->GetStringWidth($text);
+            if ($strWidth > $boxWidth) {
                 $minFontSize = max(7.5, (float)($settings['min_font_size'] ?? 8));
                 $scaledFontSize = floor(($fontSize * ($boxWidth / $strWidth) * 0.97) * 10) / 10;
                 $pdf->SetFont($fontName, '', max($minFontSize, $scaledFontSize));
             }
-
-            $pdf->SetXY($posX, $posY);
-            $pdf->MultiCell($boxWidth, 0, $text, 0, $align, false, 1);
-        } elseif ($wrapMode === 'shrink' && $strWidth > $boxWidth) {
-            $minFontSize = max(7.5, (float)($settings['min_font_size'] ?? 8));
-            $scaledFontSize = floor(($fontSize * ($boxWidth / $strWidth) * 0.97) * 10) / 10;
-            $pdf->SetFont($fontName, '', max($minFontSize, $scaledFontSize));
-
-            $pdf->SetXY($posX, $posY);
-            $pdf->MultiCell($boxWidth, 0, $text, 0, $align, false, 1);
-        } else {
-            $pdf->SetXY($posX, $posY);
-            $pdf->MultiCell($boxWidth, 0, $text, 0, $align, false, 1);
         }
+
+        $pdf->SetXY($posX, $posY);
+        $pdf->MultiCell($boxWidth, 0, $text, 0, $align, false, 1);
     } else {
         $strWidth = $pdf->GetStringWidth($text);
         if ($align === 'C') {

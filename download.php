@@ -157,39 +157,21 @@ function renderElement($pdf, $settings, $text, $linkUrl = '') {
     $posY = (float)$settings['pos_y'];
     $align = $settings['text_align'] ?? 'L';
     $boxWidth = isset($settings['box_width']) ? (float)$settings['box_width'] : 0;
-    $wrapMode = $settings['wrap_mode'] ?? 'auto_next_line';
+    $wrapMode = $settings['wrap_mode'] ?? 'wrap_words';
 
     if ($boxWidth > 0) {
-        $strWidth = $pdf->GetStringWidth($text);
-
-        if ($wrapMode === 'auto_next_line' && $strWidth > $boxWidth) {
-            // Move entire custom text box to next line to prevent left-text overlap
-            $lineHeightMM = max(6, $fontSize * 0.45);
-            $posY += $lineHeightMM;
-            
-            // Re-check if font scaling is also needed if string is exceptionally long
-            if ($strWidth > $boxWidth * 1.3) {
+        // Only scale font size down if explicitly set to 'shrink' mode
+        if ($wrapMode === 'shrink') {
+            $strWidth = $pdf->GetStringWidth($text);
+            if ($strWidth > $boxWidth) {
                 $minFontSize = max(7.5, (float)($settings['min_font_size'] ?? 8));
                 $scaledFontSize = floor(($fontSize * ($boxWidth / $strWidth) * 0.97) * 10) / 10;
                 $pdf->SetFont($fontName, '', max($minFontSize, $scaledFontSize));
             }
-
-            $pdf->SetXY($posX, $posY);
-            $pdf->MultiCell($boxWidth, 0, $text, 0, $align, false, 1);
-        } elseif ($wrapMode === 'shrink' && $strWidth > $boxWidth) {
-            // Shrink font size to stay on single line
-            $minFontSize = max(7.5, (float)($settings['min_font_size'] ?? 8));
-            $scaledFontSize = floor(($fontSize * ($boxWidth / $strWidth) * 0.97) * 10) / 10;
-            $pdf->SetFont($fontName, '', max($minFontSize, $scaledFontSize));
-
-            $pdf->SetXY($posX, $posY);
-            $pdf->MultiCell($boxWidth, 0, $text, 0, $align, false, 1);
-        } else {
-            // Standard placement: renders cleanly without unwarranted space or left overlap
-            $pdf->SetXY($posX, $posY);
-            $pdf->MultiCell($boxWidth, 0, $text, 0, $align, false, 1);
         }
 
+        $pdf->SetXY($posX, $posY);
+        $pdf->MultiCell($boxWidth, 0, $text, 0, $align, false, 1);
         if ($linkUrl !== '') {
             $pdf->Link($posX, $posY, $boxWidth, max(5, $pdf->GetY() - $posY), $linkUrl);
         }
