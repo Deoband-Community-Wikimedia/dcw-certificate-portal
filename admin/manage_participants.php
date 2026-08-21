@@ -49,24 +49,24 @@ $certPrefix = $event['cert_prefix'] ?? 'DCW';
 if (isset($_POST['action']) && $_POST['action'] === 'delete_participant') {
     $csrf = $_POST['csrf_token'] ?? '';
     verify_csrf_token($csrf);
-    
+
     $passcode = trim($_POST['super_admin_passcode'] ?? '');
     if ($passcode !== SUPER_ADMIN_PASSCODE) {
-        $message = "Security Error: Invalid Super Admin Passcode.";
+        $message = __('admin.common.security-error-invalid-passcode');
         $messageType = 'error';
     } else {
         $delPid = $_POST['delete_pid'];
-        
+
         // Log before delete
         $stmtParticipant = $pdo->prepare("SELECT full_name FROM participants WHERE id = ?");
         $stmtParticipant->execute([$delPid]);
         $deletedParticipantName = $stmtParticipant->fetchColumn() ?: 'Unknown';
-        
+
         $stmtDel = $pdo->prepare("DELETE FROM event_participants WHERE participant_id = ? AND event_id = ?");
         $stmtDel->execute([$delPid, $eventId]);
-        
+
         log_audit_action($pdo, 'Removed Participant', "Participant: {$deletedParticipantName} from Event ID: {$eventId}");
-        
+
         header("Location: manage_participants.php?id=" . $eventId . "&msg=deleted");
         exit;
     }
@@ -88,13 +88,21 @@ if (isset($_GET['export'])) {
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename=participants_event_' . $eventId . '.csv');
     $output = fopen('php://output', 'w');
-    fputcsv($output, array('Full Name', 'Email', 'Role', 'Certificate ID', 'Added On', 'Custom Text', 'Certificate Issue Date'));
+    fputcsv($output, array(
+        __('admin.manage-participants.csv.full-name'),
+        __('admin.manage-participants.table.email'),
+        __('admin.manage-participants.table.role'),
+        __('admin.manage-participants.table.cert-id'),
+        __('admin.manage-participants.table.added-on'),
+        __('admin.manage-participants.table.custom-text'),
+        __('admin.manage-participants.csv.issue-date'),
+    ));
     foreach ($exportData as $row) {
         fputcsv($output, array(
-            $row['full_name'], 
-            $row['email'], 
-            $row['role_name'] ?? 'No Role', 
-            $row['certificate_id'] ?? 'Pending', 
+            $row['full_name'],
+            $row['email'],
+            $row['role_name'] ?? __('admin.manage-participants.no-role-badge'),
+            $row['certificate_id'] ?? __('admin.manage-participants.csv.pending'),
             $row['created_at'],
             $row['custom_certificate_text'] ?? '',
             $row['issue_date'] ?? ''
@@ -116,32 +124,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $roleId = $_POST['role_id'] ?? null;
         $customText = trim($_POST['single_custom_text'] ?? '');
         $issueDateInput = trim($_POST['single_issue_date'] ?? '');
-        
+
         if ($fullName && filter_var($email, FILTER_VALIDATE_EMAIL) && $roleId) {
             // 1. Insert into participants
             $stmtInsertParticipant = $pdo->prepare("INSERT INTO participants (full_name, email) VALUES (?, ?) ON DUPLICATE KEY UPDATE full_name=VALUES(full_name)");
             $stmtInsertParticipant->execute([$fullName, $email]);
-            
+
             // 2. Get participant ID
             $stmtGetParticipant = $pdo->prepare("SELECT id FROM participants WHERE email = ?");
             $stmtGetParticipant->execute([$email]);
             $pid = $stmtGetParticipant->fetchColumn();
-            
+
             // 3. Link to event
             $certId = generateCertId($certPrefix);
             $stmtLinkEvent = $pdo->prepare("INSERT IGNORE INTO event_participants (participant_id, event_id, role_id, certificate_id, custom_certificate_text, issue_date) VALUES (?, ?, ?, ?, ?, ?)");
             $stmtLinkEvent->execute([$pid, $eventId, $roleId, $certId, $customText ?: null, $issueDateInput ?: null]);
-            
+
             if ($stmtLinkEvent->rowCount() > 0) {
-                $message = "Participant added successfully.";
+                $message = __('admin.manage-participants.success.added');
                 $messageType = 'success';
                 $newCertIds[] = $certId;
             } else {
-                $message = "Participant is already registered for this event.";
+                $message = __('admin.manage-participants.error.already-registered');
                 $messageType = 'error';
             }
         } else {
-            $message = "Invalid name, email, or missing role.";
+            $message = __('admin.manage-participants.error.invalid-add');
             $messageType = 'error';
         }
     } elseif (isset($_POST['action']) && $_POST['action'] === 'edit_single') {
@@ -151,30 +159,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $roleId = $_POST['role_id'] ?? null;
         $customText = trim($_POST['single_custom_text'] ?? '');
         $issueDateInput = trim($_POST['single_issue_date'] ?? '');
-        
+
         if ($fullName && filter_var($email, FILTER_VALIDATE_EMAIL) && $roleId) {
             $stmtUpdate = $pdo->prepare("UPDATE participants SET full_name = ?, email = ? WHERE id = ?");
             try {
                 $stmtUpdate->execute([$fullName, $email, $editPid]);
-                
+
                 // Update role, custom text, and issue date in event_participants
                 $stmtUpdateRole = $pdo->prepare("UPDATE event_participants SET role_id = ?, custom_certificate_text = ?, issue_date = ? WHERE participant_id = ? AND event_id = ?");
                 $stmtUpdateRole->execute([$roleId, $customText ?: null, $issueDateInput ?: null, $editPid, $eventId]);
 
-                $message = "Participant updated successfully.";
+                $message = __('admin.manage-participants.success.updated');
                 $messageType = 'success';
             } catch (PDOException $e) {
-                $message = "Error: Email might already exist for another participant.";
+                $message = __('admin.manage-participants.error.email-exists');
                 $messageType = 'error';
             }
         } else {
-            $message = "Invalid name, email, or role.";
+            $message = __('admin.manage-participants.error.invalid-edit');
             $messageType = 'error';
         }
     } elseif (isset($_FILES['csv_file'])) {
         if ($_FILES['csv_file']['error'] === UPLOAD_ERR_OK) {
             $csvMimes = ['text/x-comma-separated-values', 'text/comma-separated-values', 'application/octet-stream', 'application/vnd.ms-excel', 'application/x-csv', 'text/x-csv', 'text/csv', 'application/csv', 'application/excel', 'application/vnd.msexcel', 'text/plain'];
-            
+
             $fileName = $_FILES['csv_file']['name'];
             $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
@@ -183,13 +191,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($handle !== FALSE) {
                     // Skip header row
                     fgetcsv($handle);
-                    
+
                     $added = 0;
                     $skipped = 0;
                     $errors = 0;
 
                     $pdo->beginTransaction();
-                    
+
                     // Prepared statements
                     $stmtInsertParticipant = $pdo->prepare("INSERT INTO participants (full_name, email) VALUES (?, ?) ON DUPLICATE KEY UPDATE full_name=VALUES(full_name)");
                     $stmtGetParticipant = $pdo->prepare("SELECT id FROM participants WHERE email = ?");
@@ -206,15 +214,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if ($fullName && filter_var($email, FILTER_VALIDATE_EMAIL) && $roleId) {
                             // 1. Insert into participants
                             $stmtInsertParticipant->execute([$fullName, $email]);
-                            
+
                             // 2. Get participant ID
                             $stmtGetParticipant->execute([$email]);
                             $pid = $stmtGetParticipant->fetchColumn();
-                            
+
                             // 3. Link to event
                             $certId = generateCertId($certPrefix);
                             $stmtLinkEvent->execute([$pid, $eventId, $roleId, $certId, $customText ?: null]);
-                            
+
                             if ($stmtLinkEvent->rowCount() > 0) {
                                 $added++;
                                 $newCertIds[] = $certId;
@@ -228,11 +236,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     fclose($handle);
                     $pdo->commit();
 
-                    $message = "CSV Processed. $added added. $skipped duplicates. $errors errors/missing roles.";
+                    $message = __('admin.manage-participants.success.csv-processed', [
+                        'added' => $added,
+                        'skipped' => $skipped,
+                        'errors' => $errors,
+                    ]);
                     $messageType = 'success';
                 }
             } else {
-                $message = "Please upload a valid CSV file.";
+                $message = __('admin.manage-participants.error.invalid-csv-file');
                 $messageType = 'error';
             }
         }
@@ -257,7 +269,7 @@ $page = isset($_GET['page']) && (int)$_GET['page'] > 0 ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $limit;
 
 $stmtCount = $pdo->prepare("
-    SELECT COUNT(*) 
+    SELECT COUNT(*)
     FROM participants p
     JOIN event_participants ep ON p.id = ep.participant_id
     WHERE ep.event_id = ? $searchQuery
@@ -285,7 +297,7 @@ $participants = $stmt->fetchAll();
 <head>
     <link rel="icon" type="image/png" href="../assets/DCW_logo.png">
     <meta charset="UTF-8">
-    <title>Manage Participants - <?= htmlspecialchars($event['name']) ?></title>
+    <title><?= __('admin.manage-participants.page-title', ['event' => htmlspecialchars($event['name'])]) ?></title>
     <link rel="stylesheet" href="style.css?v=<?= time() ?>">
 </head>
 <body>
@@ -293,18 +305,18 @@ $participants = $stmt->fetchAll();
 <div class="navbar">
     <div style="display: flex; align-items: center; gap: 15px;">
         <img src="../assets/DCW_logo.png" alt="DCW Logo" width="35" height="35" decoding="async" style="height: 35px; width: 35px; background: white; padding: 2px; border-radius: 50%;">
-        <span style="font-size: 18px; font-weight: bold; letter-spacing: 0.5px;">Admin Panel - Participants (<?= htmlspecialchars($event['name']) ?>)</span>
+        <span style="font-size: 18px; font-weight: bold; letter-spacing: 0.5px;"><?= __('admin.manage-participants.nav-title', ['event' => htmlspecialchars($event['name'])]) ?></span>
     </div>
     <div>
-        <a href="dashboard.php">Dashboard</a>
-        <a href="manage_users.php" style="margin-right: 15px;">Manage Users</a>
-        <a href="logout.php">Logout</a>
+        <a href="dashboard.php"><?= __e('admin.common.nav.dashboard') ?></a>
+        <a href="manage_users.php" style="margin-right: 15px;"><?= __e('admin.common.nav.manage-users') ?></a>
+        <a href="logout.php"><?= __e('admin.common.nav.logout') ?></a>
     </div>
 </div>
 
 <div class="container" style="max-width: 1200px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 style="margin: 0;">Manage Participants</h2>
+        <h2 style="margin: 0;"><?= __e('admin.manage-participants.heading') ?></h2>
     </div>
 
     <!-- Add / Edit Single Form -->
@@ -316,7 +328,7 @@ $participants = $stmt->fetchAll();
             if (isset($_GET['edit_pid'])) {
                 $stmtEdit = $pdo->prepare("
                     SELECT p.*, ep.role_id, ep.custom_certificate_text, ep.issue_date
-                    FROM participants p 
+                    FROM participants p
                     JOIN event_participants ep ON p.id = ep.participant_id
                     WHERE p.id = ? AND ep.event_id = ?
                 ");
@@ -327,10 +339,10 @@ $participants = $stmt->fetchAll();
                 }
             }
             ?>
-            
+
             <?php if ($editParticipant): ?>
-                <h3 style="margin-top:0;">Edit Participant</h3>
-                <p style="font-size: 13px; color: #555;">Update participant details.</p>
+                <h3 style="margin-top:0;"><?= __e('admin.manage-participants.edit.heading') ?></h3>
+                <p style="font-size: 13px; color: #555;"><?= __e('admin.manage-participants.edit.desc') ?></p>
                 <form method="POST" action="manage_participants.php?id=<?= $eventId ?>">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generate_csrf_token()) ?>">
                     <input type="hidden" name="action" value="edit_single">
@@ -342,63 +354,63 @@ $participants = $stmt->fetchAll();
                         <input type="email" name="single_email" value="<?= htmlspecialchars($editParticipant['email']) ?>" required>
                     </div>
                     <div class="form-group">
-                        <input type="text" name="single_custom_text" value="<?= htmlspecialchars($editParticipant['custom_certificate_text'] ?? '') ?>" placeholder="Custom Text (Optional)">
+                        <input type="text" name="single_custom_text" value="<?= htmlspecialchars($editParticipant['custom_certificate_text'] ?? '') ?>" placeholder="<?= __e('admin.manage-participants.placeholder.custom-text') ?>">
                     </div>
                     <div class="form-group">
-                        <label style="font-size: 12px; color: #555; display: block; margin-bottom: 4px;">Certificate Issue Date (Optional)</label>
+                        <label style="font-size: 12px; color: #555; display: block; margin-bottom: 4px;"><?= __e('admin.event-form.label.issue-date') ?></label>
                         <input type="date" name="single_issue_date" value="<?= htmlspecialchars($editParticipant['issue_date'] ?? '') ?>">
-                        <small style="color: #999; font-size: 11px;">Leave blank to use the event's issue date (or the date this participant was added).</small>
+                        <small style="color: #999; font-size: 11px;"><?= __e('admin.manage-participants.hint.issue-date-edit') ?></small>
                     </div>
                     <div class="form-group">
                         <select name="role_id" required>
-                            <option value="">-- Select Role --</option>
+                            <option value=""><?= __e('admin.manage-participants.option.select-role') ?></option>
                             <?php foreach($rolesList as $r): ?>
                                 <option value="<?= $r['id'] ?>" <?= ($r['id'] == $editRoleId) ? 'selected' : '' ?>><?= htmlspecialchars($r['role_name']) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <button type="submit" class="btn" style="width: 100%;">Save Changes</button>
-                    <a href="manage_participants.php?id=<?= $eventId ?>" style="display:block; text-align:center; margin-top:10px; font-size:13px; color:#777; text-decoration:none;">Cancel Edit</a>
+                    <button type="submit" class="btn" style="width: 100%;"><?= __e('admin.common.save-changes') ?></button>
+                    <a href="manage_participants.php?id=<?= $eventId ?>" style="display:block; text-align:center; margin-top:10px; font-size:13px; color:#777; text-decoration:none;"><?= __e('admin.common.cancel-edit') ?></a>
                 </form>
             <?php else: ?>
-                <h3 style="margin-top:0;">Add Participant</h3>
-                <p style="font-size: 13px; color: #555;">Manually add a single participant to this event.</p>
+                <h3 style="margin-top:0;"><?= __e('admin.manage-participants.add.heading') ?></h3>
+                <p style="font-size: 13px; color: #555;"><?= __e('admin.manage-participants.add.desc') ?></p>
                 <form method="POST">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generate_csrf_token()) ?>">
                     <input type="hidden" name="action" value="add_single">
                     <div class="form-group">
-                        <input type="text" name="single_name" placeholder="Full Name" required>
+                        <input type="text" name="single_name" placeholder="<?= __e('admin.manage-participants.placeholder.full-name') ?>" required>
                     </div>
                     <div class="form-group">
-                        <input type="email" name="single_email" placeholder="Email Address" required>
+                        <input type="email" name="single_email" placeholder="<?= __e('admin.manage-participants.placeholder.email') ?>" required>
                     </div>
                     <div class="form-group">
-                        <input type="text" name="single_custom_text" placeholder="Custom Text (Optional)">
+                        <input type="text" name="single_custom_text" placeholder="<?= __e('admin.manage-participants.placeholder.custom-text') ?>">
                     </div>
                     <div class="form-group">
-                        <label style="font-size: 12px; color: #555; display: block; margin-bottom: 4px;">Certificate Issue Date (Optional)</label>
+                        <label style="font-size: 12px; color: #555; display: block; margin-bottom: 4px;"><?= __e('admin.event-form.label.issue-date') ?></label>
                         <input type="date" name="single_issue_date">
-                        <small style="color: #999; font-size: 11px;">Leave blank to use the event's issue date (or the date this participant is added).</small>
+                        <small style="color: #999; font-size: 11px;"><?= __e('admin.manage-participants.hint.issue-date-add') ?></small>
                     </div>
                     <div class="form-group">
                         <select name="role_id" required>
-                            <option value="">-- Select Role --</option>
+                            <option value=""><?= __e('admin.manage-participants.option.select-role') ?></option>
                             <?php foreach($rolesList as $r): ?>
                                 <option value="<?= $r['id'] ?>"><?= htmlspecialchars($r['role_name']) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <button type="submit" class="btn" style="width: 100%;">Add Participant</button>
+                    <button type="submit" class="btn" style="width: 100%;"><?= __e('admin.manage-participants.add.submit') ?></button>
                 </form>
             <?php endif; ?>
         </div>
 
         <!-- Bulk Upload Form -->
         <div class="upload-box" style="flex: 1; min-width: 300px;">
-            <h3 style="margin-top:0;">Bulk Upload CSV</h3>
-            <p style="font-size: 13px; color: #555;">Upload a CSV file containing participants. Format: <strong>Full_Name, Email, Role_Name, Custom_Text (Optional)</strong>. First row will be ignored.</p>
+            <h3 style="margin-top:0;"><?= __e('admin.manage-participants.bulk.heading') ?></h3>
+            <p style="font-size: 13px; color: #555;"><?= __e('admin.manage-participants.bulk.desc-prefix') ?> <strong><?= __e('admin.manage-participants.bulk.format') ?></strong>. <?= __e('admin.manage-participants.bulk.desc-suffix') ?></p>
             <div style="background: #fffbe6; border: 1px solid #ffe58f; padding: 10px; font-size: 12px; color: #d48806; border-radius: 4px; margin-bottom: 15px;">
-                <strong>Important:</strong> The roles in your CSV (e.g., Attendee, Organizer) MUST EXACTLY MATCH the roles you have already created in the <em>Manage Roles</em> section. Any rows with unrecognized roles will be skipped!
+                <strong><?= __e('admin.manage-participants.bulk.warning-title') ?></strong> <?= __e('admin.manage-participants.bulk.warning-prefix') ?> <em><?= __e('admin.dashboard.action.manage-roles') ?></em> <?= __e('admin.manage-participants.bulk.warning-suffix') ?>
             </div>
             <form method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generate_csrf_token()) ?>">
@@ -406,22 +418,22 @@ $participants = $stmt->fetchAll();
                 <div class="form-group">
                     <input type="file" name="csv_file" accept=".csv" required>
                 </div>
-                <button type="submit" class="btn" style="width: 100%;">Upload CSV</button>
+                <button type="submit" class="btn" style="width: 100%;"><?= __e('admin.manage-participants.upload-csv-submit') ?></button>
             </form>
         </div>
     </div>
 
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px; border-bottom: 2px solid #333; padding-bottom: 10px;">
-        <h3 style="margin: 0;">Participant List (<?= count($participants) ?>)</h3>
-        
+        <h3 style="margin: 0;"><?= __('admin.manage-participants.list-heading', ['count' => count($participants)]) ?></h3>
+
         <form method="GET" style="display: flex; gap: 5px;">
             <input type="hidden" name="id" value="<?= $eventId ?>">
-            <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Search name or email..." style="padding: 8px; border-radius: 4px; border: 1px solid #ccc; width: 250px;">
-            <button type="submit" class="btn" style="padding: 8px 15px;">Search</button>
+            <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="<?= __e('admin.manage-participants.search-placeholder') ?>" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc; width: 250px;">
+            <button type="submit" class="btn" style="padding: 8px 15px;"><?= __e('admin.common.search') ?></button>
             <?php if($search): ?>
-                <a href="manage_participants.php?id=<?= $eventId ?>" class="btn" style="padding: 8px 15px;">Clear</a>
+                <a href="manage_participants.php?id=<?= $eventId ?>" class="btn" style="padding: 8px 15px;"><?= __e('admin.common.clear') ?></a>
             <?php endif; ?>
-            <a href="manage_participants.php?id=<?= $eventId ?>&export=1" class="btn btn-green" style="padding: 8px 15px;">Export CSV</a>
+            <a href="manage_participants.php?id=<?= $eventId ?>&export=1" class="btn btn-green" style="padding: 8px 15px;"><?= __e('admin.manage-participants.export-csv') ?></a>
         </form>
     </div>
 
@@ -430,13 +442,13 @@ $participants = $stmt->fetchAll();
             <table>
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Custom Text</th>
-                        <th>Certificate ID</th>
-                        <th>Added On</th>
-                        <th>Action</th>
+                        <th><?= __e('admin.dashboard.table.name') ?></th>
+                        <th><?= __e('admin.manage-participants.table.email') ?></th>
+                        <th><?= __e('admin.manage-participants.table.role') ?></th>
+                        <th><?= __e('admin.manage-participants.table.custom-text') ?></th>
+                        <th><?= __e('admin.manage-participants.table.cert-id') ?></th>
+                        <th><?= __e('admin.manage-participants.table.added-on') ?></th>
+                        <th><?= __e('admin.manage-participants.table.action') ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -450,7 +462,7 @@ $participants = $stmt->fetchAll();
                                         <?= htmlspecialchars($p['role_name']) ?>
                                     </span>
                                 <?php else: ?>
-                                    <span style="color:#999; font-size:12px;">No Role</span>
+                                    <span style="color:#999; font-size:12px;"><?= __e('admin.manage-participants.no-role-badge') ?></span>
                                 <?php endif; ?>
                             </td>
                             <td>
@@ -464,13 +476,13 @@ $participants = $stmt->fetchAll();
                             <td>
                                 <?php if (!empty($p['issue_date'])): ?>
                                     <?= htmlspecialchars(date('M j, Y', strtotime($p['issue_date']))) ?>
-                                    <span style="background: #e0f2fe; color: #0369a1; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-left: 4px; vertical-align: middle;">CUSTOM</span>
+                                    <span style="background: #e0f2fe; color: #0369a1; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-left: 4px; vertical-align: middle;"><?= __e('admin.manage-participants.custom-badge') ?></span>
                                 <?php else: ?>
                                     <?= htmlspecialchars($p['created_at']) ?>
                                 <?php endif; ?>
                             </td>
                             <td style="display: flex; align-items: center; gap: 15px;">
-                                <a href="manage_participants.php?id=<?= $eventId ?>&edit_pid=<?= $p['id'] ?>" class="action-link" title="Edit" style="color: var(--accent-color);">
+                                <a href="manage_participants.php?id=<?= $eventId ?>&edit_pid=<?= $p['id'] ?>" class="action-link" title="<?= __e('admin.manage-participants.title.edit') ?>" style="color: var(--accent-color);">
                                     <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                                 </a>
                                 <form method="POST" action="manage_participants.php?id=<?= $eventId ?>" style="margin:0;" id="deleteForm_<?= $p['id'] ?>" onsubmit="return confirmDelete(<?= $p['id'] ?>);">
@@ -478,7 +490,7 @@ $participants = $stmt->fetchAll();
                                     <input type="hidden" name="action" value="delete_participant">
                                     <input type="hidden" name="delete_pid" value="<?= $p['id'] ?>">
                                     <input type="hidden" name="super_admin_passcode" id="delete_passcode_<?= $p['id'] ?>" value="">
-                                    <button type="submit" class="action-link" title="Remove" style="color: var(--secondary-color); background:none; border:none; padding:0; cursor:pointer;">
+                                    <button type="submit" class="action-link" title="<?= __e('admin.manage-participants.title.remove') ?>" style="color: var(--secondary-color); background:none; border:none; padding:0; cursor:pointer;">
                                         <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                                     </button>
                                 </form>
@@ -489,11 +501,11 @@ $participants = $stmt->fetchAll();
             </table>
         </div>
         <div class="pagination">
-            <?php 
+            <?php
             $searchParam = $search ? '&search=' . urlencode($search) : '';
             ?>
-            <a href="?id=<?= $eventId ?>&page=<?= max(1, $page - 1) . $searchParam ?>" class="page-btn <?= ($page <= 1) ? 'disabled' : '' ?>">Prev</a>
-            
+            <a href="?id=<?= $eventId ?>&page=<?= max(1, $page - 1) . $searchParam ?>" class="page-btn <?= ($page <= 1) ? 'disabled' : '' ?>"><?= __e('admin.dashboard.pagination.prev') ?></a>
+
             <?php for($i = 1; $i <= max(1, $totalPages); $i++): ?>
                 <?php
                 if ($totalPages > 15) {
@@ -505,31 +517,31 @@ $participants = $stmt->fetchAll();
                 ?>
                 <a href="?id=<?= $eventId ?>&page=<?= $i . $searchParam ?>" class="page-btn <?= ($i == $page) ? 'active' : '' ?>"><?= $i ?></a>
             <?php endfor; ?>
-            
-            <a href="?id=<?= $eventId ?>&page=<?= min(max(1, $totalPages), $page + 1) . $searchParam ?>" class="page-btn <?= ($page >= max(1, $totalPages)) ? 'disabled' : '' ?>">Next</a>
+
+            <a href="?id=<?= $eventId ?>&page=<?= min(max(1, $totalPages), $page + 1) . $searchParam ?>" class="page-btn <?= ($page >= max(1, $totalPages)) ? 'disabled' : '' ?>"><?= __e('admin.dashboard.pagination.next') ?></a>
         </div>
 
     <?php else: ?>
-        <p style="padding: 20px 0; color: #777;">No participants found.</p>
+        <p style="padding: 20px 0; color: #777;"><?= __e('admin.manage-participants.no-participants') ?></p>
     <?php endif; ?>
 </div>
 
 <script src="script.js"></script>
 <script>
 function confirmDelete(id) {
-    if (!confirm('Are you sure you want to remove this participant from this event?')) return false;
-    let code = prompt("Security Check: Please enter the Super Admin Passcode to authorize this removal:");
+    if (!confirm(<?= json_encode(__('admin.manage-participants.confirm.remove')) ?>)) return false;
+    let code = prompt(<?= json_encode(__('admin.manage-participants.prompt.passcode-removal')) ?>);
     if (code) {
         document.getElementById('delete_passcode_' + id).value = code;
         return true;
     }
-    alert("Removal cancelled: Passcode is required.");
+    alert(<?= json_encode(__('admin.manage-participants.alert.removal-cancelled')) ?>);
     return false;
 }
 </script>
 <?php if (isset($_GET['msg']) && $_GET['msg'] === 'deleted'): ?>
 <script>
-    window.flashMessage = 'Participant successfully removed.';
+    window.flashMessage = <?= json_encode(__('admin.manage-participants.flash.removed')) ?>;
     window.flashMessageType = 'success';
 </script>
 <?php elseif ($message): ?>
@@ -543,18 +555,18 @@ function confirmDelete(id) {
     <!-- Progress Modal/Overlay -->
     <div id="email-progress-modal" class="progress-modal-overlay">
         <div class="progress-modal-content">
-            <h3>Sending Notification Emails</h3>
-            <p id="email-progress-status">Preparing to send notification emails...</p>
+            <h3><?= __e('admin.manage-participants.progress.heading') ?></h3>
+            <p id="email-progress-status"><?= __e('admin.manage-participants.progress.preparing') ?></p>
             <div class="progress-bar-container">
                 <div id="email-progress-bar" class="progress-bar-fill" style="width: 0%;"></div>
             </div>
             <div id="email-progress-log" class="progress-log-container"></div>
             <div class="progress-modal-footer" id="progress-modal-footer" style="display: none;">
-                <button onclick="closeProgressModal()" class="btn-close-modal">Close</button>
+                <button onclick="closeProgressModal()" class="btn-close-modal"><?= __e('admin.manage-participants.progress.close') ?></button>
             </div>
         </div>
     </div>
-    
+
     <style>
         .progress-modal-overlay {
             position: fixed;
@@ -640,12 +652,22 @@ function confirmDelete(id) {
     <script>
         const newCertIds = <?= json_encode($newCertIds) ?>;
         let currentIndex = 0;
-        
+
+        // Translated message templates — {tokens} are substituted below at runtime,
+        // same {placeholder} convention as the PHP-side __() helper.
+        const I18N = {
+            sending: <?= json_encode(__('admin.manage-participants.progress.sending')) ?>,
+            done: <?= json_encode(__('admin.manage-participants.progress.done')) ?>,
+            logSuccess: <?= json_encode(__('admin.manage-participants.progress.log-success')) ?>,
+            logFailed: <?= json_encode(__('admin.manage-participants.progress.log-failed')) ?>,
+            logError: <?= json_encode(__('admin.manage-participants.progress.log-error')) ?>,
+        };
+
         function updateProgress(percentage, statusText) {
             document.getElementById('email-progress-bar').style.width = percentage + '%';
             document.getElementById('email-progress-status').innerText = statusText;
         }
-        
+
         function logMessage(text, isSuccess) {
             const logContainer = document.getElementById('email-progress-log');
             const logItem = document.createElement('div');
@@ -654,52 +676,48 @@ function confirmDelete(id) {
             logContainer.appendChild(logItem);
             logContainer.scrollTop = logContainer.scrollHeight;
         }
-        
-        function closeProgressModal() {
-            document.getElementById('email-progress-modal').style.display = 'none';
-        }
-        
+
         async function sendNextEmail() {
             if (currentIndex >= newCertIds.length) {
-                updateProgress(100, 'All emails processed. ' + newCertIds.length + ' sent/attempted.');
+                updateProgress(100, I18N.done.replace('{count}', newCertIds.length));
                 document.getElementById('progress-modal-footer').style.display = 'block';
                 return;
             }
-            
+
             const certId = newCertIds[currentIndex];
             const currentCount = currentIndex + 1;
             const totalCount = newCertIds.length;
-            
+
             updateProgress(
                 Math.round((currentIndex / totalCount) * 100),
-                'Sending notification email ' + currentCount + ' of ' + totalCount + '...'
+                I18N.sending.replace('{current}', currentCount).replace('{total}', totalCount)
             );
-            
+
             try {
                 const formData = new FormData();
                 formData.append('id', certId);
-                
+
                 const response = await fetch('send-notification.php', {
                     method: 'POST',
                     body: formData
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
-                    logMessage('[✓] Notification sent successfully for: ' + certId, true);
+                    logMessage(I18N.logSuccess.replace('{certId}', certId), true);
                 } else {
-                    logMessage('[✗] Failed for: ' + certId + ' - ' + data.message, false);
+                    logMessage(I18N.logFailed.replace('{certId}', certId).replace('{message}', data.message), false);
                 }
             } catch (err) {
-                logMessage('[✗] Connection error for: ' + certId + ' - ' + err.message, false);
+                logMessage(I18N.logError.replace('{certId}', certId).replace('{message}', err.message), false);
             }
-            
+
             currentIndex++;
             // Small delay to prevent hammering the server / SMTP
             setTimeout(sendNextEmail, 200);
         }
-        
+
         // Start processing after page loads
         window.addEventListener('DOMContentLoaded', () => {
             sendNextEmail();
