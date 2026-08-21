@@ -42,7 +42,7 @@ $logs = $stmt->fetchAll();
 <head>
     <link rel="icon" type="image/png" href="../assets/DCW_logo.png">
     <meta charset="UTF-8">
-    <title>Audit Logs</title>
+    <title><?= __e('admin.audit-logs.page-title') ?></title>
     <link rel="stylesheet" href="style.css?v=<?= time() ?>">
 </head>
 <body>
@@ -50,19 +50,19 @@ $logs = $stmt->fetchAll();
 <div class="navbar">
     <div style="display: flex; align-items: center; gap: 15px;">
         <img src="../assets/DCW_logo.png" alt="DCW Logo" width="35" height="35" decoding="async" style="height: 35px; width: 35px; background: white; padding: 2px; border-radius: 50%;">
-        <span style="font-size: 18px; font-weight: bold; letter-spacing: 0.5px;">Admin Panel - Audit Logs</span>
+        <span style="font-size: 18px; font-weight: bold; letter-spacing: 0.5px;"><?= __e('admin.audit-logs.nav-title') ?></span>
     </div>
     <div>
-        <a href="dashboard.php" style="margin-right: 15px;">Dashboard</a>
-        <a href="manage_users.php" style="margin-right: 15px;">Manage Users</a>
-        <a href="logout.php">Logout</a>
+        <a href="dashboard.php" style="margin-right: 15px;"><?= __e('admin.common.nav.dashboard') ?></a>
+        <a href="manage_users.php" style="margin-right: 15px;"><?= __e('admin.common.nav.manage-users') ?></a>
+        <a href="logout.php"><?= __e('admin.common.nav.logout') ?></a>
     </div>
 </div>
 
 <div class="container">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 style="margin: 0;">Security Audit Logs</h2>
-        <a href="dashboard.php" class="btn" style="background: #6c757d;">Back</a>
+        <h2 style="margin: 0;"><?= __e('admin.audit-logs.heading') ?></h2>
+        <a href="dashboard.php" class="btn" style="background: #6c757d;"><?= __e('admin.common.back') ?></a>
     </div>
 
     <?php if (count($logs) > 0): ?>
@@ -70,11 +70,11 @@ $logs = $stmt->fetchAll();
             <table>
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Admin Username</th>
-                        <th>Action Type</th>
-                        <th>Details</th>
-                        <th>Timestamp</th>
+                        <th><?= __e('admin.dashboard.table.id') ?></th>
+                        <th><?= __e('admin.audit-logs.table.admin-username') ?></th>
+                        <th><?= __e('admin.audit-logs.table.action-type') ?></th>
+                        <th><?= __e('admin.audit-logs.table.details') ?></th>
+                        <th><?= __e('admin.email-logs.table.timestamp') ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -91,16 +91,16 @@ $logs = $stmt->fetchAll();
             </table>
         </div>
         <div class="pagination">
-            <a href="?page=<?= max(1, $page - 1) ?>" class="page-btn <?= ($page <= 1) ? 'disabled' : '' ?>">Prev</a>
-            
+            <a href="?page=<?= max(1, $page - 1) ?>" class="page-btn <?= ($page <= 1) ? 'disabled' : '' ?>"><?= __e('admin.dashboard.pagination.prev') ?></a>
+
             <?php for($i = 1; $i <= max(1, $totalPages); $i++): ?>
                 <a href="?page=<?= $i ?>" class="page-btn <?= ($i == $page) ? 'active' : '' ?>"><?= $i ?></a>
             <?php endfor; ?>
-            
-            <a href="?page=<?= min(max(1, $totalPages), $page + 1) ?>" class="page-btn <?= ($page >= max(1, $totalPages)) ? 'disabled' : '' ?>">Next</a>
+
+            <a href="?page=<?= min(max(1, $totalPages), $page + 1) ?>" class="page-btn <?= ($page >= max(1, $totalPages)) ? 'disabled' : '' ?>"><?= __e('admin.dashboard.pagination.next') ?></a>
         </div>
     <?php else: ?>
-        <p>No audit logs found yet. Actions like editing or deleting events will appear here.</p>
+        <p><?= __e('admin.audit-logs.no-logs') ?></p>
     <?php endif; ?>
 </div>
 
