@@ -215,18 +215,18 @@ $searchParam = $queryString ? '&' . $queryString : '';
                             <td><?= htmlspecialchars($log['recipient_email']) ?></td>
                             <td>
                                 <?php if ($log['status'] === 'Success'): ?>
-                                    <span style="background-color: #d1fae5; color: #065f46; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;"><?= __e('admin.email-logs.status.success') ?></span>
+                                    <span style="background-color: #d1fae5; color: #065f46; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-block; white-space: nowrap;"><?= __e('admin.email-logs.status.success') ?></span>
                                 <?php else: ?>
-                                    <span style="background-color: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;"><?= __e('admin.email-logs.status.failed') ?></span>
+                                    <span style="background-color: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-block; white-space: nowrap;"><?= __e('admin.email-logs.status.failed') ?></span>
                                 <?php endif; ?>
                             </td>
                             <td>
                                 <?php if ($log['trigger_type'] === 'download'): ?>
-                                    <span style="background-color: #e0f2fe; color: #075985; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;"><?= __e('admin.email-logs.badge.download') ?></span>
+                                    <span style="background-color: #e0f2fe; color: #075985; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-block; white-space: nowrap;"><?= __e('admin.email-logs.badge.download') ?></span>
                                 <?php elseif ($log['trigger_type'] === 'password_reset'): ?>
-                                    <span style="background-color: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;"><?= __e('admin.email-logs.badge.password-reset') ?></span>
+                                    <span style="background-color: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-block; white-space: nowrap;"><?= __e('admin.email-logs.badge.password-reset') ?></span>
                                 <?php else: ?>
-                                    <span style="background-color: #ede9fe; color: #5b21b6; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;"><?= __e('admin.email-logs.badge.notification') ?></span>
+                                    <span style="background-color: #ede9fe; color: #5b21b6; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-block; white-space: nowrap;"><?= __e('admin.email-logs.badge.notification') ?></span>
                                 <?php endif; ?>
                             </td>
                             <td style="color: #64748b; font-size: 13px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?= htmlspecialchars($log['error_message']) ?>">
