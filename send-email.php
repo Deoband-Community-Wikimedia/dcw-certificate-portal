@@ -230,10 +230,10 @@ try {
     $mail->SMTPSecure = $_ENV['SMTP_SECURE'];
     $mail->Port = $_ENV['SMTP_PORT'];
 
-    $mail->setFrom($_ENV['SMTP_USER'], 'Deoband Community Wikimedia');
+    $mail->setFrom($_ENV['SMTP_USER'], defined('ORG_NAME') ? ORG_NAME : 'Deoband Community Wikimedia');
     $mail->addAddress($recipientEmail, $fullName);
     $mail->isHTML(true);
-    $mail->Subject = "Verified Credential: " . $certData['event_name'];
+    $mail->Subject = __('email.certificate.subject', ['event' => $certData['event_name']]);
 
     // Attach PDF
     // sanitizeForFilename() is defined in config.php and shared with download.php
@@ -243,10 +243,14 @@ try {
     $filename = "{$safeFullName} - {$safeEventName} - Certificate.pdf";
     $mail->addStringAttachment($pdfString, $filename);
 
+    $orgName = defined('ORG_NAME') ? ORG_NAME : 'Deoband Community Wikimedia';
+    $orgUrl = defined('ORG_URL_HOME') ? ORG_URL_HOME : 'https://dcwwiki.org/';
+    $logoUrl = $protocol . $_SERVER['HTTP_HOST'] . $baseDir . '/assets/DCW_logo.png';
+
     // Professional HTML Email Template Layout
     $mail->Body = '
     <!DOCTYPE html>
-    <html>
+    <html lang="' . htmlspecialchars(i18n_get_lang(), ENT_QUOTES | ENT_HTML5, 'UTF-8') . '" dir="' . i18n_get_dir() . '">
     <head>
         <meta charset="utf-8">
         <style>
@@ -269,32 +273,32 @@ try {
     <body>
         <div class="email-wrapper">
             <div class="email-header">
-                <img src="' . htmlspecialchars($protocol . $_SERVER['HTTP_HOST'] . $baseDir . '/assets/DCW_logo.png') . '" alt="Deoband Community Wikimedia Logo">
+                <img src="' . htmlspecialchars($logoUrl) . '" alt="' . htmlspecialchars($orgName) . ' Logo">
             </div>
             <div class="email-body">
-                <h1>Congratulations, ' . htmlspecialchars($fullName) . '!</h1>
-                <p>Your official certificate for <strong>' . htmlspecialchars($certData['event_name']) . '</strong> has been securely issued and archived. We have attached your certificate to this email.</p>
+                <h1>' . htmlspecialchars(__('email.certificate.heading', ['name' => $fullName])) . '</h1>
+                <p>' . htmlspecialchars(__('email.certificate.body', ['event' => $certData['event_name']])) . '</p>
                 
                 <div class="meta-box">
-                    <div class="meta-item"><strong>Credential ID:</strong> ' . htmlspecialchars($certId) . '</div>
-                    <div class="meta-item"><strong>Verification Status:</strong> Permanent Record Active</div>
+                    <div class="meta-item"><strong>' . htmlspecialchars(__('email.certificate.meta.id')) . '</strong> ' . htmlspecialchars($certId) . '</div>
+                    <div class="meta-item"><strong>' . htmlspecialchars(__('email.certificate.meta.status')) . '</strong> ' . htmlspecialchars(__('email.certificate.meta.status-value')) . '</div>
                 </div>
 
-                <p style="text-align: center; margin-bottom: 12px;"><strong>Share Your Achievement</strong></p>
-                <p style="text-align: center; margin-bottom: 24px; font-size: 14px;">Add this credential directly to your LinkedIn profile to showcase it to your network:</p>
+                <p style="text-align: center; margin-bottom: 12px;"><strong>' . htmlspecialchars(__('email.certificate.share.heading')) . '</strong></p>
+                <p style="text-align: center; margin-bottom: 24px; font-size: 14px;">' . htmlspecialchars(__('email.certificate.share.body')) . '</p>
                 
                 <div style="text-align: center;">
                     <a href="' . htmlspecialchars($linkedInAddUrl) . '" target="_blank" class="btn-linkedin">
-                        Add to LinkedIn Profile
+                        ' . htmlspecialchars(__('email.certificate.share.btn-linkedin')) . '
                     </a>
                 </div>
 
                 <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 32px 0;">
-                <p style="font-size: 13px; margin-bottom: 4px;"><strong>Direct Verification Record URL:</strong></p>
-                <a href="' . htmlspecialchars($verifyUrl) . '" class="verify-link" target="_blank">' . $verifyUrl . '</a>
+                <p style="font-size: 13px; margin-bottom: 4px;"><strong>' . htmlspecialchars(__('email.certificate.verify.heading')) . '</strong></p>
+                <a href="' . htmlspecialchars($verifyUrl) . '" class="verify-link" target="_blank">' . htmlspecialchars($verifyUrl) . '</a>
             </div>
             <div class="email-footer">
-                &copy; ' . date('Y') . ' <a href="https://dcwwiki.org/">Deoband Community Wikimedia</a>. All Rights Reserved.
+                ' . __('email.common.footer.copyright', ['year' => date('Y'), 'org' => '<a href="' . htmlspecialchars($orgUrl) . '">' . htmlspecialchars($orgName) . '</a>']) . '
             </div>
         </div>
     </body>

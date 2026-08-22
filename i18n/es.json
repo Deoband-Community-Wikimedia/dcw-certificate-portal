@@ -310,5 +310,22 @@
     "admin.forgot-password.error.invalid-expired": "Este enlace de restablecimiento no es válido o ha caducado. Por favor, solicite uno nuevo.",
     "admin.forgot-password.error.empty-identifier": "Por favor, ingrese su nombre de usuario o correo electrónico.",
     "admin.forgot-password.error.short-password": "La contraseña debe tener al menos 6 caracteres.",
-    "admin.forgot-password.error.mismatch-password": "Las dos contraseñas no coinciden."
+    "admin.forgot-password.error.mismatch-password": "Las dos contraseñas no coinciden.",
+    "email.certificate.subject": "Credencial Verificada: {event}",
+    "email.certificate.heading": "¡Felicitaciones, {name}!",
+    "email.certificate.body": "Su certificado oficial para {event} ha sido emitido y archivado de forma segura. Hemos adjuntado su certificado a este correo electrónico.",
+    "email.certificate.meta.id": "ID de Credencial:",
+    "email.certificate.meta.status": "Estado de Verificación:",
+    "email.certificate.meta.status-value": "Registro Permanente Activo",
+    "email.certificate.share.heading": "Comparta su Logro",
+    "email.certificate.share.body": "Agregue esta credencial directamente a su perfil de LinkedIn para mostrarla a su red profesional:",
+    "email.certificate.share.btn-linkedin": "Agregar al Perfil de LinkedIn",
+    "email.certificate.verify.heading": "URL Directa del Registro de Verificación:",
+    "email.common.footer.copyright": "© {year} {org}. Todos los derechos reservados.",
+    "email.password-reset.subject": "Solicitud de Restablecimiento de Contraseña - Panel de {org}",
+    "email.password-reset.heading": "Restablecimiento de Contraseña Solicitado",
+    "email.password-reset.body": "Hola {username}, recibimos una solicitud para restablecer la contraseña de su cuenta de administrador de {org}.",
+    "email.password-reset.instructions": "Haga clic en el botón de abajo para elegir una nueva contraseña. Este enlace caducará en {minutes} minutos y solo se puede utilizar una vez.",
+    "email.password-reset.btn-reset": "Restablecer Mi Contraseña",
+    "email.password-reset.disclaimer": "Si no solicitó esto, puede ignorar este correo de forma segura; su contraseña no se modificará."
 }

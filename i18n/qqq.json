@@ -311,5 +311,22 @@
     "admin.forgot-password.error.invalid-expired": "Error message shown when a password reset token is invalid, used, or expired.",
     "admin.forgot-password.error.empty-identifier": "Validation error when the username/email field is submitted empty.",
     "admin.forgot-password.error.short-password": "Validation error when the new password is shorter than 6 characters.",
-    "admin.forgot-password.error.mismatch-password": "Validation error when the new password and confirmation do not match."
+    "admin.forgot-password.error.mismatch-password": "Validation error when the new password and confirmation do not match.",
+    "email.certificate.subject": "Subject line of the certificate delivery email. {event} is the event name.",
+    "email.certificate.heading": "Personalized heading in the certificate delivery email. {name} is the participant name.",
+    "email.certificate.body": "Main body paragraph of the certificate delivery email explaining the attachment. {event} is the event name.",
+    "email.certificate.meta.id": "Metadata label in email for the Credential ID.",
+    "email.certificate.meta.status": "Metadata label in email for the Verification Status.",
+    "email.certificate.meta.status-value": "Metadata value indicating the record is active.",
+    "email.certificate.share.heading": "Section heading encouraging participants to share their certificate.",
+    "email.certificate.share.body": "Description of the LinkedIn add-to-profile action.",
+    "email.certificate.share.btn-linkedin": "Call-to-action button in email linking to LinkedIn certificate prefill.",
+    "email.certificate.verify.heading": "Label above the direct verification link in email.",
+    "email.common.footer.copyright": "Footer copyright text in transactional emails. {year} is current year, {org} is organization name.",
+    "email.password-reset.subject": "Subject line for admin password reset email. {org} is the organization name.",
+    "email.password-reset.heading": "Main heading in admin password recovery email.",
+    "email.password-reset.body": "Body paragraph explaining the reset request. {username} is admin username, {org} is organization name.",
+    "email.password-reset.instructions": "Instructions explaining button click and token expiry. {minutes} is expiry duration in minutes.",
+    "email.password-reset.btn-reset": "Button text in email linking to password reset screen.",
+    "email.password-reset.disclaimer": "Security disclaimer in email telling user to ignore if not requested."
 }

@@ -310,5 +310,22 @@
     "admin.forgot-password.error.invalid-expired": "This reset link is invalid or has expired. Please request a new one.",
     "admin.forgot-password.error.empty-identifier": "Please enter your username or email address.",
     "admin.forgot-password.error.short-password": "Password must be at least 6 characters long.",
-    "admin.forgot-password.error.mismatch-password": "The two passwords do not match."
+    "admin.forgot-password.error.mismatch-password": "The two passwords do not match.",
+    "email.certificate.subject": "Verified Credential: {event}",
+    "email.certificate.heading": "Congratulations, {name}!",
+    "email.certificate.body": "Your official certificate for {event} has been securely issued and archived. We have attached your certificate to this email.",
+    "email.certificate.meta.id": "Credential ID:",
+    "email.certificate.meta.status": "Verification Status:",
+    "email.certificate.meta.status-value": "Permanent Record Active",
+    "email.certificate.share.heading": "Share Your Achievement",
+    "email.certificate.share.body": "Add this credential directly to your LinkedIn profile to showcase it to your network:",
+    "email.certificate.share.btn-linkedin": "Add to LinkedIn Profile",
+    "email.certificate.verify.heading": "Direct Verification Record URL:",
+    "email.common.footer.copyright": "© {year} {org}. All Rights Reserved.",
+    "email.password-reset.subject": "Password Reset Request - {org} Admin Portal",
+    "email.password-reset.heading": "Password Reset Requested",
+    "email.password-reset.body": "Hello {username}, we received a request to reset the password for your {org} Admin account.",
+    "email.password-reset.instructions": "Click the button below to choose a new password. This link will expire in {minutes} minutes and can only be used once.",
+    "email.password-reset.btn-reset": "Reset My Password",
+    "email.password-reset.disclaimer": "If you did not request this, you can safely ignore this email — your password will remain unchanged."
 }
