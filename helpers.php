@@ -328,7 +328,7 @@ if (!function_exists('sendAvailabilityEmail')) {
             $mail->send();
             
             // Log success to email_logs
-            $stmtLog = $pdo->prepare("INSERT INTO email_logs (certificate_id, recipient_email, status, error_message) VALUES (?, ?, 'Success', NULL)");
+            $stmtLog = $pdo->prepare("INSERT INTO email_logs (certificate_id, recipient_email, status, trigger_type, error_message) VALUES (?, ?, 'Success', 'notification', NULL)");
             $stmtLog->execute([$certId, $recipientEmail]);
 
             // Update event_participants.notification_sent status
@@ -340,7 +340,7 @@ if (!function_exists('sendAvailabilityEmail')) {
             $errorMsg = $mail->ErrorInfo ?: $e->getMessage();
             
             // Log failure to email_logs
-            $stmtLog = $pdo->prepare("INSERT INTO email_logs (certificate_id, recipient_email, status, error_message) VALUES (?, ?, 'Failed', ?)");
+            $stmtLog = $pdo->prepare("INSERT INTO email_logs (certificate_id, recipient_email, status, trigger_type, error_message) VALUES (?, ?, 'Failed', 'notification', ?)");
             $stmtLog->execute([$certId, $recipientEmail, $errorMsg]);
 
             return ['success' => false, 'message' => 'Mail dispatch failed: ' . $errorMsg];
