@@ -479,23 +479,33 @@ if ($basePath === '/') {
 
             <form action="" method="POST">
                 <input type="hidden" name="action" value="claim">
+
+                <?php if ($hasCategorisedEvents): ?>
+                <div class="form-group">
+                    <label for="category_filter"><?= __e('page.claim.label.category') ?></label>
+                    <select id="category_filter">
+                        <option value=""><?= __e('page.claim.label.category-placeholder') ?></option>
+                        <?php foreach (array_keys($eventsByCategory) as $catName): ?>
+                            <?php if ($catName !== 'Other Events'): ?>
+                                <option value="<?= htmlspecialchars($catName) ?>"><?= htmlspecialchars($catName) ?></option>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                        <?php if (isset($eventsByCategory['Other Events'])): ?>
+                            <option value="Other Events"><?= htmlspecialchars(__('admin.event-form.option.uncategorised')) ?></option>
+                        <?php endif; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+
                 <div class="form-group">
                     <label for="event_id"><?= __e('page.claim.label.event') ?></label>
                     <select id="event_id" name="event_id" required>
                         <option value=""><?= __e('page.claim.label.event-placeholder') ?></option>
-                        <?php if (!$hasCategorisedEvents): ?>
-                            <?php foreach ($events as $e): ?>
-                                <option value="<?= htmlspecialchars($e['id']) ?>"><?= htmlspecialchars($e['name']) ?></option>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <?php foreach ($eventsByCategory as $catName => $catEvents): ?>
-                                <optgroup label="<?= htmlspecialchars($catName) ?>">
-                                    <?php foreach ($catEvents as $e): ?>
-                                        <option value="<?= htmlspecialchars($e['id']) ?>"><?= htmlspecialchars($e['name']) ?></option>
-                                    <?php endforeach; ?>
-                                </optgroup>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
+                        <?php foreach ($events as $e): ?>
+                            <option value="<?= htmlspecialchars($e['id']) ?>" data-category="<?= htmlspecialchars(!empty($e['category']) ? $e['category'] : 'Other Events') ?>">
+                                <?= htmlspecialchars($e['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
 
@@ -587,6 +597,56 @@ if ($basePath === '/') {
             </div>
         </div>
     </footer>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const categoryFilter = document.getElementById('category_filter');
+        const eventSelect = document.getElementById('event_id');
+        if (!categoryFilter || !eventSelect) return;
+
+        const allEventOptions = Array.from(eventSelect.querySelectorAll('option')).filter(function (opt) {
+            return opt.value !== '';
+        });
+        const placeholderOption = eventSelect.querySelector('option[value=""]');
+
+        categoryFilter.addEventListener('change', function () {
+            const selectedCategory = this.value.trim();
+            const currentSelectedValue = eventSelect.value;
+            
+            // Clear existing options except placeholder
+            eventSelect.innerHTML = '';
+            if (placeholderOption) {
+                eventSelect.appendChild(placeholderOption);
+            }
+
+            let matchCount = 0;
+            allEventOptions.forEach(function (opt) {
+                const optCategory = opt.getAttribute('data-category') || '';
+                if (!selectedCategory || optCategory === selectedCategory) {
+                    eventSelect.appendChild(opt);
+                    matchCount++;
+                }
+            });
+
+            if (matchCount === 0 && selectedCategory !== '') {
+                const noMatch = document.createElement('option');
+                noMatch.value = '';
+                noMatch.disabled = true;
+                noMatch.textContent = <?= json_encode(__('page.claim.label.no-events-category')) ?>;
+                eventSelect.appendChild(noMatch);
+            }
+
+            // Check if previously selected value is still in filtered options
+            const stillValid = Array.from(eventSelect.options).some(function (o) {
+                return o.value === currentSelectedValue && o.value !== '';
+            });
+            if (stillValid) {
+                eventSelect.value = currentSelectedValue;
+            } else {
+                eventSelect.value = '';
+            }
+        });
+    });
+    </script>
 </body>
 </html>
 
