@@ -37,8 +37,9 @@ function findAdminByResetToken(PDO $pdo, string $rawToken) {
         return null;
     }
     $tokenHash = hash('sha256', $rawToken);
-    $stmt = $pdo->prepare("SELECT id, username FROM admin_users WHERE reset_token_hash = ? AND reset_expires_at IS NOT NULL AND reset_expires_at > NOW()");
-    $stmt->execute([$tokenHash]);
+    $now = date('Y-m-d H:i:s');
+    $stmt = $pdo->prepare("SELECT id, username FROM admin_users WHERE reset_token_hash = ? AND reset_expires_at IS NOT NULL AND reset_expires_at > ?");
+    $stmt->execute([$tokenHash, $now]);
     return $stmt->fetch() ?: null;
 }
 
@@ -55,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $identifier = trim($_POST['identifier'] ?? '');
 
         if ($identifier === '') {
-            $error = "Please enter your username or email address.";
+            $error = __('admin.forgot-password.error.empty-identifier');
         } else {
             $stmt = $pdo->prepare("SELECT id, username, email FROM admin_users WHERE username = ? OR email = ?");
             $stmt->execute([$identifier, $identifier]);
@@ -65,9 +66,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Generate a one-time token; store only its hash.
                 $token = bin2hex(random_bytes(32));
                 $tokenHash = hash('sha256', $token);
+                $expiresAt = date('Y-m-d H:i:s', time() + (RESET_TTL_MINUTES * 60));
 
-                $upd = $pdo->prepare("UPDATE admin_users SET reset_token_hash = ?, reset_expires_at = DATE_ADD(NOW(), INTERVAL ? MINUTE) WHERE id = ?");
-                $upd->execute([$tokenHash, RESET_TTL_MINUTES, $admin['id']]);
+                $upd = $pdo->prepare("UPDATE admin_users SET reset_token_hash = ?, reset_expires_at = ? WHERE id = ?");
+                $upd->execute([$tokenHash, $expiresAt, $admin['id']]);
 
                 $resetUrl = adminPortalBaseUrl() . '/admin/forgot_password.php?token=' . urlencode($token);
                 // Best-effort send; we still show the generic message regardless of the result.
@@ -76,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             // Same message whether or not the account/email existed (no enumeration).
-            $success = GENERIC_REQUEST_MSG;
+            $success = __('admin.forgot-password.msg.generic-sent');
             $mode = 'request';
         }
 
@@ -88,12 +90,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $confirmPassword = $_POST['confirm_password'] ?? '';
 
         if (!$admin) {
-            $error = "This reset link is invalid or has expired. Please request a new one.";
+            $error = __('admin.forgot-password.error.invalid-expired');
             $mode = 'request';
         } elseif (strlen($newPassword) < 6) {
-            $error = "Password must be at least 6 characters long.";
+            $error = __('admin.forgot-password.error.short-password');
         } elseif ($newPassword !== $confirmPassword) {
-            $error = "The two passwords do not match.";
+            $error = __('admin.forgot-password.error.mismatch-password');
         } else {
             $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
             $upd = $pdo->prepare("UPDATE admin_users SET password_hash = ?, reset_token_hash = NULL, reset_expires_at = NULL WHERE id = ?");
