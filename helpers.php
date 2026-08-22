@@ -395,7 +395,10 @@ if (!function_exists('sendAdminResetEmail')) {
      * @param string $resetUrl   Fully-qualified reset link (includes the raw token).
      * @return array{success: bool, message: string}
      */
-    function sendAdminResetEmail($recipientEmail, $username, $resetUrl) {
+    function sendAdminResetEmail($recipientEmail, $username, $resetUrl, $pdo = null) {
+        if ($pdo === null) {
+            global $pdo;
+        }
         $portalUrl = adminPortalBaseUrl();
         $orgName = defined('ORG_NAME') ? ORG_NAME : 'Deoband Community Wikimedia';
         $orgUrl = defined('ORG_URL_HOME') ? ORG_URL_HOME : 'https://dcwwiki.org/';

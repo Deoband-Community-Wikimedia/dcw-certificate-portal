@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $resetUrl = adminPortalBaseUrl() . '/admin/forgot_password.php?token=' . urlencode($token);
                 // Best-effort send; we still show the generic message regardless of the result.
-                sendAdminResetEmail($admin['email'], $admin['username'], $resetUrl);
+                sendAdminResetEmail($admin['email'], $admin['username'], $resetUrl, $pdo);
                 log_audit_action($pdo, 'Password Reset Requested', "Admin User: {$admin['username']}");
             }
 
