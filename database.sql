@@ -101,18 +101,13 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 -- Create Email Logs Table
 CREATE TABLE IF NOT EXISTS email_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    certificate_id VARCHAR(50) NOT NULL,
+    certificate_id VARCHAR(50) NULL,
     recipient_email VARCHAR(255) NOT NULL,
     status VARCHAR(20) NOT NULL,
-    -- Which flow produced this row (see #100): 'notification' when an admin
-    -- fires it from Manage Participants, 'download' when a participant
-    -- claims/downloads their certificate. On an existing install that
-    -- predates this column, run by hand, once:
+    -- Which flow produced this row: 'notification', 'download', or 'password_reset'.
+    -- On an existing install that predates NULLable certificate_id or trigger_type:
+    --   ALTER TABLE email_logs MODIFY COLUMN certificate_id VARCHAR(50) NULL;
     --   ALTER TABLE email_logs ADD COLUMN trigger_type VARCHAR(20) NOT NULL DEFAULT 'download' AFTER status;
-    -- The default backfills existing rows as 'download' rather than leaving
-    -- them NULL/unlabeled — send-email.php (the download flow) is the
-    -- older of the two, predating sendAvailabilityEmail() by several days,
-    -- so it's the closer guess for rows logged before this column existed.
     trigger_type VARCHAR(20) NOT NULL DEFAULT 'download',
     error_message TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
