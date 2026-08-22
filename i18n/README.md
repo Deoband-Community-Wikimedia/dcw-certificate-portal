@@ -89,7 +89,7 @@ The `{id}` part stays unchanged — the app fills it in at runtime.
 
 ## 🌍 Translatewiki.net
 
-Once your translation is merged, our repository is registered on [translatewiki.net](https://translatewiki.net).  
+Once your translation is merged, our repository (will hopefully be) registered on [translatewiki.net](https://translatewiki.net).  
 Global Wikimedia community translators can contribute directly through the web interface, and a bot will automatically open a Pull Request with their translations.
 
 ---
