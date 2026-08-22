@@ -71,19 +71,21 @@ $totalCerts = $pdo->query("SELECT COUNT(*) FROM event_participants WHERE certifi
     <meta charset="UTF-8">
     <title>Admin Dashboard</title>
     <link rel="stylesheet" href="style.css?v=<?= time() ?>">
+    <?php i18n_lang_switcher_css(); ?>
 </head>
 <body>
 
 <div class="navbar">
     <div style="display: flex; align-items: center; gap: 15px;">
         <img src="../assets/DCW_logo.png" alt="DCW Logo" width="35" height="35" decoding="async" style="height: 35px; width: 35px; background: white; padding: 2px; border-radius: 50%;">
-        <span style="font-size: 18px; font-weight: bold; letter-spacing: 0.5px;">Admin Panel - Certificate System</span>
+        <span style="font-size: 18px; font-weight: bold; letter-spacing: 0.5px;"><?= __e('admin.dashboard.nav-title') ?></span>
     </div>
-    <div>
-        <a href="email_logs.php" style="margin-right: 15px;">Email Logs</a>
-        <a href="#" onclick="return viewAuditLogs();" style="margin-right: 15px;">Audit Logs</a>
-        <a href="manage_users.php" style="margin-right: 15px;">Manage Users</a>
-        <a href="logout.php">Logout</a>
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <?php i18n_lang_switcher(); ?>
+        <a href="email_logs.php"><?= __e('admin.common.nav.email-logs') ?></a>
+        <a href="#" onclick="return viewAuditLogs();"><?= __e('admin.common.nav.audit-logs') ?></a>
+        <a href="manage_users.php"><?= __e('admin.common.nav.manage-users') ?></a>
+        <a href="logout.php"><?= __e('admin.common.nav.logout') ?></a>
     </div>
 </div>
 
