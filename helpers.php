@@ -248,6 +248,103 @@ if (!function_exists('syncEventTemplateFolder')) {
 }
 
 
+if (!function_exists('extractPdfColorPalette')) {
+    /**
+     * Extract a dominant color palette from a PDF's raw content streams (issue #90).
+     *
+     * PDFs store vector fills/strokes as content-stream color operators
+     * ("r g b rg" for RGB, "c m y k k" for CMYK, both 0-1 ranges). This decompresses
+     * each content stream (FlateDecode, via core PHP zlib — no Imagick/Ghostscript,
+     * so it stays compatible with plain shared hosting) and counts color operator
+     * occurrences, returning the most frequent as #RRGGBB.
+     *
+     * Only finds colors from vector-drawn content — a template that's a single
+     * flattened/scanned image has no color operators to find, so this returns [].
+     *
+     * @param  string $pdfPath Absolute path to the PDF file.
+     * @param  int    $limit   Max colors to return.
+     * @return string[] Hex colors (#RRGGBB), most frequent first.
+     */
+    function extractPdfColorPalette(string $pdfPath, int $limit = 6): array {
+        if (!is_file($pdfPath)) {
+            return [];
+        }
+        $raw = @file_get_contents($pdfPath);
+        if ($raw === false) {
+            return [];
+        }
+
+        $counts = [];
+
+        if (!preg_match_all('/stream\r?\n(.*?)endstream/s', $raw, $streams)) {
+            return [];
+        }
+
+        foreach ($streams[1] as $streamData) {
+            $decoded = @gzuncompress($streamData);
+            if ($decoded === false) {
+                $decoded = @gzinflate(substr($streamData, 2));
+            }
+            $content = $decoded !== false ? $decoded : $streamData;
+
+            if (preg_match_all('/([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+(rg|RG)\b/', $content, $m, PREG_SET_ORDER)) {
+                foreach ($m as $match) {
+                    $hex = pdfRgbToHex((float)$match[1], (float)$match[2], (float)$match[3]);
+                    if ($hex !== null) {
+                        $counts[$hex] = ($counts[$hex] ?? 0) + 1;
+                    }
+                }
+            }
+
+            if (preg_match_all('/([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+(k|K)\b/', $content, $m, PREG_SET_ORDER)) {
+                foreach ($m as $match) {
+                    [$r, $g, $b] = pdfCmykToRgb((float)$match[1], (float)$match[2], (float)$match[3], (float)$match[4]);
+                    $hex = pdfRgbToHex($r, $g, $b);
+                    if ($hex !== null) {
+                        $counts[$hex] = ($counts[$hex] ?? 0) + 1;
+                    }
+                }
+            }
+        }
+
+        // Drop near-white/near-black — backgrounds and text outlines, not useful "brand" colors.
+        $counts = array_filter($counts, function ($hex) {
+            return !pdfColorIsNearWhiteOrBlack($hex);
+        }, ARRAY_FILTER_USE_KEY);
+
+        arsort($counts);
+        return array_slice(array_keys($counts), 0, $limit);
+    }
+}
+
+if (!function_exists('pdfRgbToHex')) {
+    function pdfRgbToHex(float $r, float $g, float $b): ?string {
+        if ($r < 0 || $r > 1 || $g < 0 || $g > 1 || $b < 0 || $b > 1) {
+            return null;
+        }
+        return sprintf('#%02X%02X%02X', (int)round($r * 255), (int)round($g * 255), (int)round($b * 255));
+    }
+}
+
+if (!function_exists('pdfCmykToRgb')) {
+    function pdfCmykToRgb(float $c, float $m, float $y, float $k): array {
+        $r = 1 - min(1, $c * (1 - $k) + $k);
+        $g = 1 - min(1, $m * (1 - $k) + $k);
+        $b = 1 - min(1, $y * (1 - $k) + $k);
+        return [$r, $g, $b];
+    }
+}
+
+if (!function_exists('pdfColorIsNearWhiteOrBlack')) {
+    function pdfColorIsNearWhiteOrBlack(string $hex): bool {
+        $r = hexdec(substr($hex, 1, 2));
+        $g = hexdec(substr($hex, 3, 2));
+        $b = hexdec(substr($hex, 5, 2));
+        $lum = ($r + $g + $b) / 3;
+        return $lum > 245 || $lum < 12;
+    }
+}
+
 if (!function_exists('sendAvailabilityEmail')) {
     /**
      * Sends an email notification to the participant that their certificate is available to claim.
