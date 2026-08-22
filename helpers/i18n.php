@@ -298,8 +298,9 @@ function i18n_lang_switcher(): void
         . 'aria-haspopup="true" aria-expanded="false" '
         . 'onclick="this.parentElement.classList.toggle(\'open\')" '
         . 'type="button">';
-    echo '🌐 ' . htmlspecialchars($currentName, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    echo ' <span class="lang-switcher-caret" aria-hidden="true">▾</span>';
+    echo '<svg class="lang-switcher-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>';
+    echo '<span>' . htmlspecialchars($currentName, ENT_QUOTES | ENT_HTML5, 'UTF-8') . '</span>';
+    echo '<span class="lang-switcher-caret" aria-hidden="true">▾</span>';
     echo '</button>';
     echo '<ul class="lang-switcher-menu" role="menu">';
 
@@ -313,6 +314,9 @@ function i18n_lang_switcher(): void
         echo '<a href="' . htmlspecialchars($url, ENT_QUOTES | ENT_HTML5, 'UTF-8') . '" '
             . 'role="menuitem"' . $active . '>';
         echo htmlspecialchars($meta['name'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        if ($code === $currentLang) {
+            echo '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+        }
         echo '</a>';
         echo '</li>';
     }
@@ -336,29 +340,40 @@ function i18n_lang_switcher_css(): void
     position: relative;
     display: inline-block;
     font-family: inherit;
+    text-align: left;
 }
 .lang-switcher-btn {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
+    justify-content: center;
+    gap: 7px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
     border-radius: 8px;
     padding: 6px 12px;
     font-size: 13px;
     font-weight: 500;
-    color: #475569;
+    color: #334155;
     cursor: pointer;
-    transition: background 0.2s ease, color 0.2s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition: all 0.2s ease;
     white-space: nowrap;
+    line-height: 1.4;
 }
 .lang-switcher-btn:hover,
 .lang-switcher.open .lang-switcher-btn {
-    background: #e2e8f0;
-    color: #1e293b;
+    background: #f8fafc;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+.lang-switcher-icon {
+    color: #0284c7;
+    flex-shrink: 0;
 }
 .lang-switcher-caret {
     font-size: 10px;
+    color: #64748b;
+    margin-left: 2px;
     transition: transform 0.2s ease;
 }
 .lang-switcher.open .lang-switcher-caret {
@@ -367,38 +382,49 @@ function i18n_lang_switcher_css(): void
 .lang-switcher-menu {
     display: none;
     position: absolute;
-    right: 0;
-    top: calc(100% + 6px);
+    left: 0;
+    top: calc(100% + 5px);
     background: #ffffff;
     border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    list-style: none;
-    margin: 0;
-    padding: 6px;
-    min-width: 130px;
-    z-index: 200;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    list-style: none !important;
+    margin: 0 !important;
+    padding: 5px !important;
+    min-width: 100%;
+    width: max-content;
+    box-sizing: border-box;
+    z-index: 999;
 }
 .lang-switcher.open .lang-switcher-menu {
     display: block;
 }
+.lang-switcher-menu li {
+    margin: 0 !important;
+    padding: 0 !important;
+    list-style: none !important;
+}
 .lang-switcher-menu li a {
-    display: block;
-    padding: 8px 12px;
-    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 12px;
+    border-radius: 6px;
     font-size: 13px;
     font-weight: 500;
     color: #475569;
     text-decoration: none;
+    white-space: nowrap;
     transition: background 0.15s ease, color 0.15s ease;
 }
 .lang-switcher-menu li a:hover {
     background: #f1f5f9;
-    color: #1e293b;
+    color: #0f172a;
 }
 .lang-switcher-menu li a.active {
     background: #eff6ff;
-    color: #106b9a;
+    color: #0284c7;
     font-weight: 600;
 }
 /* Close dropdown when clicking outside */
