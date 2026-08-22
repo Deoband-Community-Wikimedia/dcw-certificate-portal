@@ -460,9 +460,27 @@ if (!function_exists('sendAdminResetEmail')) {
             $mail->AltBody = "Hello {$username},\n\nReset your DCW Admin password using this link (valid for 60 minutes):\n{$resetUrl}\n\nIf you did not request this, ignore this email.";
 
             $mail->send();
+
+            // Log success to email_logs
+            if (isset($pdo) && $pdo instanceof PDO) {
+                try {
+                    $stmtLog = $pdo->prepare("INSERT INTO email_logs (certificate_id, recipient_email, status, trigger_type, error_message) VALUES (NULL, ?, 'Success', 'password_reset', NULL)");
+                    $stmtLog->execute([$recipientEmail]);
+                } catch (\Exception $e) {}
+            }
+
             return ['success' => true, 'message' => 'Reset email sent successfully.'];
         } catch (\Exception $e) {
             $errorMsg = $mail->ErrorInfo ?: $e->getMessage();
+
+            // Log failure to email_logs
+            if (isset($pdo) && $pdo instanceof PDO) {
+                try {
+                    $stmtLog = $pdo->prepare("INSERT INTO email_logs (certificate_id, recipient_email, status, trigger_type, error_message) VALUES (NULL, ?, 'Failed', 'password_reset', ?)");
+                    $stmtLog->execute([$recipientEmail, $errorMsg]);
+                } catch (\Exception $ignored) {}
+            }
+
             return ['success' => false, 'message' => 'Mail dispatch failed: ' . $errorMsg];
         }
     }
