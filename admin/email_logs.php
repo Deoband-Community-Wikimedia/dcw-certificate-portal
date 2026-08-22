@@ -168,6 +168,7 @@ $searchParam = $queryString ? '&' . $queryString : '';
                 <option value=""><?= __e('admin.email-logs.filter.all-triggers') ?></option>
                 <option value="notification" <?= $triggerFilter === 'notification' ? 'selected' : '' ?>><?= __e('admin.email-logs.trigger.notification') ?></option>
                 <option value="download" <?= $triggerFilter === 'download' ? 'selected' : '' ?>><?= __e('admin.email-logs.trigger.download') ?></option>
+                <option value="password_reset" <?= $triggerFilter === 'password_reset' ? 'selected' : '' ?>><?= __e('admin.email-logs.trigger.password-reset') ?></option>
             </select>
         </div>
         <div class="filter-group">
@@ -203,8 +204,14 @@ $searchParam = $queryString ? '&' . $queryString : '';
                     <?php foreach ($logs as $log): ?>
                         <tr>
                             <td><?= htmlspecialchars($log['id']) ?></td>
-                            <td style="font-family: monospace; font-size: 13px;"><?= htmlspecialchars($log['certificate_id']) ?></td>
-                            <td style="font-size: 14px;"><?= htmlspecialchars($log['event_name'] ?? __('admin.email-logs.unknown-event')) ?></td>
+                            <td style="font-family: monospace; font-size: 13px;"><?= htmlspecialchars($log['certificate_id'] ?? '—') ?></td>
+                            <td style="font-size: 14px;">
+                                <?php if ($log['trigger_type'] === 'password_reset'): ?>
+                                    <span style="color: #64748b; font-style: italic;">—</span>
+                                <?php else: ?>
+                                    <?= htmlspecialchars($log['event_name'] ?? __('admin.email-logs.unknown-event')) ?>
+                                <?php endif; ?>
+                            </td>
                             <td><?= htmlspecialchars($log['recipient_email']) ?></td>
                             <td>
                                 <?php if ($log['status'] === 'Success'): ?>
@@ -216,6 +223,8 @@ $searchParam = $queryString ? '&' . $queryString : '';
                             <td>
                                 <?php if ($log['trigger_type'] === 'download'): ?>
                                     <span style="background-color: #e0f2fe; color: #075985; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;"><?= __e('admin.email-logs.badge.download') ?></span>
+                                <?php elseif ($log['trigger_type'] === 'password_reset'): ?>
+                                    <span style="background-color: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;"><?= __e('admin.email-logs.badge.password-reset') ?></span>
                                 <?php else: ?>
                                     <span style="background-color: #ede9fe; color: #5b21b6; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;"><?= __e('admin.email-logs.badge.notification') ?></span>
                                 <?php endif; ?>
