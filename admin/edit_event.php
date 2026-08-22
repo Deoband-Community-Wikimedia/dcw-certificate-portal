@@ -30,11 +30,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf_token($csrf);
 
     $eventName = trim($_POST['name'] ?? '');
+    $category = trim($_POST['category'] ?? '');
+    if ($category === '' || !in_array($category, event_categories(), true)) {
+        $category = null;
+    }
     $linkedinCaption = trim($_POST['linkedin_caption'] ?? '');
     $customVerificationText = trim($_POST['custom_verification_text'] ?? '');
     $certificateIssueDate = trim($_POST['certificate_issue_date'] ?? '');
     if ($certificateIssueDate === '') {
         $certificateIssueDate = null;
+    }
+    $completionDate = trim($_POST['completion_date'] ?? '');
+    if ($completionDate === '') {
+        $completionDate = null;
     }
 
     $passcode = trim($_POST['super_admin_passcode'] ?? '');
@@ -51,6 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!$eventName) {
         $error = __('admin.event-form.error.name-required');
     } else {
+<<<<<<< HEAD
         $oldEventName = $event['name'];
 
         $stmtUpdate = $pdo->prepare("UPDATE events SET name = ?, linkedin_caption = ?, custom_verification_text = ?, certificate_issue_date = ?, description = ?, partners = ? WHERE id = ?");
@@ -62,12 +71,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         log_audit_action($pdo, 'Edited Event', "Event ID: {$eventId}, New Name: {$eventName}");
 
+        $stmtUpdate = $pdo->prepare("UPDATE events SET name = ?, category = ?, linkedin_caption = ?, custom_verification_text = ?, certificate_issue_date = ?, completion_date = ?, description = ?, partners = ? WHERE id = ?");
+        $stmtUpdate->execute([$eventName, $category, $linkedinCaption, $customVerificationText, $certificateIssueDate, $completionDate, $description, $partners, $eventId]);
+
+        log_audit_action($pdo, 'Edited Event', "Event ID: {$eventId}, New Name: {$eventName}");
+
         $success = __('admin.edit-event.success.updated');
         // Refresh event data
         $event['name'] = $eventName;
+        $event['category'] = $category;
         $event['linkedin_caption'] = $linkedinCaption;
         $event['custom_verification_text'] = $customVerificationText;
         $event['certificate_issue_date'] = $certificateIssueDate;
+        $event['completion_date'] = $completionDate;
         $event['description'] = $description;
         $event['partners'] = $partners;
     }
@@ -109,8 +125,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <div class="form-group">
+            <label><?= __e('admin.event-form.label.category') ?></label>
+            <select name="category" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                <option value=""><?= __e('admin.event-form.option.uncategorised') ?></option>
+                <?php foreach (event_categories() as $cat): ?>
+                    <option value="<?= htmlspecialchars($cat) ?>" <?= (($event['category'] ?? '') === $cat) ? 'selected' : '' ?>><?= htmlspecialchars($cat) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <div style="font-size: 11px; color: #777; margin-top: 5px;">
+                <?= __e('admin.event-form.hint.category') ?>
+            </div>
+        </div>
+
+        <div class="form-group">
             <label><?= __e('admin.event-form.label.cert-prefix') ?> <span style="font-size: 11px; color: #999; font-weight: normal;">(<?= __e('admin.edit-event.hint.cert-prefix-readonly') ?>)</span></label>
             <input type="text" name="cert_prefix" value="<?= htmlspecialchars($event['cert_prefix'] ?? 'DCW') ?>" readonly style="background-color: #e9ecef; color: #6c757d; cursor: not-allowed; text-transform: uppercase;">
+        </div>
+
+        <div class="form-group">
+            <label><?= __e('admin.event-form.label.issue-date') ?></label>
+            <input type="date" name="certificate_issue_date" value="<?= htmlspecialchars($event['certificate_issue_date'] ?? '') ?>">
+            <div style="font-size: 11px; color: #777; margin-top: 5px;">
+                <?= __e('admin.event-form.hint.issue-date') ?>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label><?= __e('admin.event-form.label.completion-date') ?></label>
+            <input type="date" name="completion_date" value="<?= htmlspecialchars($event['completion_date'] ?? '') ?>">
+            <div style="font-size: 11px; color: #777; margin-top: 5px;">
+                <?= __e('admin.event-form.hint.completion-date') ?>
+            </div>
         </div>
 
         <div class="form-group">
@@ -126,14 +171,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <textarea name="linkedin_caption" rows="4" placeholder="<?= __e('admin.event-form.placeholder.linkedin-caption') ?>" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit; resize: vertical;"><?= htmlspecialchars($event['linkedin_caption'] ?? '') ?></textarea>
             <div style="font-size: 11px; color: #777; margin-top: 5px;">
                 <?= __e('admin.event-form.hint.linkedin-caption') ?>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label><?= __e('admin.event-form.label.issue-date') ?></label>
-            <input type="date" name="certificate_issue_date" value="<?= htmlspecialchars($event['certificate_issue_date'] ?? '') ?>">
-            <div style="font-size: 11px; color: #777; margin-top: 5px;">
-                <?= __e('admin.event-form.hint.issue-date') ?>
             </div>
         </div>
 

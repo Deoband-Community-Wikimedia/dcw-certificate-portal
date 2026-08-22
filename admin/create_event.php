@@ -15,6 +15,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf_token($csrf);
 
     $eventName = trim($_POST['name'] ?? '');
+    $category = trim($_POST['category'] ?? '');
+    if ($category === '' || !in_array($category, event_categories(), true)) {
+        $category = null;
+    }
     $linkedinCaption = trim($_POST['linkedin_caption'] ?? '');
     $customVerificationText = trim($_POST['custom_verification_text'] ?? '');
     $certPrefix = trim($_POST['cert_prefix'] ?? 'DCW');
@@ -22,6 +26,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $certificateIssueDate = trim($_POST['certificate_issue_date'] ?? '');
     if ($certificateIssueDate === '') {
         $certificateIssueDate = null;
+    }
+    $completionDate = trim($_POST['completion_date'] ?? '');
+    if ($completionDate === '') {
+        $completionDate = null;
     }
     $description = trim($_POST['description'] ?? '');
     if ($description === '') $description = null;
@@ -31,8 +39,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$eventName) {
         $error = __('admin.event-form.error.name-required');
     } else {
-        $stmt = $pdo->prepare("INSERT INTO events (name, linkedin_caption, custom_verification_text, cert_prefix, certificate_issue_date, description, partners) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$eventName, $linkedinCaption, $customVerificationText, $certPrefix, $certificateIssueDate, $description, $partners]);
+        $stmt = $pdo->prepare("INSERT INTO events (name, category, linkedin_caption, custom_verification_text, cert_prefix, certificate_issue_date, completion_date, description, partners) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$eventName, $category, $linkedinCaption, $customVerificationText, $certPrefix, $certificateIssueDate, $completionDate, $description, $partners]);
         $newEventId = $pdo->lastInsertId();
 
         log_audit_action($pdo, 'Created Event', "Event ID: {$newEventId}, Name: {$eventName}");
@@ -75,6 +83,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <div class="form-group">
+            <label><?= __e('admin.event-form.label.category') ?></label>
+            <select name="category" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                <option value=""><?= __e('admin.event-form.option.uncategorised') ?></option>
+                <?php foreach (event_categories() as $cat): ?>
+                    <option value="<?= htmlspecialchars($cat) ?>"><?= htmlspecialchars($cat) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <div style="font-size: 11px; color: #777; margin-top: 5px;">
+                <?= __e('admin.event-form.hint.category') ?>
+            </div>
+        </div>
+
+        <div class="form-group">
             <label><?= __e('admin.event-form.label.cert-prefix') ?></label>
             <input type="text" name="cert_prefix" placeholder="<?= __e('admin.event-form.placeholder.cert-prefix') ?>" value="DCW" style="text-transform: uppercase;">
             <div style="font-size: 11px; color: #777; margin-top: 5px;">
@@ -87,6 +108,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <input type="date" name="certificate_issue_date" value="">
             <div style="font-size: 11px; color: #777; margin-top: 5px;">
                 <?= __e('admin.event-form.hint.issue-date') ?>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label><?= __e('admin.event-form.label.completion-date') ?></label>
+            <input type="date" name="completion_date" value="">
+            <div style="font-size: 11px; color: #777; margin-top: 5px;">
+                <?= __e('admin.event-form.hint.completion-date') ?>
             </div>
         </div>
 

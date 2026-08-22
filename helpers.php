@@ -3,6 +3,27 @@
  * Shared helper functions for the DCW Certificate Portal
  */
 
+if (!function_exists('event_categories')) {
+    /**
+     * Canonical list of event categories/types (issue #59).
+     * Used to populate dropdowns and to validate submitted values.
+     *
+     * @return string[]
+     */
+    function event_categories() {
+        return [
+            'Conference',
+            'Workshop',
+            'Photography Competition',
+            'Editathon',
+            'Internship',
+            'Learning Course',
+            'Testing Event',
+            'Other',
+        ];
+    }
+}
+
 if (!function_exists('sanitizeForFilename')) {
     /**
      * Sanitizes a string to be safe for use as a filename.
