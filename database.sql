@@ -4,8 +4,16 @@
 CREATE TABLE IF NOT EXISTS admin_users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL
+    password_hash VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NULL,
+    reset_token_hash VARCHAR(255) NULL,
+    reset_expires_at DATETIME NULL
 );
+
+-- Migration for existing installs:
+-- ALTER TABLE admin_users ADD COLUMN email VARCHAR(255) NULL;
+-- ALTER TABLE admin_users ADD COLUMN reset_token_hash VARCHAR(255) NULL;
+-- ALTER TABLE admin_users ADD COLUMN reset_expires_at DATETIME NULL;
 
 -- Insert Default Admin (username: admin, password: password123)
 -- This account exists only so a new operator can log in the first time.

@@ -44,7 +44,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="icon" type="image/png" href="../assets/DCW_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login</title>
+    <title><?= __e('admin.login.page-title') ?></title>
+    <link rel="stylesheet" href="style.css?v=<?= time() ?>">
+    <?php i18n_lang_switcher_css(); ?>
     <style>
         body {
             font-family: sans-serif;
@@ -54,6 +56,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             align-items: center;
             height: 100vh;
             margin: 0;
+            position: relative;
+        }
+
+        .lang-switcher-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
         }
 
         .login-card {
@@ -127,26 +136,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 
 <body>
+    <div class="lang-switcher-container">
+        <?php i18n_lang_switcher(); ?>
+    </div>
     <div class="login-card">
         <div style="text-align: center; margin-bottom: 10px;">
             <img src="../assets/DCW_logo.png" alt="DCW Logo"
                 style="height: 120px; background: white; padding: 5px; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
         </div>
-        <h2>Admin Login</h2>
+        <h2><?= __e('admin.login.heading') ?></h2>
         <?php if ($error): ?>
             <div class="error"><?= htmlspecialchars($error) ?></div><?php endif; ?>
         <form method="POST" action="">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generate_csrf_token()) ?>">
             <div class="form-group">
-                <label>Username</label>
+                <label><?= __e('admin.login.label.username') ?></label>
                 <input type="text" name="username" required>
             </div>
             <div class="form-group">
-                <label>Password</label>
+                <label><?= __e('admin.login.label.password') ?></label>
                 <div class="password-wrapper"><input type="password" name="password" required id="login-password"><button type="button" class="password-toggle" onclick="togglePassword('login-password')"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg></button></div>
             </div>
-            <button type="submit" class="btn">Login</button>
+            <button type="submit" class="btn"><?= __e('admin.login.submit') ?></button>
         </form>
+        <div style="text-align: center; margin-top: 16px; font-size: 13px;">
+            <a href="forgot_password.php" style="color: #106b9a; text-decoration: none;"><?= __e('admin.login.forgot-password') ?></a>
+        </div>
     </div>
 <script>function togglePassword(id){const input=document.getElementById(id);input.type=input.type==='password'?'text':'password';}</script>
 </body>
