@@ -59,20 +59,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!$eventName) {
         $error = __('admin.event-form.error.name-required');
     } else {
-<<<<<<< HEAD
         $oldEventName = $event['name'];
 
-        $stmtUpdate = $pdo->prepare("UPDATE events SET name = ?, linkedin_caption = ?, custom_verification_text = ?, certificate_issue_date = ?, description = ?, partners = ? WHERE id = ?");
-        $stmtUpdate->execute([$eventName, $linkedinCaption, $customVerificationText, $certificateIssueDate, $description, $partners, $eventId]);
+        $stmtUpdate = $pdo->prepare("UPDATE events SET name = ?, category = ?, linkedin_caption = ?, custom_verification_text = ?, certificate_issue_date = ?, completion_date = ?, description = ?, partners = ? WHERE id = ?");
+        $stmtUpdate->execute([$eventName, $category, $linkedinCaption, $customVerificationText, $certificateIssueDate, $completionDate, $description, $partners, $eventId]);
 
         if ($nameChanged) {
             syncEventTemplateFolder($pdo, $eventId, $oldEventName);
         }
-
-        log_audit_action($pdo, 'Edited Event', "Event ID: {$eventId}, New Name: {$eventName}");
-
-        $stmtUpdate = $pdo->prepare("UPDATE events SET name = ?, category = ?, linkedin_caption = ?, custom_verification_text = ?, certificate_issue_date = ?, completion_date = ?, description = ?, partners = ? WHERE id = ?");
-        $stmtUpdate->execute([$eventName, $category, $linkedinCaption, $customVerificationText, $certificateIssueDate, $completionDate, $description, $partners, $eventId]);
 
         log_audit_action($pdo, 'Edited Event', "Event ID: {$eventId}, New Name: {$eventName}");
 
