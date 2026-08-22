@@ -397,6 +397,8 @@ if (!function_exists('sendAdminResetEmail')) {
      */
     function sendAdminResetEmail($recipientEmail, $username, $resetUrl) {
         $portalUrl = adminPortalBaseUrl();
+        $orgName = defined('ORG_NAME') ? ORG_NAME : 'Deoband Community Wikimedia';
+        $orgUrl = defined('ORG_URL_HOME') ? ORG_URL_HOME : 'https://dcwwiki.org/';
         $logoUrl = $portalUrl . '/assets/DCW_logo.png';
 
         $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
@@ -410,14 +412,14 @@ if (!function_exists('sendAdminResetEmail')) {
             $mail->SMTPSecure = $_ENV['SMTP_SECURE'];
             $mail->Port = $_ENV['SMTP_PORT'];
 
-            $mail->setFrom($_ENV['SMTP_USER'], 'Deoband Community Wikimedia');
+            $mail->setFrom($_ENV['SMTP_USER'], $orgName);
             $mail->addAddress($recipientEmail, $username);
             $mail->isHTML(true);
-            $mail->Subject = "Password Reset Request - DCW Admin Portal";
+            $mail->Subject = __('email.password-reset.subject', ['org' => $orgName]);
 
             $mail->Body = '
             <!DOCTYPE html>
-            <html>
+            <html lang="' . htmlspecialchars(i18n_get_lang(), ENT_QUOTES | ENT_HTML5, 'UTF-8') . '" dir="' . i18n_get_dir() . '">
             <head>
                 <meta charset="utf-8">
                 <style>
@@ -436,20 +438,20 @@ if (!function_exists('sendAdminResetEmail')) {
             <body>
                 <div class="email-wrapper">
                     <div class="email-header">
-                        <img src="' . htmlspecialchars($logoUrl) . '" alt="Deoband Community Wikimedia Logo">
+                        <img src="' . htmlspecialchars($logoUrl) . '" alt="' . htmlspecialchars($orgName) . ' Logo">
                     </div>
                     <div class="email-body">
-                        <h1>Password Reset Requested</h1>
-                        <p>Hello <strong>' . htmlspecialchars($username) . '</strong>, we received a request to reset the password for your DCW Admin account.</p>
-                        <p>Click the button below to choose a new password. This link will expire in <strong>60 minutes</strong> and can only be used once.</p>
+                        <h1>' . htmlspecialchars(__('email.password-reset.heading')) . '</h1>
+                        <p>' . htmlspecialchars(__('email.password-reset.body', ['username' => $username, 'org' => $orgName])) . '</p>
+                        <p>' . htmlspecialchars(__('email.password-reset.instructions', ['minutes' => 60])) . '</p>
                         <div style="text-align: center; margin: 32px 0;">
-                            <a href="' . htmlspecialchars($resetUrl) . '" target="_blank" class="btn-portal">Reset My Password</a>
+                            <a href="' . htmlspecialchars($resetUrl) . '" target="_blank" class="btn-portal">' . htmlspecialchars(__('email.password-reset.btn-reset')) . '</a>
                         </div>
                         <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 32px 0;">
-                        <p style="font-size: 13px; color: #64748b; margin: 0;">If you did not request this, you can safely ignore this email &mdash; your password will remain unchanged.</p>
+                        <p style="font-size: 13px; color: #64748b; margin: 0;">' . htmlspecialchars(__('email.password-reset.disclaimer')) . '</p>
                     </div>
                     <div class="email-footer">
-                        &copy; ' . date('Y') . ' <a href="https://dcwwiki.org/">Deoband Community Wikimedia</a>. All Rights Reserved.
+                        ' . __('email.common.footer.copyright', ['year' => date('Y'), 'org' => '<a href="' . htmlspecialchars($orgUrl) . '">' . htmlspecialchars($orgName) . '</a>']) . '
                     </div>
                 </div>
             </body>
