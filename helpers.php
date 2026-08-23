@@ -24,6 +24,26 @@ if (!function_exists('event_categories')) {
     }
 }
 
+if (!function_exists('event_category_label')) {
+    /**
+     * Returns the localized label for a given event category (issue #59).
+     * If a translation key (e.g. 'category.workshop') exists, it returns
+     * the translated string; otherwise returns the original category name.
+     *
+     * @param string $category
+     * @return string
+     */
+    function event_category_label($category) {
+        if (empty($category)) {
+            return '';
+        }
+        $slug = strtolower(trim(preg_replace('/[^a-zA-Z0-9]+/', '-', $category), '-'));
+        $key = 'category.' . $slug;
+        $translated = __($key);
+        return ($translated !== $key) ? $translated : $category;
+    }
+}
+
 if (!function_exists('sanitizeForFilename')) {
     /**
      * Sanitizes a string to be safe for use as a filename.
@@ -374,13 +394,9 @@ if (!function_exists('sendAvailabilityEmail')) {
         $eventName = $certData['event_name'];
 
         // Determine portal root URL dynamically
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)) ? "https://" : "http://";
-        $baseDir = str_replace('\\', '/', dirname($_SERVER['PHP_SELF']));
-        // If run from admin panel directory, strip it
-        $portalDir = preg_replace('/\/admin(\/|$)/', '/', $baseDir);
-        if ($portalDir === '/') $portalDir = '';
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        $portalUrl = $protocol . $host . $portalDir;
+        $portalUrl = adminPortalBaseUrl();
+        $orgName = defined('ORG_NAME') && ORG_NAME !== '' ? ORG_NAME : __('site.name');
+        $orgUrl = defined('ORG_URL_HOME') ? ORG_URL_HOME : 'https://dcwwiki.org/';
         $logoUrl = $portalUrl . '/assets/DCW_logo.png';
 
         $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
@@ -394,14 +410,14 @@ if (!function_exists('sendAvailabilityEmail')) {
             $mail->SMTPSecure = $_ENV['SMTP_SECURE'];
             $mail->Port = $_ENV['SMTP_PORT'];
 
-            $mail->setFrom($_ENV['SMTP_USER'], 'Deoband Community Wikimedia');
+            $mail->setFrom($_ENV['SMTP_USER'], $orgName);
             $mail->addAddress($recipientEmail, $fullName);
             $mail->isHTML(true);
-            $mail->Subject = "Certificate Available: " . $eventName;
+            $mail->Subject = __('email.notification.subject', ['event' => $eventName]);
 
             $mail->Body = '
             <!DOCTYPE html>
-            <html>
+            <html lang="' . htmlspecialchars(i18n_get_lang(), ENT_QUOTES | ENT_HTML5, 'UTF-8') . '" dir="' . i18n_get_dir() . '">
             <head>
                 <meta charset="utf-8">
                 <style>
@@ -420,28 +436,30 @@ if (!function_exists('sendAvailabilityEmail')) {
             <body>
                 <div class="email-wrapper">
                     <div class="email-header">
-                        <img src="' . htmlspecialchars($logoUrl) . '" alt="Deoband Community Wikimedia Logo">
+                        <img src="' . htmlspecialchars($logoUrl) . '" alt="' . htmlspecialchars($orgName) . ' Logo">
                     </div>
                     <div class="email-body">
-                        <h1>Hello, ' . htmlspecialchars($fullName) . '!</h1>
-                        <p>We are pleased to inform you that your official certificate for <strong>' . htmlspecialchars($eventName) . '</strong> is now available on the Deoband Community Wikimedia Certificate Portal.</p>
-                        <p>You can claim and download your certificate by entering your registered name and email address on our portal.</p>
+                        <h1>' . htmlspecialchars(__('email.notification.heading', ['name' => $fullName])) . '</h1>
+                        <p>' . htmlspecialchars(__('email.notification.body', ['event' => $eventName, 'org' => $orgName])) . '</p>
+                        <p>' . htmlspecialchars(__('email.notification.instructions')) . '</p>
                         
                         <div style="text-align: center; margin: 32px 0;">
                             <a href="' . htmlspecialchars($portalUrl) . '" target="_blank" class="btn-portal">
-                                Go to Certificate Portal
+                                ' . htmlspecialchars(__('email.notification.btn-portal')) . '
                             </a>
                         </div>
                         
                         <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 32px 0;">
-                        <p style="font-size: 13px; color: #64748b; margin: 0;">Please ensure you use your registered email address (<strong>' . htmlspecialchars($recipientEmail) . '</strong>) when claiming the certificate.</p>
+                        <p style="font-size: 13px; color: #64748b; margin: 0;">' . htmlspecialchars(__('email.notification.disclaimer', ['email' => $recipientEmail])) . '</p>
                     </div>
                     <div class="email-footer">
-                        &copy; ' . date('Y') . ' <a href="https://dcwwiki.org/">Deoband Community Wikimedia</a>. All Rights Reserved.
+                        ' . __('email.common.footer.copyright', ['year' => date('Y'), 'org' => '<a href="' . htmlspecialchars($orgUrl) . '">' . htmlspecialchars($orgName) . '</a>']) . '
                     </div>
                 </div>
             </body>
             </html>';
+
+            $mail->AltBody = "Hello {$fullName},\n\nYour certificate for {$eventName} is now available on the {$orgName} Certificate Portal:\n{$portalUrl}\n\nPlease use your registered email address ({$recipientEmail}) to claim your certificate.";
 
             $mail->send();
             
@@ -497,7 +515,7 @@ if (!function_exists('sendAdminResetEmail')) {
             global $pdo;
         }
         $portalUrl = adminPortalBaseUrl();
-        $orgName = defined('ORG_NAME') ? ORG_NAME : 'Deoband Community Wikimedia';
+        $orgName = defined('ORG_NAME') && ORG_NAME !== '' ? ORG_NAME : __('site.name');
         $orgUrl = defined('ORG_URL_HOME') ? ORG_URL_HOME : 'https://dcwwiki.org/';
         $logoUrl = $portalUrl . '/assets/DCW_logo.png';
 
@@ -557,7 +575,7 @@ if (!function_exists('sendAdminResetEmail')) {
             </body>
             </html>';
 
-            $mail->AltBody = "Hello {$username},\n\nReset your DCW Admin password using this link (valid for 60 minutes):\n{$resetUrl}\n\nIf you did not request this, ignore this email.";
+            $mail->AltBody = "Hello {$username},\n\nReset your {$orgName} Admin password using this link (valid for 60 minutes):\n{$resetUrl}\n\nIf you did not request this, ignore this email.";
 
             $mail->send();
 

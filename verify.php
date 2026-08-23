@@ -60,7 +60,7 @@ if (!$notFound) {
     // Supported placeholders (issue #59): {name}, {event}, {category}, {issue_date}/{date}
     // (the credential issue date) and {completion_date} (course/internship completion date,
     // blank when not set).
-    $categoryLabel = !empty($certData['category']) ? htmlspecialchars($certData['category']) : '';
+    $categoryLabel = !empty($certData['category']) ? htmlspecialchars(event_category_label($certData['category'])) : '';
     $verificationText = !empty($certData['custom_verification_text'])
         ? str_replace(
             ['{name}', '{event}', '{category}', '{issue_date}', '{date}', '{completion_date}'],
@@ -93,7 +93,7 @@ if (!$notFound) {
         <meta name="description" content="This certificate ID could not be recognized by our verification system.">
         <meta name="robots" content="noindex">
     <?php else: ?>
-        <title>Credential Verification - <?= htmlspecialchars($certData['full_name']) ?> - Deoband Community Wikimedia
+        <title>Credential Verification - <?= htmlspecialchars($certData['full_name']) ?> - <?= __e('site.name') ?>
         </title>
         <meta name="title"
             content="Verified Credential: <?= htmlspecialchars($certData['full_name']) ?> - <?= htmlspecialchars($certData['event_name']) ?>">

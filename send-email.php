@@ -230,7 +230,11 @@ try {
     $mail->SMTPSecure = $_ENV['SMTP_SECURE'];
     $mail->Port = $_ENV['SMTP_PORT'];
 
-    $mail->setFrom($_ENV['SMTP_USER'], defined('ORG_NAME') ? ORG_NAME : 'Deoband Community Wikimedia');
+    $orgName = defined('ORG_NAME') && ORG_NAME !== '' ? ORG_NAME : __('site.name');
+    $orgUrl = defined('ORG_URL_HOME') ? ORG_URL_HOME : 'https://dcwwiki.org/';
+    $logoUrl = $protocol . $_SERVER['HTTP_HOST'] . $baseDir . '/assets/DCW_logo.png';
+
+    $mail->setFrom($_ENV['SMTP_USER'], $orgName);
     $mail->addAddress($recipientEmail, $fullName);
     $mail->isHTML(true);
     $mail->Subject = __('email.certificate.subject', ['event' => $certData['event_name']]);
@@ -242,10 +246,6 @@ try {
     $safeEventName = sanitizeForFilename($certData['event_name']);
     $filename = "{$safeFullName} - {$safeEventName} - Certificate.pdf";
     $mail->addStringAttachment($pdfString, $filename);
-
-    $orgName = defined('ORG_NAME') ? ORG_NAME : 'Deoband Community Wikimedia';
-    $orgUrl = defined('ORG_URL_HOME') ? ORG_URL_HOME : 'https://dcwwiki.org/';
-    $logoUrl = $protocol . $_SERVER['HTTP_HOST'] . $baseDir . '/assets/DCW_logo.png';
 
     // Professional HTML Email Template Layout
     $mail->Body = '

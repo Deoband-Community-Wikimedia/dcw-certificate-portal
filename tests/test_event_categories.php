@@ -85,13 +85,39 @@ $requiredKeys = [
     'admin.event-form.option.uncategorised',
     'admin.event-form.hint.category',
     'admin.event-form.label.completion-date',
-    'admin.event-form.hint.completion-date'
+    'admin.event-form.hint.completion-date',
+    'category.conference',
+    'category.workshop',
+    'category.photography-competition',
+    'category.editathon',
+    'category.internship',
+    'category.learning-course',
+    'category.testing-event',
+    'category.other'
 ];
 
 foreach ($requiredKeys as $k) {
     assertTest(isset($en[$k]) && $en[$k] !== '', "en.json defines '$k'");
     assertTest(isset($es[$k]) && $es[$k] !== '', "es.json defines '$k'");
 }
+
+// Test 5: event_category_label() helper
+echo "\nTest 5: event_category_label() Helper...\n";
+$_SESSION['lang'] = 'en';
+i18n_reset_lang_cache();
+assertTest(event_category_label('Workshop') === 'Workshop', "English label for 'Workshop' is 'Workshop'");
+assertTest(event_category_label('Photography Competition') === 'Photography Competition', "English label for 'Photography Competition' is 'Photography Competition'");
+
+$_SESSION['lang'] = 'es';
+i18n_reset_lang_cache();
+assertTest(event_category_label('Workshop') === 'Taller', "Spanish label for 'Workshop' is 'Taller'");
+assertTest(event_category_label('Conference') === 'Conferencia', "Spanish label for 'Conference' is 'Conferencia'");
+assertTest(event_category_label('Photography Competition') === 'Concurso de Fotografía', "Spanish label for 'Photography Competition' is 'Concurso de Fotografía'");
+assertTest(event_category_label('Unknown Custom Category') === 'Unknown Custom Category', "Fallback for unknown category returns raw string");
+
+// Reset language back
+unset($_SESSION['lang']);
+i18n_reset_lang_cache();
 
 echo "\n=======================================================\n";
 echo "SUMMARY: PASS: $passes | FAIL: $fails\n";
