@@ -336,5 +336,8 @@
     "admin.editor.color.save-current": "+ Guardar actual",
     "admin.editor.color.save-current-title": "Guardar el color actual como un preset de marca reutilizable",
     "admin.editor.color.brand-hint": "Haga clic en un color de marca para aplicarlo; clic derecho (o mantener presionado) para eliminarlo. Se guarda con \"Guardar Todos los Diseños\".",
-    "admin.editor.color.none-yet": "ninguno aún"
+    "admin.editor.color.none-yet": "ninguno aún",
+    "admin.editor.tab.properties": "Propiedades",
+    "admin.editor.tab.layers": "Capas y Cuadrícula",
+    "admin.editor.color.custom-toggle": "Deslizadores y Cuentagotas"
 }
