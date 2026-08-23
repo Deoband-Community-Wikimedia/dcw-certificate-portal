@@ -336,5 +336,8 @@
     "admin.editor.color.save-current": "+ Save current",
     "admin.editor.color.save-current-title": "Save the current color as a reusable brand preset",
     "admin.editor.color.brand-hint": "Click a brand color to apply it; right-click (or long-press) to remove. Saved with \"Save All Layouts\".",
-    "admin.editor.color.none-yet": "none yet"
+    "admin.editor.color.none-yet": "none yet",
+    "admin.editor.tab.properties": "Properties",
+    "admin.editor.tab.layers": "Layers & Grid",
+    "admin.editor.color.custom-toggle": "Custom Sliders & Eyedropper"
 }

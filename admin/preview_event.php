@@ -398,7 +398,8 @@ if (is_dir($fontDir)) {
             transform: scale(1.2);
         }
         /* Custom cross-platform colour picker (issue #92) */
-        #custom_color_ui { margin-top: 10px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; background: #f8fafc; }
+        #custom_color_ui { display: none; margin-top: 8px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; background: #f8fafc; }
+        #custom_color_ui.open { display: block; }
         #custom_color_ui .cc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
         #color_preview { width: 28px; height: 28px; border-radius: 5px; border: 1px solid #cbd5e1; background: #000; flex: 0 0 auto; }
         #color_hex_readout { font-size: 12px; font-family: monospace; color: #334155; }
@@ -408,11 +409,122 @@ if (is_dir($fontDir)) {
         #custom_color_ui .cc-row span { width: 38px; font-size: 11px; color: #475569; flex: 0 0 auto; }
         #custom_color_ui .cc-row input[type="range"] { flex: 1; height: 22px; accent-color: #106b9a; cursor: pointer; }
 
+        /* Custom Color Collapsible Toggle (issue #118) */
+        .custom-color-toggle-btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 10px;
+            margin-top: 8px;
+            background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .custom-color-toggle-btn:hover {
+            background: #f1f5f9;
+            border-color: #94a3b8;
+            color: #0f172a;
+        }
+
+        /* Inspector Tabs (issue #118) */
+        .inspector-tabs {
+            display: flex;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 8px;
+            gap: 4px;
+            margin-bottom: 15px;
+            border: 1px solid #e2e8f0;
+        }
+        .inspector-tab-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 7px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .inspector-tab-btn:hover {
+            color: #1e293b;
+            background: rgba(255, 255, 255, 0.6);
+        }
+        .inspector-tab-btn.active {
+            color: #0f172a;
+            background: #ffffff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        .inspector-tab-content {
+            display: none;
+        }
+        .inspector-tab-content.active {
+            display: block;
+        }
+
         /* Locked layer state */
         .element-box.locked {
             cursor: not-allowed !important;
         }
         /* ===== END OF INSERTION 1 ===== */
+        /* Sticky canvas & independent sidebar scroll (issue #118) */
+        @media (min-width: 901px) {
+            .container {
+                display: flex;
+                max-width: 1440px;
+                gap: 20px;
+                align-items: flex-start;
+                padding: 12px;
+                box-sizing: border-box;
+            }
+            .editor-wrapper {
+                position: sticky;
+                top: 15px;
+                max-height: calc(100vh - 85px);
+                display: flex;
+                flex-direction: column;
+                flex: 1;
+                min-width: 0;
+            }
+            .controls {
+                width: 380px;
+                flex-shrink: 0;
+                max-height: calc(100vh - 85px);
+                overflow-y: auto;
+                overflow-x: hidden;
+                scrollbar-width: thin;
+                scrollbar-color: #cbd5e1 #f8fafc;
+                border-radius: 10px;
+                background: #ffffff;
+                border: 1.5px solid #cbd5e1;
+                padding: 16px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+                box-sizing: border-box;
+            }
+            .controls::-webkit-scrollbar {
+                width: 6px;
+            }
+            .controls::-webkit-scrollbar-track {
+                background: #f8fafc;
+                border-radius: 4px;
+            }
+            .controls::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 4px;
+            }
+        }
         /* Mobile responsiveness for editor */
         @media (max-width: 900px) {
             .container { flex-direction: column; }
@@ -515,195 +627,221 @@ if (is_dir($fontDir)) {
                 </div>
             </div>
             </div>
-        </div>
-
-        <div class="controls">
-            <!-- ===== START OF INSERTION 3: GRID TOGGLE UI ===== -->
-            <div style="margin-bottom: 20px; padding: 12px; background: #eaedf1; border-radius: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 15px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" id="toggle_grid" style="width: auto; height: 18px; cursor: pointer;"> 
-                    <label for="toggle_grid" style="margin-bottom: 0; font-weight: bold; cursor: pointer;">Show Grid</label>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <label for="snap_interval" style="margin-bottom: 0; font-weight: bold;">Snap:</label>
-                    <select id="snap_interval" style="width: auto; padding: 4px; font-weight: bold; border-radius: 4px; background: white; border: 1.5px solid #cbd5e1; height: auto; cursor: pointer;">
-                        <option value="0">None</option>
-                        <option value="0.1">0.1mm</option>
-                        <option value="0.5">0.5mm</option>
-                        <option value="1">1mm</option>
-                        <option value="2">2mm</option>
-                        <option value="5" selected>5mm</option>
-                        <option value="10">10mm</option>
-                        <option value="custom">Custom...</option>
-                    </select>
-                    <input type="number" id="snap_custom_val" step="0.1" min="0.05" value="0.5" style="display: none; width: 65px; padding: 4px; border-radius: 4px; border: 1.5px solid #cbd5e1; font-weight: bold; background: white;">
-                </div>
-            </div>
-            <!-- ===== END OF INSERTION 3 ===== -->
-            <!-- ===== FIGMA LAYERS PANEL ===== -->
-            <div style="margin-bottom: 20px; background: white; border: 1.5px solid #cbd5e1; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                <div style="background: #f8fafc; padding: 10px 12px; font-weight: 700; font-size: 13px; color: #334155; border-bottom: 1.5px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center; user-select: none;">
-                    <span style="display: flex; align-items: center; gap: 6px;">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="color: #64748b;"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg>
-                        Layers Panel
-                    </span>
-                    <span style="font-size: 10px; padding: 2px 6px; background: #e2e8f0; border-radius: 4px; color: #475569; font-weight: 600;">Interactive</span>
-                </div>
-                <div id="layers_list" style="display: flex; flex-direction: column;">
-                    <!-- Dynamically populated via JS -->
-                </div>
+        </div>        <div class="controls">
+            <!-- Inspector Tabs (issue #118): Keep properties clean & compact -->
+            <div class="inspector-tabs" role="tablist">
+                <button type="button" class="inspector-tab-btn active" data-tab="properties" role="tab" aria-selected="true" aria-controls="inspector_tab_properties">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                    <?= __e('admin.editor.tab.properties') ?>
+                </button>
+                <button type="button" class="inspector-tab-btn" data-tab="layers" role="tab" aria-selected="false" aria-controls="inspector_tab_layers">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg>
+                    <?= __e('admin.editor.tab.layers') ?>
+                </button>
             </div>
 
             <form id="settings-form" method="POST" action="" enctype="multipart/form-data">
                 <input type="hidden" id="visual_settings_payload" name="visual_settings_payload">
                 <input type="hidden" id="rotation" name="rotation" value="<?= htmlspecialchars($role['rotation'] ?? 0) ?>">
 
-                <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
-                    <input type="checkbox" id="field_enabled" style="width: auto; height: 18px;">
-                    <label for="field_enabled" style="margin-bottom: 0;">Show this element on PDF</label>
-                </div>
-
-                <div class="form-group" id="sample_text_group" style="display: none; padding-top: 10px; border-top: 1px solid #eaedf1;">
-                    <label>Preview Sample Text <span style="font-size: 11px; font-weight: normal; color: #777;">(Not saved, for testing only)</span></label>
-                    <input type="text" id="sample_text_input" placeholder="Type to preview length..." style="width: 100%; padding: 10px; box-sizing: border-box; border: 1.5px solid #cbd5e1; border-radius: 6px; font-family: monospace;">
-                    <div id="sample_text_chips" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;"></div>
-                </div>
-
-                <!-- Coordinates Group (Horizontal Row) -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label style="font-weight: bold; font-size: 11px; margin-bottom: 4px; color: #475569; display: block;">X Position (mm)</label>
-                        <input type="number" id="pos_x" step="0.01" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1.5px solid #cbd5e1; border-radius: 6px; background: #f8fafc; font-size: 13px;">
+                <!-- TAB 1: Element Properties -->
+                <div id="inspector_tab_properties" class="inspector-tab-content active">
+                    <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                        <input type="checkbox" id="field_enabled" style="width: auto; height: 18px;">
+                        <label for="field_enabled" style="margin-bottom: 0; font-weight: 600; color: #1e293b;">Show this element on PDF</label>
                     </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label style="font-weight: bold; font-size: 11px; margin-bottom: 4px; color: #475569; display: block;">Y Position (mm)</label>
-                        <input type="number" id="pos_y" step="0.01" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1.5px solid #cbd5e1; border-radius: 6px; background: #f8fafc; font-size: 13px;">
-                    </div>
-                </div>
 
-                <!-- Size & Box Width Group (Horizontal Row) -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label style="font-weight: bold; font-size: 11px; margin-bottom: 4px; color: #475569; display: block;">Size (pt / mm)</label>
-                        <input type="number" id="font_size" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1.5px solid #cbd5e1; border-radius: 6px; background: #f8fafc; font-size: 13px;">
+                    <div class="form-group" id="sample_text_group" style="display: none; padding-top: 8px; border-top: 1px solid #eaedf1; margin-bottom: 12px;">
+                        <label style="font-weight: 600; font-size: 11px; margin-bottom: 4px; color: #475569; display: block;">Preview Sample Text <span style="font-size: 10px; font-weight: normal; color: #94a3b8;">(Test only)</span></label>
+                        <input type="text" id="sample_text_input" placeholder="Type to preview length..." style="width: 100%; padding: 8px 10px; box-sizing: border-box; border: 1.5px solid #cbd5e1; border-radius: 6px; font-family: monospace; font-size: 12px;">
+                        <div id="sample_text_chips" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;"></div>
                     </div>
-                    <div class="form-group" id="group_box_width" style="margin-bottom: 0;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                            <label style="font-weight: bold; font-size: 11px; color: #475569; margin-bottom: 0;">Max Width (mm)</label>
-                            <span style="font-size: 10px; color: #64748b;" id="box_width_mode_badge">0 = Auto</span>
+
+                    <!-- Coordinates Group (Horizontal Row) -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 600; font-size: 11px; margin-bottom: 4px; color: #475569; display: block;">X Position (mm)</label>
+                            <input type="number" id="pos_x" step="0.01" style="width: 100%; padding: 7px 8px; box-sizing: border-box; border: 1.5px solid #cbd5e1; border-radius: 6px; background: #f8fafc; font-size: 13px;">
                         </div>
-                        <input type="number" id="box_width" step="1" min="0" placeholder="0 (Auto)" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1.5px solid #cbd5e1; border-radius: 6px; background: #f8fafc; font-size: 13px;">
-                        <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;">
-                            <button type="button" class="width-preset-btn" data-width="0">Auto</button>
-                            <button type="button" class="width-preset-btn" data-width="80">80mm</button>
-                            <button type="button" class="width-preset-btn" data-width="120">120mm</button>
-                            <button type="button" class="width-preset-btn" data-width="160">160mm</button>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 600; font-size: 11px; margin-bottom: 4px; color: #475569; display: block;">Y Position (mm)</label>
+                            <input type="number" id="pos_y" step="0.01" style="width: 100%; padding: 7px 8px; box-sizing: border-box; border: 1.5px solid #cbd5e1; border-radius: 6px; background: #f8fafc; font-size: 13px;">
                         </div>
                     </div>
-                </div>
 
-                <div class="form-group" id="group_color">
-                    <label>Text Color (HEX/RGB)</label>
-                    <div style="display: flex; gap: 5px;">
-                        <input type="color" id="color_picker" style="width: 50px; padding: 2px; cursor: pointer; height: 35px;">
-                        <input type="text" id="text_color" placeholder="e.g. 0,0,0">
-                    </div>
-                    <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center;">
-                        <span style="font-size: 11px; color: #64748b;">Presets:</span>
-                        <div style="display: flex; gap: 6px;" id="color_swatches">
-                            <div class="swatch" data-color="#000000" style="background: #000000;" title="Black"></div>
-                            <div class="swatch" data-color="#106b9a" style="background: #106b9a;" title="DCW Blue"></div>
-                            <div class="swatch" data-color="#d4af37" style="background: #d4af37;" title="Gold"></div>
-                            <div class="swatch" data-color="#334155" style="background: #334155;" title="Charcoal"></div>
-                            <div class="swatch" data-color="#b91c1c" style="background: #b91c1c;" title="Red"></div>
+                    <!-- Size & Box Width Group (Horizontal Row) -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 600; font-size: 11px; margin-bottom: 4px; color: #475569; display: block;">Size (pt / mm)</label>
+                            <input type="number" id="font_size" style="width: 100%; padding: 7px 8px; box-sizing: border-box; border: 1.5px solid #cbd5e1; border-radius: 6px; background: #f8fafc; font-size: 13px;">
+                        </div>
+                        <div class="form-group" id="group_box_width" style="margin-bottom: 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                <label style="font-weight: 600; font-size: 11px; color: #475569; margin-bottom: 0;">Max Width (mm)</label>
+                                <span style="font-size: 10px; color: #64748b;" id="box_width_mode_badge">0 = Auto</span>
+                            </div>
+                            <input type="number" id="box_width" step="1" min="0" placeholder="0 (Auto)" style="width: 100%; padding: 7px 8px; box-sizing: border-box; border: 1.5px solid #cbd5e1; border-radius: 6px; background: #f8fafc; font-size: 13px;">
+                            <div style="display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px;">
+                                <button type="button" class="width-preset-btn" data-width="0">Auto</button>
+                                <button type="button" class="width-preset-btn" data-width="80">80</button>
+                                <button type="button" class="width-preset-btn" data-width="120">120</button>
+                                <button type="button" class="width-preset-btn" data-width="160">160</button>
+                            </div>
                         </div>
                     </div>
-                    <?php if (!empty($extractedPalette)): ?>
-                    <!-- Auto-extracted from the uploaded template (issue #90): read fresh from the
-                         PDF's own content-stream colors on every load, not persisted. -->
-                    <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap;">
-                        <span style="font-size: 11px; color: #64748b;"><?= __e('admin.editor.color.extracted-label') ?></span>
-                        <div style="display: flex; gap: 6px;" id="extracted_swatches">
-                            <?php foreach ($extractedPalette as $hex): ?>
-                                <div class="swatch" data-color="<?= htmlspecialchars($hex) ?>" style="background: <?= htmlspecialchars($hex) ?>;" title="<?= htmlspecialchars($hex) ?> — <?= __e('admin.editor.color.extracted-title') ?>"></div>
+
+                    <!-- Text Color Group -->
+                    <div class="form-group" id="group_color" style="margin-bottom: 12px;">
+                        <label style="font-weight: 600; font-size: 11px; margin-bottom: 4px; color: #475569; display: block;">Text Color (HEX/RGB)</label>
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <input type="color" id="color_picker" style="width: 44px; height: 32px; padding: 1px; cursor: pointer; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <input type="text" id="text_color" placeholder="e.g. 0,0,0" style="flex: 1; padding: 7px 8px; font-size: 12px; font-family: monospace; border: 1.5px solid #cbd5e1; border-radius: 6px;">
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center;">
+                            <span style="font-size: 11px; color: #64748b;">Presets:</span>
+                            <div style="display: flex; gap: 6px;" id="color_swatches">
+                                <div class="swatch" data-color="#000000" style="background: #000000;" title="Black"></div>
+                                <div class="swatch" data-color="#106b9a" style="background: #106b9a;" title="DCW Blue"></div>
+                                <div class="swatch" data-color="#d4af37" style="background: #d4af37;" title="Gold"></div>
+                                <div class="swatch" data-color="#334155" style="background: #334155;" title="Charcoal"></div>
+                                <div class="swatch" data-color="#b91c1c" style="background: #b91c1c;" title="Red"></div>
+                            </div>
+                        </div>
+                        <?php if (!empty($extractedPalette)): ?>
+                        <!-- Auto-extracted from the uploaded template (issue #90) -->
+                        <div style="display: flex; gap: 8px; margin-top: 6px; align-items: center; flex-wrap: wrap;">
+                            <span style="font-size: 11px; color: #64748b;"><?= __e('admin.editor.color.extracted-label') ?></span>
+                            <div style="display: flex; gap: 6px;" id="extracted_swatches">
+                                <?php foreach ($extractedPalette as $hex): ?>
+                                    <div class="swatch" data-color="<?= htmlspecialchars($hex) ?>" style="background: <?= htmlspecialchars($hex) ?>;" title="<?= htmlspecialchars($hex) ?> — <?= __e('admin.editor.color.extracted-title') ?>"></div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        <!-- Custom brand presets (issue #90) -->
+                        <div style="display: flex; gap: 8px; margin-top: 6px; align-items: center; flex-wrap: wrap;">
+                            <span style="font-size: 11px; color: #64748b;"><?= __e('admin.editor.color.brand-label') ?></span>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap;" id="custom_swatches"></div>
+                            <button type="button" id="add_preset_btn" title="<?= __e('admin.editor.color.save-current-title') ?>"
+                                style="font-size: 10px; padding: 2px 6px; border: 1px dashed #cbd5e1; border-radius: 4px; background: #fff; cursor: pointer; color: #475569;"><?= __e('admin.editor.color.save-current') ?></button>
+                        </div>
+                        <div style="font-size: 10px; color: #94a3b8; margin-top: 3px;"><?= __e('admin.editor.color.brand-hint') ?></div>
+                        <input type="hidden" id="color_presets_payload" name="color_presets_payload">
+                        
+                        <!-- Collapsible trigger for custom HSL picker & Eyedropper (issue #118) -->
+                        <button type="button" id="toggle_custom_color_btn" class="custom-color-toggle-btn">
+                            <span style="display: flex; align-items: center; gap: 6px;">
+                                <span id="color_swatch_indicator" style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #cbd5e1; display: inline-block; background: #000;"></span>
+                                <?= __e('admin.editor.color.custom-toggle') ?>
+                            </span>
+                            <span id="custom_color_arrow" style="font-size: 10px; color: #64748b;">▾</span>
+                        </button>
+
+                        <div id="custom_color_ui">
+                            <div class="cc-head">
+                                <div id="color_preview" title="Current colour"></div>
+                                <span id="color_hex_readout">#000000</span>
+                                <button type="button" id="eyedropper_btn" title="Pick a colour from anywhere on screen">&#128269; Eyedropper</button>
+                            </div>
+                            <label class="cc-row"><span>Hue</span><input type="range" id="cc_hue" min="0" max="360" step="1" value="0"></label>
+                            <label class="cc-row"><span>Sat</span><input type="range" id="cc_sat" min="0" max="100" step="1" value="0"></label>
+                            <label class="cc-row"><span>Light</span><input type="range" id="cc_light" min="0" max="100" step="1" value="0"></label>
+                        </div>
+                    </div>
+
+                    <!-- Alignment -->
+                    <div class="form-group" id="group_align" style="margin-bottom: 12px;">
+                        <label style="font-weight: 600; font-size: 11px; margin-bottom: 4px; color: #475569; display: block;">Text Alignment</label>
+                        <div class="segmented-control">
+                            <button type="button" class="segment-btn active" data-align="L" title="Align Left">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg>
+                            </button>
+                            <button type="button" class="segment-btn" data-align="C" title="Align Center">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="10" x2="6" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="18" y1="18" x2="6" y2="18"></line></svg>
+                            </button>
+                            <button type="button" class="segment-btn" data-align="R" title="Align Right">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="10" x2="7" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="21" y1="18" x2="7" y2="18"></line></svg>
+                            </button>
+                        </div>
+                        <input type="hidden" id="text_align" value="L">
+                    </div>
+
+                    <!-- Font Family -->
+                    <div class="form-group" id="group_font" style="margin-bottom: 12px;">
+                        <label style="font-weight: 600; font-size: 11px; margin-bottom: 4px; color: #475569; display: block;">Font Family</label>
+                        <select id="existing_font" style="width: 100%; padding: 7px 8px; font-size: 12px; border: 1.5px solid #cbd5e1; border-radius: 6px;">
+                            <option value="">Default Font</option>
+                            <?php foreach ($ttfFiles as $fName): ?>
+                                <option value="<?= htmlspecialchars($fName) ?>"><?= htmlspecialchars($fName) ?></option>
                             <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <!-- Upload Custom Font -->
+                    <div class="form-group" id="font_upload_group" style="margin-bottom: 12px;">
+                        <label style="font-weight: 600; font-size: 11px; margin-bottom: 4px; color: #475569; display: block;">Upload Custom Font (.ttf)</label>
+                        <input type="file" id="font_file_input" accept=".ttf" style="width: 100%; font-size: 12px;">
+                        <div style="font-size: 10px; color: #64748b; margin-top: 2px;">For <span id="lbl_current_tab">Name</span></div>
+                    </div>
+
+                    <!-- Date Format -->
+                    <div class="form-group" id="date_format_group" style="display: none; margin-bottom: 12px;">
+                        <label style="font-weight: 600; font-size: 11px; margin-bottom: 4px; color: #475569; display: block;">Date Format</label>
+                        <select id="date_format" style="width: 100%; padding: 7px 8px; font-size: 12px; border: 1.5px solid #cbd5e1; border-radius: 6px;">
+                            <option value="F j, Y">June 14, 2026 (F j, Y)</option>
+                            <option value="Y-m-d">2026-06-14 (Y-m-d)</option>
+                            <option value="d/m/Y">14/06/2026 (d/m/Y)</option>
+                            <option value="m/d/Y">06/14/2026 (m/d/Y)</option>
+                            <option value="j F Y">14 June 2026 (j F Y)</option>
+                        </select>
+                    </div>
+
+                    <!-- Quick Actions Center/Align Buttons -->
+                    <div class="form-group" style="padding-top: 10px; border-top: 1px solid #eaedf1; margin-bottom: 12px;">
+                        <label style="font-weight: 600; font-size: 11px; margin-bottom: 6px; color: #475569; display: block;">Quick Actions</label>
+                        <div style="display: flex; gap: 8px;">
+                            <button type="button" id="btn_center_x" class="btn btn-sm" style="flex: 1; padding: 7px 8px; font-size: 11px; font-weight: 600; text-align: center;">Center Horizontally</button>
+                            <button type="button" id="btn_center_y" class="btn btn-sm" style="flex: 1; padding: 7px 8px; font-size: 11px; font-weight: 600; text-align: center;">Center Vertically</button>
                         </div>
                     </div>
-                    <?php endif; ?>
-                    <!-- Custom brand presets (issue #90): organiser-saved colors, stored per-event. -->
-                    <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap;">
-                        <span style="font-size: 11px; color: #64748b;"><?= __e('admin.editor.color.brand-label') ?></span>
-                        <div style="display: flex; gap: 6px; flex-wrap: wrap;" id="custom_swatches"></div>
-                        <button type="button" id="add_preset_btn" title="<?= __e('admin.editor.color.save-current-title') ?>"
-                            style="font-size: 11px; padding: 3px 8px; border: 1px dashed #cbd5e1; border-radius: 4px; background: #fff; cursor: pointer; color: #475569;"><?= __e('admin.editor.color.save-current') ?></button>
-                    </div>
-                    <div style="font-size: 10px; color: #94a3b8; margin-top: 4px;"><?= __e('admin.editor.color.brand-hint') ?></div>
-                    <input type="hidden" id="color_presets_payload" name="color_presets_payload">
-                    <!-- Custom cross-platform picker (issue #92): the native <input type=color> falls
-                         back to a limited OS swatch list on mobile/tablet. These touch-friendly HSL
-                         sliders + eyedropper give the same fine control everywhere and write the
-                         canonical "r,g,b" value. -->
-                    <div id="custom_color_ui">
-                        <div class="cc-head">
-                            <div id="color_preview" title="Current colour"></div>
-                            <span id="color_hex_readout">#000000</span>
-                            <button type="button" id="eyedropper_btn" title="Pick a colour from anywhere on screen">&#128269; Eyedropper</button>
+                </div>
+
+                <!-- TAB 2: Layers & Canvas Grid -->
+                <div id="inspector_tab_layers" class="inspector-tab-content">
+                    <!-- Figma Layers Panel -->
+                    <div style="margin-bottom: 16px; background: white; border: 1.5px solid #cbd5e1; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <div style="background: #f8fafc; padding: 8px 12px; font-weight: 700; font-size: 12px; color: #334155; border-bottom: 1.5px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                            <span style="display: flex; align-items: center; gap: 6px;">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="color: #64748b;"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg>
+                                Layers Panel
+                            </span>
+                            <span style="font-size: 10px; padding: 2px 6px; background: #e2e8f0; border-radius: 4px; color: #475569; font-weight: 600;">Interactive</span>
                         </div>
-                        <label class="cc-row"><span>Hue</span><input type="range" id="cc_hue" min="0" max="360" step="1" value="0"></label>
-                        <label class="cc-row"><span>Sat</span><input type="range" id="cc_sat" min="0" max="100" step="1" value="0"></label>
-                        <label class="cc-row"><span>Light</span><input type="range" id="cc_light" min="0" max="100" step="1" value="0"></label>
+                        <div id="layers_list" style="display: flex; flex-direction: column;">
+                            <!-- Dynamically populated via JS -->
+                        </div>
                     </div>
-                </div>
 
-                <div class="form-group" id="group_align">
-                    <label>Text Alignment</label>
-                    <div class="segmented-control">
-                        <button type="button" class="segment-btn active" data-align="L" title="Align Left">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg>
-                        </button>
-                        <button type="button" class="segment-btn" data-align="C" title="Align Center">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="10" x2="6" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="18" y1="18" x2="6" y2="18"></line></svg>
-                        </button>
-                        <button type="button" class="segment-btn" data-align="R" title="Align Right">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="10" x2="7" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="21" y1="18" x2="7" y2="18"></line></svg>
-                        </button>
-                    </div>
-                    <input type="hidden" id="text_align" value="L">
-                </div>
-
-                <div class="form-group" id="group_font">
-                    <label>Font Family</label>
-                    <select id="existing_font">
-                        <option value="">Default Font</option>
-                        <?php foreach ($ttfFiles as $fName): ?>
-                            <option value="<?= htmlspecialchars($fName) ?>"><?= htmlspecialchars($fName) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="form-group" id="font_upload_group">
-                    <label>Upload Custom Font (.ttf)</label>
-                    <input type="file" id="font_file_input" accept=".ttf">
-                    <div style="font-size: 11px; color: #777; margin-top: 4px;">For <span id="lbl_current_tab">Name</span></div>
-                </div>
-
-                <div class="form-group" id="date_format_group" style="display: none;">
-                    <label>Date Format</label>
-                    <select id="date_format">
-                        <option value="F j, Y">June 14, 2026 (F j, Y)</option>
-                        <option value="Y-m-d">2026-06-14 (Y-m-d)</option>
-                        <option value="d/m/Y">14/06/2026 (d/m/Y)</option>
-                        <option value="m/d/Y">06/14/2026 (m/d/Y)</option>
-                        <option value="j F Y">14 June 2026 (j F Y)</option>
-                    </select>
-                </div>
-
-                <!-- Quick Actions Center/Align Buttons -->
-                <div class="form-group" style="padding-top: 15px; border-top: 1px solid #eaedf1;">
-                    <label style="font-weight: bold; margin-bottom: 8px;">Quick Actions</label>
-                    <div style="display: flex; gap: 8px;">
-                        <button type="button" id="btn_center_x" class="btn btn-sm" style="flex: 1; padding: 8px; font-size: 12px; font-weight: bold; text-align: center;">Center Horizontally</button>
-                        <button type="button" id="btn_center_y" class="btn btn-sm" style="flex: 1; padding: 8px; font-size: 12px; font-weight: bold; text-align: center;">Center Vertically</button>
+                    <!-- Grid & Snap Toggle UI -->
+                    <div style="padding: 12px; background: #eaedf1; border-radius: 8px; display: flex; flex-direction: column; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="toggle_grid" style="width: auto; height: 16px; cursor: pointer;"> 
+                            <label for="toggle_grid" style="margin-bottom: 0; font-size: 12px; font-weight: 600; cursor: pointer; color: #1e293b;">Show Canvas Grid</label>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label for="snap_interval" style="margin-bottom: 0; font-size: 12px; font-weight: 600; color: #1e293b;">Snap to:</label>
+                            <select id="snap_interval" style="padding: 4px 8px; font-weight: 600; border-radius: 4px; background: white; border: 1.5px solid #cbd5e1; height: auto; cursor: pointer; font-size: 12px;">
+                                <option value="0">None</option>
+                                <option value="0.1">0.1mm</option>
+                                <option value="0.5">0.5mm</option>
+                                <option value="1">1mm</option>
+                                <option value="2">2mm</option>
+                                <option value="5" selected>5mm</option>
+                                <option value="10">10mm</option>
+                                <option value="custom">Custom...</option>
+                            </select>
+                            <input type="number" id="snap_custom_val" step="0.1" min="0.05" value="0.5" style="display: none; width: 60px; padding: 3px 6px; border-radius: 4px; border: 1.5px solid #cbd5e1; font-weight: bold; background: white; font-size: 12px;">
+                        </div>
                     </div>
                 </div>
 
@@ -714,9 +852,9 @@ if (is_dir($fontDir)) {
                 <input type="file" name="font_file_qrcode" id="real_file_qrcode" style="display:none" accept=".ttf">
                 <input type="file" name="font_file_custom_text" id="real_file_custom_text" style="display:none" accept=".ttf">
 
-                <button type="submit" class="btn btn-green" style="width: 100%; margin-top: 15px;">Save All Layouts</button>
+                <button type="submit" class="btn btn-green" style="width: 100%; margin-top: 15px; padding: 10px; font-size: 13px; font-weight: bold; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Save All Layouts</button>
             </form>
-        </div>
+        </div></div>
     </div>
 
     <!-- Live PDF Preview Modal -->
@@ -1819,8 +1957,10 @@ if (is_dir($fontDir)) {
             const hex = rgbToHex(r, g, b);
             const prev = document.getElementById('color_preview');
             const read = document.getElementById('color_hex_readout');
+            const indicator = document.getElementById('color_swatch_indicator');
             if (prev) prev.style.background = hex;
             if (read) read.textContent = hex;
+            if (indicator) indicator.style.background = hex;
             const [h, s, l] = rgbToHsl(r, g, b);
             const hEl = document.getElementById('cc_hue'), sEl = document.getElementById('cc_sat'), lEl = document.getElementById('cc_light');
             if (hEl) hEl.value = Math.round(h);
@@ -1839,8 +1979,10 @@ if (is_dir($fontDir)) {
             formInputs.color_picker.value = hex;
             const prev = document.getElementById('color_preview');
             const read = document.getElementById('color_hex_readout');
+            const indicator = document.getElementById('color_swatch_indicator');
             if (prev) prev.style.background = hex;
             if (read) read.textContent = hex;
+            if (indicator) indicator.style.background = hex;
             syncState();
         }
         ['cc_hue', 'cc_sat', 'cc_light'].forEach(id => {
@@ -1865,6 +2007,39 @@ if (is_dir($fontDir)) {
                     pushState();
                 } catch (e) { /* user cancelled the eyedropper */ }
             });
+        })();
+
+        // ===== Inspector Mode Tabs & Collapsible Color UI (issue #118) =====
+        document.querySelectorAll('.inspector-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const target = btn.dataset.tab;
+                document.querySelectorAll('.inspector-tab-btn').forEach(b => {
+                    b.classList.toggle('active', b === btn);
+                    b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+                });
+                const propTab = document.getElementById('inspector_tab_properties');
+                const layersTab = document.getElementById('inspector_tab_layers');
+                if (propTab) {
+                    propTab.classList.toggle('active', target === 'properties');
+                    propTab.style.display = (target === 'properties' ? 'block' : 'none');
+                }
+                if (layersTab) {
+                    layersTab.classList.toggle('active', target === 'layers');
+                    layersTab.style.display = (target === 'layers' ? 'block' : 'none');
+                }
+            });
+        });
+
+        (function () {
+            const toggleBtn = document.getElementById('toggle_custom_color_btn');
+            const colorUI = document.getElementById('custom_color_ui');
+            const arrow = document.getElementById('custom_color_arrow');
+            if (toggleBtn && colorUI) {
+                toggleBtn.addEventListener('click', () => {
+                    const isOpen = colorUI.classList.toggle('open');
+                    if (arrow) arrow.textContent = isOpen ? '▴' : '▾';
+                });
+            }
         })();
 
         // Max Width Preset Buttons click events

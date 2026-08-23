@@ -337,5 +337,8 @@
     "admin.editor.color.save-current": "Button that saves the currently selected color as a reusable brand preset.",
     "admin.editor.color.save-current-title": "Title attribute (tooltip) on the '+ Save current' button.",
     "admin.editor.color.brand-hint": "Help text under the brand color presets row explaining the interaction.",
-    "admin.editor.color.none-yet": "Placeholder text shown in the brand presets row when the organiser hasn't saved any custom colors yet."
+    "admin.editor.color.none-yet": "Placeholder text shown in the brand presets row when the organiser hasn't saved any custom colors yet.",
+    "admin.editor.tab.properties": "Tab label for the element properties inspector panel in the visual certificate editor.",
+    "admin.editor.tab.layers": "Tab label for the layers panel and canvas grid settings in the visual certificate editor.",
+    "admin.editor.color.custom-toggle": "Button/header label to expand or collapse the advanced HSL color sliders and eyedropper tool."
 }
