@@ -329,5 +329,12 @@
     "email.password-reset.body": "Hola {username}, recibimos una solicitud para restablecer la contraseña de su cuenta de administrador de {org}.",
     "email.password-reset.instructions": "Haga clic en el botón de abajo para elegir una nueva contraseña. Este enlace caducará en {minutes} minutos y solo se puede utilizar una vez.",
     "email.password-reset.btn-reset": "Restablecer Mi Contraseña",
-    "email.password-reset.disclaimer": "Si no solicitó esto, puede ignorar este correo de forma segura; su contraseña no se modificará."
+    "email.password-reset.disclaimer": "Si no solicitó esto, puede ignorar este correo de forma segura; su contraseña no se modificará.",
+    "admin.editor.color.extracted-label": "Del plantilla:",
+    "admin.editor.color.extracted-title": "detectado automáticamente en su plantilla subida — clic para aplicar",
+    "admin.editor.color.brand-label": "Marca:",
+    "admin.editor.color.save-current": "+ Guardar actual",
+    "admin.editor.color.save-current-title": "Guardar el color actual como un preset de marca reutilizable",
+    "admin.editor.color.brand-hint": "Haga clic en un color de marca para aplicarlo; clic derecho (o mantener presionado) para eliminarlo. Se guarda con \"Guardar Todos los Diseños\".",
+    "admin.editor.color.none-yet": "ninguno aún"
 }

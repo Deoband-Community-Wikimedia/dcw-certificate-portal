@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS events (
     completion_date DATE NULL,
     description TEXT NULL,
     partners VARCHAR(255) NULL,
+    color_presets TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -44,9 +45,15 @@ CREATE TABLE IF NOT EXISTS events (
 -- the event row was added), which are unrelated to completion. Leave it NULL
 -- for events where a completion date has no meaning (conferences, editathons).
 
+-- color_presets stores a small JSON array of "#RRGGBB" strings (issue #90): custom
+-- brand colors an organiser saves in the visual editor so certificate elements can
+-- reuse the template's palette. Read/written defensively, so an install that hasn't
+-- run the migration below simply shows no custom presets rather than erroring.
+
 -- Migration for existing installs (run once; on MariaDB you may add IF NOT EXISTS after ADD COLUMN):
 -- ALTER TABLE events ADD COLUMN category VARCHAR(50) NULL AFTER name;
 -- ALTER TABLE events ADD COLUMN completion_date DATE NULL AFTER certificate_issue_date;
+-- ALTER TABLE events ADD COLUMN color_presets TEXT NULL AFTER partners;
 
 -- Create Event Roles Table
 CREATE TABLE IF NOT EXISTS event_roles (

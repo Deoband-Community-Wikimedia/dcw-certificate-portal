@@ -329,5 +329,12 @@
     "email.password-reset.body": "Hello {username}, we received a request to reset the password for your {org} Admin account.",
     "email.password-reset.instructions": "Click the button below to choose a new password. This link will expire in {minutes} minutes and can only be used once.",
     "email.password-reset.btn-reset": "Reset My Password",
-    "email.password-reset.disclaimer": "If you did not request this, you can safely ignore this email — your password will remain unchanged."
+    "email.password-reset.disclaimer": "If you did not request this, you can safely ignore this email — your password will remain unchanged.",
+    "admin.editor.color.extracted-label": "From template:",
+    "admin.editor.color.extracted-title": "auto-detected from your uploaded template — click to apply",
+    "admin.editor.color.brand-label": "Brand:",
+    "admin.editor.color.save-current": "+ Save current",
+    "admin.editor.color.save-current-title": "Save the current color as a reusable brand preset",
+    "admin.editor.color.brand-hint": "Click a brand color to apply it; right-click (or long-press) to remove. Saved with \"Save All Layouts\".",
+    "admin.editor.color.none-yet": "none yet"
 }

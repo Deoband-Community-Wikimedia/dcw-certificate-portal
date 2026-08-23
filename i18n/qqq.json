@@ -330,5 +330,12 @@
     "email.password-reset.body": "Body paragraph explaining the reset request. {username} is admin username, {org} is organization name.",
     "email.password-reset.instructions": "Instructions explaining button click and token expiry. {minutes} is expiry duration in minutes.",
     "email.password-reset.btn-reset": "Button text in email linking to password reset screen.",
-    "email.password-reset.disclaimer": "Security disclaimer in email telling user to ignore if not requested."
+    "email.password-reset.disclaimer": "Security disclaimer in email telling user to ignore if not requested.",
+    "admin.editor.color.extracted-label": "Label above the color swatches auto-detected from the uploaded certificate template (issue #90). Only shown when at least one color was detected.",
+    "admin.editor.color.extracted-title": "Tooltip suffix on each auto-detected swatch, appended after the hex code (e.g. '#106B9A — auto-detected from your uploaded template — click to apply').",
+    "admin.editor.color.brand-label": "Label above the organiser's saved custom color presets (issue #90).",
+    "admin.editor.color.save-current": "Button that saves the currently selected color as a reusable brand preset.",
+    "admin.editor.color.save-current-title": "Title attribute (tooltip) on the '+ Save current' button.",
+    "admin.editor.color.brand-hint": "Help text under the brand color presets row explaining the interaction.",
+    "admin.editor.color.none-yet": "Placeholder text shown in the brand presets row when the organiser hasn't saved any custom colors yet."
 }
