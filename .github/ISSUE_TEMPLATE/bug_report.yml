@@ -1,104 +1,29 @@
 name: Bug report
-description: Something in the portal is behaving wrongly
+description: Report a bug or unexpected behavior in the portal
 title: "[Bug]: "
 labels: ["bug"]
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for taking the time to write this up. A few honest details save us a lot
-        of guesswork, and a bug we can reproduce is a bug we can usually fix quickly.
-
-        **If this is a security problem — something that lets a person get into the admin
-        panel, see data they shouldn't, or forge a certificate — please stop and report it
-        privately instead.** See [SECURITY.md](../blob/main/SECURITY.md). A public issue
-        tells everyone about the weakness at the same time it tells us.
-
   - type: textarea
-    id: what-happened
+    id: description
     attributes:
-      label: What happened?
-      description: Describe what you saw, and what you expected instead.
+      label: Bug Description & Steps to Reproduce
+      description: What happened, and what did you expect instead? Include simple steps to reproduce if applicable.
       placeholder: |
-        I uploaded a CSV of 40 participants and only 39 certificates were generated.
-        The one that was skipped had an apostrophe in the surname.
+        1. Go to '...'
+        2. Click on '....'
+        3. See error / unexpected behavior
     validations:
       required: true
 
-  - type: textarea
-    id: steps
-    attributes:
-      label: How can we reproduce it?
-      description: >
-        Step by step, from a fresh page. If it only happens with particular data, tell us
-        what was unusual about it — long names, non-Latin script, an empty column.
-        Please replace any real participant names or email addresses with made-up ones.
-      placeholder: |
-        1. Log in to the admin panel
-        2. Open an event and go to Participants
-        3. Upload a CSV where one surname contains an apostrophe
-        4. Generate certificates
-        5. That participant is missing from the results
-    validations:
-      required: true
-
-  - type: dropdown
-    id: area
-    attributes:
-      label: Which part of the portal?
-      description: A rough guess is fine.
-      options:
-        - Admin panel — login or user management
-        - Admin panel — events, roles, or participants
-        - Admin panel — CSV import
-        - The drag-and-drop PDF template editor
-        - Certificate generation or download
-        - Public verification page
-        - Email sending
-        - Something else / not sure
-    validations:
-      required: true
-
-  - type: dropdown
+  - type: input
     id: environment
     attributes:
-      label: Where did you see this?
-      options:
-        - On my own local setup
-        - On the live portal at certificates.dcwwiki.org
-        - On a copy I host for my own organisation
-    validations:
-      required: true
-
-  - type: input
-    id: php-version
-    attributes:
-      label: PHP version
-      description: "Run `php -v` if you're not sure. Skip this if you saw it on the live portal."
-      placeholder: "8.2.12"
-
-  - type: input
-    id: browser
-    attributes:
-      label: Browser and device
-      description: Only matters for interface or PDF editor problems.
-      placeholder: "Chrome 131 on Windows 11 / Safari on iPhone"
+      label: Environment (Optional)
+      description: Browser, OS, or live portal vs local setup.
+      placeholder: "Chrome on Windows 11 / Live Portal"
 
   - type: textarea
-    id: errors
+    id: additional-info
     attributes:
-      label: Any error message or log output
-      description: >
-        A white blank page usually means PHP threw a fatal error — the details will be in
-        your server's error log. Paste anything relevant here.
-        **Check it for database passwords or credentials before you post it.**
-      render: text
-
-  - type: textarea
-    id: extra
-    attributes:
-      label: Anything else
-      description: >
-        Screenshots or a short screen recording are very welcome — blur any real names
-        and email addresses first. Also worth saying if this used to work and recently
-        stopped.
+      label: Screenshots, Logs or Additional Context (Optional)
+      description: Drag & drop screenshots, paste error logs, or add extra notes.
