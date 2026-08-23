@@ -487,7 +487,7 @@ if ($basePath === '/') {
                         <option value=""><?= __e('page.claim.label.category-placeholder') ?></option>
                         <?php foreach (array_keys($eventsByCategory) as $catName): ?>
                             <?php if ($catName !== 'Other Events'): ?>
-                                <option value="<?= htmlspecialchars($catName) ?>"><?= htmlspecialchars($catName) ?></option>
+                                <option value="<?= htmlspecialchars($catName) ?>"><?= htmlspecialchars(event_category_label($catName)) ?></option>
                             <?php endif; ?>
                         <?php endforeach; ?>
                         <?php if (isset($eventsByCategory['Other Events'])): ?>

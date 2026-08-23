@@ -44,7 +44,13 @@ $requiredEmailKeys = [
     'email.password-reset.body',
     'email.password-reset.instructions',
     'email.password-reset.btn-reset',
-    'email.password-reset.disclaimer'
+    'email.password-reset.disclaimer',
+    'email.notification.subject',
+    'email.notification.heading',
+    'email.notification.body',
+    'email.notification.instructions',
+    'email.notification.btn-portal',
+    'email.notification.disclaimer'
 ];
 
 foreach ($requiredEmailKeys as $k) {
@@ -60,6 +66,18 @@ assertTest(strpos($certSubject, 'Wikiversary 2026') !== false, 'Event substitute
 
 $certHeading = __('email.certificate.heading', ['name' => 'Zaid Sayyed']);
 assertTest(strpos($certHeading, 'Zaid Sayyed') !== false, 'Name substituted in certificate email heading');
+
+$notifSubject = __('email.notification.subject', ['event' => 'Wikiversary 2026']);
+assertTest(strpos($notifSubject, 'Wikiversary 2026') !== false, 'Event substituted in notification email subject');
+
+$notifHeading = __('email.notification.heading', ['name' => 'Zaid Sayyed']);
+assertTest(strpos($notifHeading, 'Zaid Sayyed') !== false, 'Name substituted in notification email heading');
+
+$notifBody = __('email.notification.body', ['event' => 'Wikiversary 2026', 'org' => 'DCW']);
+assertTest(strpos($notifBody, 'Wikiversary 2026') !== false && strpos($notifBody, 'DCW') !== false, 'Event & org substituted in notification email body');
+
+$notifDisclaimer = __('email.notification.disclaimer', ['email' => 'user@example.org']);
+assertTest(strpos($notifDisclaimer, 'user@example.org') !== false, 'Email substituted in notification email disclaimer');
 
 $resetSubject = __('email.password-reset.subject', ['org' => 'DCW']);
 assertTest(strpos($resetSubject, 'DCW') !== false, 'Org substituted in password reset subject');

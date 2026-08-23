@@ -123,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <select name="category" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
                 <option value=""><?= __e('admin.event-form.option.uncategorised') ?></option>
                 <?php foreach (event_categories() as $cat): ?>
-                    <option value="<?= htmlspecialchars($cat) ?>" <?= (($event['category'] ?? '') === $cat) ? 'selected' : '' ?>><?= htmlspecialchars($cat) ?></option>
+                    <option value="<?= htmlspecialchars($cat) ?>" <?= (($event['category'] ?? '') === $cat) ? 'selected' : '' ?>><?= htmlspecialchars(event_category_label($cat)) ?></option>
                 <?php endforeach; ?>
             </select>
             <div style="font-size: 11px; color: #777; margin-top: 5px;">
