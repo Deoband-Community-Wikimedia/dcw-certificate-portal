@@ -117,6 +117,8 @@ it privately.
 **[Zaid Sayyed](https://github.com/Zaidusyy)** 
 **and other DCW volunteers** 
 
+See **[CONTRIBUTORS.md](CONTRIBUTORS.md)** for the full list of project contributors.
+
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for details.
