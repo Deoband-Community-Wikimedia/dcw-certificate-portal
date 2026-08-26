@@ -1,13 +1,13 @@
 # Contributors
 
-Thank you to everyone who has contributed their time, code, ideas, and effort to the **DCW Certificate Portal**!
+Deoband Community Wikimedia extends thanks to everyone who contributed their time, code, ideas, and effort to the **DCW Certificate Portal**!
 
 ---
 
 ## Project Contributors
 
 ### A
-- [Aafi](https://github.com/originalaafi)
+- [Aafi](https://github.com/originalaafi) - Project co-ordinator
 - [Afrida Asad](https://github.com/afridaasad)
 
 ### C
@@ -26,7 +26,7 @@ Thank you to everyone who has contributed their time, code, ideas, and effort to
 - [Sanskar Dubey](https://github.com/dubeysanskar)
 
 ### Z
-- [Zaid Sayyed](https://github.com/Zaidusyy)
+- [Zaid Sayyed](https://github.com/Zaidusyy) - Project Lead and Main architect
 
 ---
 
