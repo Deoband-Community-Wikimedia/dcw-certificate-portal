@@ -61,8 +61,8 @@ if (!$notFound) {
     // (the credential issue date) and {completion_date} (course/internship completion date,
     // blank when not set).
     $categoryLabel = !empty($certData['category']) ? htmlspecialchars(event_category_label($certData['category'])) : '';
-    $verificationText = !empty($certData['custom_verification_text'])
-        ? str_replace(
+    if (!empty($certData['custom_verification_text'])) {
+        $verificationText = str_replace(
             ['{name}', '{event}', '{category}', '{issue_date}', '{date}', '{completion_date}'],
             [
                 htmlspecialchars($certData['full_name']),
@@ -73,10 +73,13 @@ if (!$notFound) {
                 $completionDate,
             ],
             htmlspecialchars($certData['custom_verification_text'])
-          )
-        : "This verified credential confirms that " . htmlspecialchars($certData['full_name']) . " participated in " . htmlspecialchars($certData['event_name']) . ".";
-    if (!empty($certData['partners'])) {
-        $verificationText .= " The credential has been securely issued by the DCW in partnership with " . htmlspecialchars($certData['partners']) . ".";
+        );
+    } else {
+        $verificationText = "This verified credential confirms that " . htmlspecialchars($certData['full_name']) . " participated in " . htmlspecialchars($certData['event_name']) . ".";
+        if (!empty($certData['partners'])) {
+            $orgName = defined('ORG_NAME') && ORG_NAME !== '' ? ORG_NAME : __('site.name');
+            $verificationText .= " The credential has been securely issued by " . htmlspecialchars($orgName) . " in partnership with " . htmlspecialchars($certData['partners']) . ".";
+        }
     }
 }
 ?>
