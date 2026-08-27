@@ -718,6 +718,16 @@ function confirmDelete(id) {
             setTimeout(sendNextEmail, 200);
         }
 
+        // Dismiss the overlay once sending has finished. The modal is rendered
+        // server-side and nothing else hides it, so without this the admin has to
+        // reload the page to get back to the participant list.
+        function closeProgressModal() {
+            const modal = document.getElementById('email-progress-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
         // Start processing after page loads
         window.addEventListener('DOMContentLoaded', () => {
             sendNextEmail();
