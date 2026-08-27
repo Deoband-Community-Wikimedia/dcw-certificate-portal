@@ -1,1 +1,16 @@
-* @zaidusyy
+# Global Catch-All Rule
+# The sysadmin team owns everything in the repository by default.
+*       @Deoband-Community-Wikimedia/dcw-sysadmins
+
+# Core Infrastructure & Sensitive Data
+# Strict control over database schemas, configuration files, and script executions.
+/database.sql        @Deoband-Community-Wikimedia/dcw-sysadmins
+/config.example.php  @Deoband-Community-Wikimedia/dcw-sysadmins
+/scripts/            @Deoband-Community-Wikimedia/dcw-sysadmins
+/.htaccess           @Deoband-Community-Wikimedia/dcw-sysadmins
+
+# Server Security & Workflows
+# Protects GitHub automation, security policies, and environment structures.
+/.github/workflows/  @Deoband-Community-Wikimedia/dcw-sysadmins
+/SECURITY.md         @Deoband-Community-Wikimedia/dcw-sysadmins
+/.env.example        @Deoband-Community-Wikimedia/dcw-sysadmins
