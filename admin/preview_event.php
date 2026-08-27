@@ -840,7 +840,7 @@ if (is_dir($fontDir)) {
                                 <option value="10">10mm</option>
                                 <option value="custom">Custom...</option>
                             </select>
-                            <input type="number" id="snap_custom_val" step="0.1" min="0.05" value="0.5" style="display: none; width: 60px; padding: 3px 6px; border-radius: 4px; border: 1.5px solid #cbd5e1; font-weight: bold; background: white; font-size: 12px;">
+                            <input type="number" id="snap_custom_val" step="any" min="0.05" value="0.5" style="display: none; width: 60px; padding: 3px 6px; border-radius: 4px; border: 1.5px solid #cbd5e1; font-weight: bold; background: white; font-size: 12px;">
                         </div>
                     </div>
                 </div>
