@@ -490,9 +490,19 @@ if (!function_exists('adminPortalBaseUrl')) {
     /**
      * Builds the public base URL of the portal (works from the /admin directory too).
      *
+     * Prefers PORTAL_BASE_URL from the environment. Falling back to the request
+     * means trusting the client-supplied Host header, so anything built on top of
+     * this (notably password reset links, which carry a single-use token) could be
+     * pointed at an attacker's domain by sending a forged Host. Set PORTAL_BASE_URL
+     * in .env on any internet-facing install.
+     *
      * @return string e.g. https://example.org/certs
      */
     function adminPortalBaseUrl() {
+        if (!empty($_ENV['PORTAL_BASE_URL'])) {
+            return rtrim(trim($_ENV['PORTAL_BASE_URL']), '/');
+        }
+
         $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)) ? "https://" : "http://";
         $baseDir = str_replace('\\', '/', dirname($_SERVER['PHP_SELF']));
         // Strip the /admin segment so links point at the portal root.

@@ -43,6 +43,23 @@ function findAdminByResetToken(PDO $pdo, string $rawToken) {
     return $stmt->fetch() ?: null;
 }
 
+/**
+ * Records a password reset event in the audit log.
+ *
+ * log_audit_action() deliberately writes nothing when there is no admin in the
+ * session, and nobody is ever logged in on this page, so calling it here is a
+ * silent no-op. Password resets are exactly the events the audit trail exists
+ * for, so write the row directly instead.
+ */
+function logResetAudit(PDO $pdo, string $action, string $username) {
+    $stmt = $pdo->prepare("INSERT INTO audit_logs (admin_username, action_type, details) VALUES (?, ?, ?)");
+    $stmt->execute([
+        substr($username, 0, 50),
+        substr($action, 0, 50),
+        substr('Self-service password reset from ' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown IP'), 0, 255),
+    ]);
+}
+
 if ($rawToken !== '') {
     $mode = 'reset';
 }
@@ -74,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $resetUrl = adminPortalBaseUrl() . '/admin/forgot_password.php?token=' . urlencode($token);
                 // Best-effort send; we still show the generic message regardless of the result.
                 sendAdminResetEmail($admin['email'], $admin['username'], $resetUrl, $pdo);
-                log_audit_action($pdo, 'Password Reset Requested', "Admin User: {$admin['username']}");
+                logResetAudit($pdo, 'Password Reset Requested', $admin['username']);
             }
 
             // Same message whether or not the account/email existed (no enumeration).
@@ -100,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
             $upd = $pdo->prepare("UPDATE admin_users SET password_hash = ?, reset_token_hash = NULL, reset_expires_at = NULL WHERE id = ?");
             $upd->execute([$newHash, $admin['id']]);
-            log_audit_action($pdo, 'Password Reset Completed', "Admin User: {$admin['username']}");
+            logResetAudit($pdo, 'Password Reset Completed', $admin['username']);
 
             $success = __('admin.forgot-password.msg.success-reset');
             $mode = 'done';
