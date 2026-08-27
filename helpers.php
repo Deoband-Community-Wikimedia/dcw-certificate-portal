@@ -402,6 +402,8 @@ if (!function_exists('sendAvailabilityEmail')) {
         $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
 
         try {
+            $mail->CharSet = 'UTF-8';
+            $mail->Encoding = 'base64';
             $mail->isSMTP();
             $mail->Host = $_ENV['SMTP_HOST'];
             $mail->SMTPAuth = filter_var($_ENV['SMTP_AUTH'], FILTER_VALIDATE_BOOLEAN);
@@ -522,6 +524,8 @@ if (!function_exists('sendAdminResetEmail')) {
         $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
 
         try {
+            $mail->CharSet = 'UTF-8';
+            $mail->Encoding = 'base64';
             $mail->isSMTP();
             $mail->Host = $_ENV['SMTP_HOST'];
             $mail->SMTPAuth = filter_var($_ENV['SMTP_AUTH'], FILTER_VALIDATE_BOOLEAN);

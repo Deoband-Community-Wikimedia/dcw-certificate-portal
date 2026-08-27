@@ -222,6 +222,8 @@ $linkedInAddUrl = "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_
 $mail = new PHPMailer(true);
 
 try {
+    $mail->CharSet = 'UTF-8';
+    $mail->Encoding = 'base64';
     $mail->isSMTP();
     $mail->Host = $_ENV['SMTP_HOST'];
     $mail->SMTPAuth = filter_var($_ENV['SMTP_AUTH'], FILTER_VALIDATE_BOOLEAN);
