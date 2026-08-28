@@ -19,6 +19,7 @@ uploads/templates/*
 uploads/fonts/*
 !uploads/fonts/.gitkeep
 
-# Test files and Scratchpads
-tests/
+# Scratchpads
+# tests/ is deliberately NOT ignored: CI runs tests/test_*.php on every pull
+# request, and TESTING.md points contributors at the CSV fixtures in there.
 scratch/

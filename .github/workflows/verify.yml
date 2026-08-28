@@ -29,6 +29,11 @@ jobs:
         fi
         echo "All PHP files passed syntax check!"
 
+    # Three of the tests restored in this PR require vendor/autoload.php, and
+    # vendor/ is not committed. No database or config.php is needed.
+    - name: Install Composer dependencies
+      run: composer install --no-interaction --prefer-dist --no-progress
+
     - name: Run Test Suite
       run: |
         echo "Running tests/*.php..."
