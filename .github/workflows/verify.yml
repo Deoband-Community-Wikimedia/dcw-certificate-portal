@@ -7,7 +7,7 @@ on:
 
 jobs:
   php-syntax-check:
-    name: PHP Syntax Check
+    name: Syntax Check and Tests
     runs-on: ubuntu-latest
     steps:
     - name: Get latest code
