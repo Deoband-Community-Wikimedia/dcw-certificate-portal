@@ -43,6 +43,8 @@
     "page.verify.claim": "Obtener mi certificado",
     "page.verify.status.valid-msg": "Este certificado es auténtico y fue emitido oficialmente por {org}.",
     "page.verify.status.invalid-msg": "Este certificado no pudo ser verificado. Si crees que es un error, contáctanos.",
+    "page.verify.default-statement": "Esta credencial verificada confirma que {name} participó en {event}.",
+    "page.verify.default-statement.partnership": "La credencial ha sido emitida de forma segura por {org} en colaboración con {partners}.",
     "page.success.title": "Certificado listo",
     "page.success.subtitle": "Tu certificado fue encontrado y está listo para descargar.",
     "page.success.download-btn": "Descargar certificado (PDF)",
