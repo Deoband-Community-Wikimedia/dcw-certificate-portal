@@ -28,3 +28,13 @@ jobs:
           exit 1
         fi
         echo "All PHP files passed syntax check!"
+
+    - name: Run Test Suite
+      run: |
+        echo "Running tests/*.php..."
+        status=0
+        for f in tests/test_*.php; do
+          echo "=== $f ==="
+          php "$f" || status=1
+        done
+        exit $status
