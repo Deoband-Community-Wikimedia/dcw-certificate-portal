@@ -4,7 +4,7 @@
             "Zaidusyy",
             "afridaasad"
         ],
-        "last-updated": "2026-08-27"
+        "last-updated": "2026-08-28"
     },
     "site.name": "Deoband Community Wikimedia",
     "site.portal-badge": "Portal de certificados",
@@ -148,7 +148,7 @@
     "admin.event-form.label.verification-text": "Texto personalizado de verificación del certificado (Opcional)",
     "admin.event-form.placeholder.verification-text": "p. ej. Esta credencial digital fue emitida de forma segura por nuestra organización asociada, [Nombre del Socio], y verificada por Deoband Community Wikimedia.",
     "admin.event-form.hint.verification-text-prefix": "Si se deja en blanco, se usa por defecto:",
-    "admin.event-form.default.verification-text": "Esta credencial digital ha sido emitida y verificada de forma segura por Deoband Community Wikimedia.",
+    "admin.event-form.default.verification-text": "Esta credencial verificada confirma que {name} participó en {event}.",
     "admin.event-form.label.linkedin-caption": "Mensaje para compartir en LinkedIn (Opcional)",
     "admin.event-form.placeholder.linkedin-caption": "p. ej. ¡Me complace anunciar que he completé el {EVENT_NAME}! Mira mi credencial verificada aquí: {URL} #DCW2026",
     "admin.event-form.hint.linkedin-caption": "Use {EVENT_NAME} y {URL} como marcadores de posición. Se reemplazarán automáticamente cuando el participante comparta su certificado.",

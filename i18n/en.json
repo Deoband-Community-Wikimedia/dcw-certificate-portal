@@ -148,7 +148,7 @@
     "admin.event-form.label.verification-text": "Custom Certificate Verification Text (Optional)",
     "admin.event-form.placeholder.verification-text": "e.g. This digital credential was securely issued by our partner organization, [Partner Name], and verified by Deoband Community Wikimedia.",
     "admin.event-form.hint.verification-text-prefix": "If left blank, defaults to:",
-    "admin.event-form.default.verification-text": "This digital credential has been securely issued and verified by Deoband Community Wikimedia.",
+    "admin.event-form.default.verification-text": "This verified credential confirms that {name} participated in {event}.",
     "admin.event-form.label.linkedin-caption": "LinkedIn Share Message (Optional)",
     "admin.event-form.placeholder.linkedin-caption": "e.g. I'm thrilled to announce I've completed the {EVENT_NAME} workshop! Check out my verified credential here: {URL} #DCW2026",
     "admin.event-form.hint.linkedin-caption": "Use {EVENT_NAME} and {URL} as placeholders. They will be automatically replaced when the participant shares their certificate.",
