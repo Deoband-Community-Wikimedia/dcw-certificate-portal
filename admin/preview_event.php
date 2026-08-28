@@ -840,7 +840,7 @@ if (is_dir($fontDir)) {
                                 <option value="10">10mm</option>
                                 <option value="custom">Custom...</option>
                             </select>
-                            <input type="number" id="snap_custom_val" step="any" min="0.05" value="0.5" style="display: none; width: 60px; padding: 3px 6px; border-radius: 4px; border: 1.5px solid #cbd5e1; font-weight: bold; background: white; font-size: 12px;">
+                            <input type="number" id="snap_custom_val" step="any" min="0.05" value="0.5" disabled style="display: none; width: 60px; padding: 3px 6px; border-radius: 4px; border: 1.5px solid #cbd5e1; font-weight: bold; background: white; font-size: 12px;">
                         </div>
                     </div>
                 </div>
@@ -1009,7 +1009,19 @@ if (is_dir($fontDir)) {
         // Listen for snap interval changes to update the grid and guides
         document.getElementById('snap_interval').addEventListener('change', function() {
             const isCustom = this.value === 'custom';
-            document.getElementById('snap_custom_val').style.display = isCustom ? 'inline-block' : 'none';
+            const customInput = document.getElementById('snap_custom_val');
+            customInput.style.display = isCustom ? 'inline-block' : 'none';
+            // #snap_custom_val has no name attribute and is never submitted —
+            // it's only ever read via getSnapInterval() — but its min="0.05"
+            // still makes it a candidate for native form validation while
+            // visible. Disabling it whenever it's hidden means a leftover
+            // out-of-range custom value (e.g. switching back to a preset
+            // after typing 0.01) can't silently block Save All Layouts the
+            // same way the always-invalid default did in #124/#126:
+            // disabled controls are skipped by checkValidity(). Reading
+            // .value from JS still works on a disabled input, so
+            // getSnapInterval() is unaffected while "Custom..." is selected.
+            customInput.disabled = !isCustom;
             updateGridOverlay();
             updateElementGuides();
         });
