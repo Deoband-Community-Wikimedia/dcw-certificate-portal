@@ -7,7 +7,7 @@ on:
 
 jobs:
   php-syntax-check:
-    name: PHP Syntax Check
+    name: PHP Syntax Check and Tests
     runs-on: ubuntu-latest
     steps:
     - name: Get latest code
@@ -28,3 +28,24 @@ jobs:
           exit 1
         fi
         echo "All PHP files passed syntax check!"
+
+    # Some tests pull in vendor/autoload.php, and vendor/ is not committed.
+    - name: Install Composer dependencies
+      run: composer install --no-interaction --prefer-dist --no-progress
+
+    - name: Run test suite
+      run: |
+        status=0
+        for test_file in tests/*.php; do
+          echo "----------------------------------------"
+          echo "Running ${test_file}"
+          echo "----------------------------------------"
+          # Each test script exits non-zero when an assertion fails.
+          if ! php "${test_file}"; then
+            status=1
+          fi
+        done
+        if [ "${status}" -ne 0 ]; then
+          echo "One or more test files reported failures."
+        fi
+        exit "${status}"
