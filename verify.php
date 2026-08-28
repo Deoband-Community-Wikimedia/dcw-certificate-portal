@@ -75,10 +75,16 @@ if (!$notFound) {
             htmlspecialchars($certData['custom_verification_text'])
         );
     } else {
-        $verificationText = "This verified credential confirms that " . htmlspecialchars($certData['full_name']) . " participated in " . htmlspecialchars($certData['event_name']) . ".";
+        $verificationText = __('page.verify.default-statement', [
+            'name' => htmlspecialchars($certData['full_name']),
+            'event' => htmlspecialchars($certData['event_name']),
+        ]);
         if (!empty($certData['partners'])) {
             $orgName = defined('ORG_NAME') && ORG_NAME !== '' ? ORG_NAME : __('site.name');
-            $verificationText .= " The credential has been securely issued by " . htmlspecialchars($orgName) . " in partnership with " . htmlspecialchars($certData['partners']) . ".";
+            $verificationText .= " " . __('page.verify.default-statement.partnership', [
+                'org' => htmlspecialchars($orgName),
+                'partners' => htmlspecialchars($certData['partners']),
+            ]);
         }
     }
 }

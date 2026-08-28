@@ -43,6 +43,8 @@
     "page.verify.claim": "Claim My Certificate",
     "page.verify.status.valid-msg": "This certificate is authentic and was officially issued by {org}.",
     "page.verify.status.invalid-msg": "This certificate could not be verified. If you believe this is an error, please contact us.",
+    "page.verify.default-statement": "This verified credential confirms that {name} participated in {event}.",
+    "page.verify.default-statement.partnership": "The credential has been securely issued by {org} in partnership with {partners}.",
     "page.success.title": "Certificate Ready",
     "page.success.subtitle": "Your certificate has been found and is ready to download.",
     "page.success.download-btn": "Download Certificate (PDF)",

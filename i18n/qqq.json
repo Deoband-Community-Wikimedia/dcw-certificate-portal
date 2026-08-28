@@ -43,6 +43,8 @@
     "page.verify.download": "Button text for downloading the certificate PDF from the verify page.",
     "page.verify.claim": "Button text for navigating to the claim form from the verify page.",
     "page.verify.status.valid-msg": "Full status description for a verified valid certificate. Contains {org} placeholder replaced with the organization name.",
+    "page.verify.default-statement": "Fallback verification statement shown on the verify page when the event has no custom_verification_text. Contains {name} and {event} placeholders.",
+    "page.verify.default-statement.partnership": "Appended to page.verify.default-statement when the event has a partner organization set. Contains {org} and {partners} placeholders.",
     "page.verify.status.invalid-msg": "Full status description shown when a certificate fails verification.",
     "page.success.title": "Heading on the success page after a certificate has been found and is ready to download.",
     "page.success.subtitle": "Subtitle below the success page heading.",
