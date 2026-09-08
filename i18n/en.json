@@ -34,6 +34,7 @@
     "page.verify.invalid": "Invalid Certificate",
     "page.verify.not-found": "Certificate Not Found",
     "page.verify.not-found-detail": "We could not find a certificate with ID: {id}. Please check the ID and try again.",
+    "page.verify.error.contact-prefix": "If you believe this is an error, please reach out to",
     "page.verify.issued-to": "Issued To",
     "page.verify.event": "Event",
     "page.verify.issued-date": "Issued Date",

@@ -35,6 +35,7 @@
     "page.verify.invalid": "Status badge text shown when a certificate cannot be verified. Keep short.",
     "page.verify.not-found": "Heading shown when a certificate ID lookup returns no result.",
     "page.verify.not-found-detail": "Detail message shown below the 'not found' heading. Contains placeholder {id} which will be replaced with the searched certificate ID at runtime.",
+    "page.verify.error.contact-prefix": "Sentence on the \"certificate not found\" page introducing the moderator email address. Followed in the markup by a mailto link and a full stop, so it should not end with punctuation.",
     "page.verify.issued-to": "Label for the certificate holder's name on the verify page detail card.",
     "page.verify.event": "Label for the event name on the verify page detail card.",
     "page.verify.issued-date": "Label for the certificate issue date on the verify page detail card.",
