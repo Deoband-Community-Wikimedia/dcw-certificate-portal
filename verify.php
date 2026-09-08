@@ -621,8 +621,8 @@ if (!$notFound) {
             </div>
 
             <p style="font-size: 14px; color: #64748b; line-height: 1.6; margin-bottom: 24px;">
-                If you believe this is an error, please reach out to
-                <p><?= __e('page.verify.error.contact-prefix') ?> <a href="mailto:<?= ORG_EMAIL_MODERATOR ?>" style="color: var(--primary-color); text-decoration: none; font-weight: 500;"><?= ORG_EMAIL_MODERATOR ?></a>.</p>
+                <?= __e('page.verify.error.contact-prefix') ?>
+                <a href="mailto:<?= ORG_EMAIL_MODERATOR ?>" style="color: var(--primary-color); text-decoration: none; font-weight: 500;"><?= ORG_EMAIL_MODERATOR ?></a>.
             </p>
 
             <a href="<?= $basePath ?>/index.php" class="btn-primary">

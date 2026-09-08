@@ -34,6 +34,7 @@
     "page.verify.invalid": "Certificado inválido",
     "page.verify.not-found": "El certificado no ha sido encontrado",
     "page.verify.not-found-detail": "No pudimos encontrar un certificado con ID: {id}. Verifica el ID e inténtalo de nuevo.",
+    "page.verify.error.contact-prefix": "Si crees que esto es un error, ponte en contacto con",
     "page.verify.issued-to": "Emitido a",
     "page.verify.event": "Evento",
     "page.verify.issued-date": "Fecha de emisión",
