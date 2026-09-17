@@ -89,7 +89,7 @@ The `{id}` part stays unchanged — the app fills it in at runtime.
 
 ## 🌍 Translatewiki.net
 
-DCW Certificate Portal is translatable through [translatewiki.net](https://translatewiki.net). We appreciate it if you could help us [translate the project] (https://translatewiki.net/wiki/Translating:DCW_Certificate_Portal) into the languages you know, to serve others. The translations are pulled through a dedicated translatewiki branch, and merged every Monday and Thursday. 
+DCW Certificate Portal is translatable through [translatewiki.net](https://translatewiki.net). We would appreciate it if you could help us [translate the project](https://translatewiki.net/wiki/Translating:DCW_Certificate_Portal) into the languages you know, to serve others. We pull translations from a dedicated translatewiki branch and merge them every Monday and Thursday depending on localisation updates provided by Translatewiki.net
 
 ---
 
