@@ -89,8 +89,7 @@ The `{id}` part stays unchanged — the app fills it in at runtime.
 
 ## 🌍 Translatewiki.net
 
-Once your translation is merged, our repository (will hopefully be) registered on [translatewiki.net](https://translatewiki.net).  
-Global Wikimedia community translators can contribute directly through the web interface, and a bot will automatically open a Pull Request with their translations.
+DCW Certificate Portal is translatable through [translatewiki.net](https://translatewiki.net). We appreciate it if you could help us [translate the project] (https://translatewiki.net/wiki/Translating:DCW_Certificate_Portal) into the languages you know, to serve others. The translations are pulled through a dedicated translatewiki branch, and merged every Monday and Thursday. 
 
 ---
 
