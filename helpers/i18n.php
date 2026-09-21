@@ -46,6 +46,12 @@ define('I18N_DIR', dirname(__DIR__) . '/i18n');
 $GLOBALS['dcw_supported_languages'] = [
     'en' => ['name' => 'English',  'dir' => 'ltr'],
     'es' => ['name' => 'Español',  'dir' => 'ltr'],
+    'lb' => ['name' => 'Luxembourgish',  'dir' => 'ltr'],
+    'pi' => ['name' => 'Pali',  'dir' => 'ltr'],
+    'pt-br' => ['name' => 'Brazilian Portuguese',  'dir' => 'ltr'],
+    'ur' => ['name' => 'Urdu',  'dir' => 'rtl'],
+
+    
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
