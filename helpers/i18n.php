@@ -49,7 +49,7 @@ $GLOBALS['dcw_supported_languages'] = [
     'lb' => ['name' => 'Luxembourgish',  'dir' => 'ltr'],
     'pi' => ['name' => 'Pali',  'dir' => 'ltr'],
     'pt-br' => ['name' => 'Brazilian Portuguese',  'dir' => 'ltr'],
-    'ur' => ['name' => 'Urdu',  'dir' => 'rtl'],
+    'ur' => ['name' => 'اردو',  'dir' => 'rtl'],
 
     
 ];
