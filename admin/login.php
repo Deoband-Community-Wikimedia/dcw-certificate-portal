@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = trim($_POST['password'] ?? '');
 
     if ($username && $password) {
-        $stmt = $pdo->prepare("SELECT id, username, password_hash FROM admin_users WHERE username = ?");
+        $stmt = $pdo->prepare("SELECT * FROM admin_users WHERE username = ?");
         $stmt->execute([$username]);
         $admin = $stmt->fetch();
 
@@ -26,6 +26,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['admin_logged_in'] = true;
             $_SESSION['admin_id'] = $admin['id'];
             $_SESSION['admin_username'] = $admin['username'];
+            $_SESSION['admin_role'] = $admin['role'] ?? 'super_admin';
+            $_SESSION['admin_org_id'] = (int)($admin['organization_id'] ?? 1);
             header("Location: dashboard.php");
             exit;
         } else {
