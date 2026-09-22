@@ -618,3 +618,92 @@ if (!function_exists('sendAdminResetEmail')) {
     }
 }
 
+// =========================================================================
+// Multi-Tenant Helpers (#147)
+// =========================================================================
+
+if (!function_exists('get_current_tenant_id')) {
+    /**
+     * Returns the active tenant (organization) ID for the current session.
+     * Defaults to 1 (Deoband Community Wikimedia) if not set.
+     *
+     * @return int
+     */
+    function get_current_tenant_id(): int {
+        if (isset($_SESSION['admin_org_id']) && (int)$_SESSION['admin_org_id'] > 0) {
+            return (int)$_SESSION['admin_org_id'];
+        }
+        return 1;
+    }
+}
+
+if (!function_exists('is_super_admin')) {
+    /**
+     * Determines whether the currently authenticated admin has global super-admin privileges.
+     *
+     * @return bool
+     */
+    function is_super_admin(): bool {
+        if (empty($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+            return false;
+        }
+        return isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'super_admin';
+    }
+}
+
+if (!function_exists('verify_event_access')) {
+    /**
+     * Verifies that the current user/tenant has permission to access a specific event.
+     * Returns the event record if access is authorized, or null if unauthorized / not found.
+     *
+     * @param PDO $pdo
+     * @param int $eventId
+     * @return array|null
+     */
+    function verify_event_access(PDO $pdo, int $eventId): ?array {
+        if ($eventId <= 0) {
+            return null;
+        }
+
+        $stmt = $pdo->prepare("SELECT * FROM events WHERE id = ?");
+        $stmt->execute([$eventId]);
+        $event = $stmt->fetch();
+
+        if (!$event) {
+            return null;
+        }
+
+        // Global super-admins have access across all organizations
+        if (is_super_admin()) {
+            return $event;
+        }
+
+        // Org admins can only access events matching their active organization
+        $currentOrgId = get_current_tenant_id();
+        if ((int)($event['organization_id'] ?? 1) === $currentOrgId) {
+            return $event;
+        }
+
+        return null;
+    }
+}
+
+if (!function_exists('get_organization')) {
+    /**
+     * Fetches organization details by ID.
+     *
+     * @param PDO $pdo
+     * @param int $orgId
+     * @return array|null
+     */
+    function get_organization(PDO $pdo, int $orgId): ?array {
+        if ($orgId <= 0) {
+            return null;
+        }
+        $stmt = $pdo->prepare("SELECT * FROM organizations WHERE id = ?");
+        $stmt->execute([$orgId]);
+        $org = $stmt->fetch();
+        return $org ?: null;
+    }
+}
+

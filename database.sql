@@ -1,31 +1,56 @@
--- Database Schema for Certificate System
+-- Database Schema for Certificate System (Multi-Tenant Support)
+
+-- Create Organizations Table
+CREATE TABLE IF NOT EXISTS organizations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(50) NOT NULL UNIQUE,
+    cert_code VARCHAR(20) NOT NULL UNIQUE,
+    logo_path VARCHAR(255) NULL,
+    home_url VARCHAR(255) NULL,
+    about_url VARCHAR(255) NULL,
+    contact_email VARCHAR(255) NULL,
+    linkedin_org_id VARCHAR(50) NULL,
+    social_links TEXT NULL,
+    smtp_host VARCHAR(255) NULL,
+    smtp_port INT NULL,
+    smtp_user VARCHAR(255) NULL,
+    smtp_pass_encrypted TEXT NULL,
+    smtp_secure VARCHAR(10) NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert Default Organization: Deoband Community Wikimedia (ID: 1)
+INSERT INTO organizations (id, name, slug, cert_code, logo_path, home_url, about_url, contact_email, linkedin_org_id, is_active)
+VALUES (1, 'Deoband Community Wikimedia', 'dcw', 'DCW', 'assets/DCW_logo.png', 'https://dcwwiki.org/', 'https://dcwwiki.org/About', 'moderator@dcwwiki.org', '92536649', 1)
+ON DUPLICATE KEY UPDATE id=id;
 
 -- Create Admins Table
 CREATE TABLE IF NOT EXISTS admin_users (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    organization_id INT NULL,
     username VARCHAR(50) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     email VARCHAR(255) NULL,
+    role ENUM('super_admin', 'org_admin') NOT NULL DEFAULT 'org_admin',
     reset_token_hash VARCHAR(255) NULL,
-    reset_expires_at DATETIME NULL
+    reset_expires_at DATETIME NULL,
+    CONSTRAINT fk_admin_users_org FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL
 );
 
--- Migration for existing installs:
--- ALTER TABLE admin_users ADD COLUMN email VARCHAR(255) NULL;
--- ALTER TABLE admin_users ADD COLUMN reset_token_hash VARCHAR(255) NULL;
--- ALTER TABLE admin_users ADD COLUMN reset_expires_at DATETIME NULL;
-
--- Insert Default Admin (username: admin, password: password123)
+-- Insert Default Admin (username: admin, password: password123, role: super_admin)
 -- This account exists only so a new operator can log in the first time.
 -- Change the password from "Manage Users" before the portal is reachable
 -- from the internet. See the Quick Start Guide in README.md.
-INSERT INTO admin_users (username, password_hash)
-VALUES ('admin', '$2y$10$p0Bv6TvSUHEQ6X86NOFaQ.LcuBV8EmkkZhGx51GPUJRx8huMP.GFW')
+INSERT INTO admin_users (username, password_hash, role, organization_id)
+VALUES ('admin', '$2y$10$p0Bv6TvSUHEQ6X86NOFaQ.LcuBV8EmkkZhGx51GPUJRx8huMP.GFW', 'super_admin', 1)
 ON DUPLICATE KEY UPDATE id=id;
 
 -- Create Events Table
 CREATE TABLE IF NOT EXISTS events (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    organization_id INT NOT NULL DEFAULT 1,
     name VARCHAR(255) NOT NULL,
     category VARCHAR(50) NULL,
     linkedin_caption TEXT NULL,
@@ -36,7 +61,9 @@ CREATE TABLE IF NOT EXISTS events (
     description TEXT NULL,
     partners VARCHAR(255) NULL,
     color_presets TEXT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_events_org_id (organization_id),
+    CONSTRAINT fk_events_org FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 );
 
 -- completion_date is the date the participants actually finished the event
@@ -49,11 +76,6 @@ CREATE TABLE IF NOT EXISTS events (
 -- brand colors an organiser saves in the visual editor so certificate elements can
 -- reuse the template's palette. Read/written defensively, so an install that hasn't
 -- run the migration below simply shows no custom presets rather than erroring.
-
--- Migration for existing installs (run once; on MariaDB you may add IF NOT EXISTS after ADD COLUMN):
--- ALTER TABLE events ADD COLUMN category VARCHAR(50) NULL AFTER name;
--- ALTER TABLE events ADD COLUMN completion_date DATE NULL AFTER certificate_issue_date;
--- ALTER TABLE events ADD COLUMN color_presets TEXT NULL AFTER partners;
 
 -- Create Event Roles Table
 CREATE TABLE IF NOT EXISTS event_roles (
@@ -70,9 +92,12 @@ CREATE TABLE IF NOT EXISTS event_roles (
 -- Create Participants Table
 CREATE TABLE IF NOT EXISTS participants (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    organization_id INT NOT NULL DEFAULT 1,
     full_name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    email VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_org_participant (organization_id, email),
+    CONSTRAINT fk_participants_org FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 );
 
 -- Create Event Participants Junction Table
@@ -86,23 +111,24 @@ CREATE TABLE IF NOT EXISTS event_participants (
     issue_date DATE NULL,
     notification_sent TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_event_id (event_id),
+    INDEX idx_participant_id (participant_id),
     FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
     FOREIGN KEY (role_id) REFERENCES event_roles(id) ON DELETE SET NULL,
     FOREIGN KEY (participant_id) REFERENCES participants(id) ON DELETE CASCADE,
     UNIQUE KEY unique_participant_event (event_id, participant_id)
 );
 
--- Add Indexes for Performance
-CREATE INDEX idx_event_id ON event_participants(event_id);
-CREATE INDEX idx_participant_id ON event_participants(participant_id);
-
 -- Create Audit Logs Table
 CREATE TABLE IF NOT EXISTS audit_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    organization_id INT NULL,
     admin_username VARCHAR(50) NOT NULL,
     action_type VARCHAR(50) NOT NULL,
     details VARCHAR(255) NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_audit_logs_org_id (organization_id),
+    CONSTRAINT fk_audit_logs_org FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL
 );
 
 -- Create Email Logs Table
@@ -112,9 +138,6 @@ CREATE TABLE IF NOT EXISTS email_logs (
     recipient_email VARCHAR(255) NOT NULL,
     status VARCHAR(20) NOT NULL,
     -- Which flow produced this row: 'notification', 'download', or 'password_reset'.
-    -- On an existing install that predates NULLable certificate_id or trigger_type:
-    --   ALTER TABLE email_logs MODIFY COLUMN certificate_id VARCHAR(50) NULL;
-    --   ALTER TABLE email_logs ADD COLUMN trigger_type VARCHAR(20) NOT NULL DEFAULT 'download' AFTER status;
     trigger_type VARCHAR(20) NOT NULL DEFAULT 'download',
     error_message TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
