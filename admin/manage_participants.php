@@ -7,19 +7,24 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
     exit;
 }
 
-$eventId = $_GET['id'] ?? null;
+$eventId = (int)($_GET['id'] ?? 0);
 if (!$eventId) {
     header("Location: dashboard.php");
     exit;
 }
 
-$stmt = $pdo->prepare("SELECT * FROM events WHERE id = ?");
-$stmt->execute([$eventId]);
-$event = $stmt->fetch();
+// Multi-tenant (#147/#148): only load an event this admin's organization owns.
+// Someone else's event gets the same answer as one that doesn't exist.
+$event = verify_event_access($pdo, $eventId);
 
 if (!$event) {
+    http_response_code(404);
     die("Event not found");
 }
+
+// Participants belong to the organization that owns the event, so email
+// uniqueness is per organization: the same person can be on two tenants' lists.
+$orgId = (int)$event['organization_id'];
 
 // Fetch Roles for dropdown
 $stmtRoles = $pdo->prepare("SELECT id, role_name FROM event_roles WHERE event_id = ?");
@@ -28,6 +33,12 @@ $rolesList = $stmtRoles->fetchAll();
 $roleMap = []; // useful for CSV processing
 foreach($rolesList as $r) {
     $roleMap[strtolower(trim($r['role_name']))] = $r['id'];
+}
+$validRoleIds = array_map('intval', array_column($rolesList, 'id'));
+
+// A role id posted from the form must be one of THIS event's roles.
+function resolveRoleId($posted, array $validRoleIds) {
+    return in_array((int)$posted, $validRoleIds, true) ? (int)$posted : null;
 }
 
 $message = '';
@@ -58,8 +69,8 @@ if (isset($_POST['action']) && $_POST['action'] === 'delete_participant') {
         $delPid = $_POST['delete_pid'];
 
         // Log before delete
-        $stmtParticipant = $pdo->prepare("SELECT full_name FROM participants WHERE id = ?");
-        $stmtParticipant->execute([$delPid]);
+        $stmtParticipant = $pdo->prepare("SELECT full_name FROM participants WHERE id = ? AND organization_id = ?");
+        $stmtParticipant->execute([$delPid, $orgId]);
         $deletedParticipantName = $stmtParticipant->fetchColumn() ?: 'Unknown';
 
         $stmtDel = $pdo->prepare("DELETE FROM event_participants WHERE participant_id = ? AND event_id = ?");
@@ -121,18 +132,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action']) && $_POST['action'] === 'add_single') {
         $fullName = trim($_POST['single_name'] ?? '');
         $email = trim($_POST['single_email'] ?? '');
-        $roleId = $_POST['role_id'] ?? null;
+        $roleId = resolveRoleId($_POST['role_id'] ?? null, $validRoleIds);
         $customText = trim($_POST['single_custom_text'] ?? '');
         $issueDateInput = trim($_POST['single_issue_date'] ?? '');
 
         if ($fullName && filter_var($email, FILTER_VALIDATE_EMAIL) && $roleId) {
-            // 1. Insert into participants
-            $stmtInsertParticipant = $pdo->prepare("INSERT INTO participants (full_name, email) VALUES (?, ?) ON DUPLICATE KEY UPDATE full_name=VALUES(full_name)");
-            $stmtInsertParticipant->execute([$fullName, $email]);
+            // 1. Insert into participants (unique per organization + email)
+            $stmtInsertParticipant = $pdo->prepare("INSERT INTO participants (organization_id, full_name, email) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE full_name=VALUES(full_name)");
+            $stmtInsertParticipant->execute([$orgId, $fullName, $email]);
 
             // 2. Get participant ID
-            $stmtGetParticipant = $pdo->prepare("SELECT id FROM participants WHERE email = ?");
-            $stmtGetParticipant->execute([$email]);
+            $stmtGetParticipant = $pdo->prepare("SELECT id FROM participants WHERE organization_id = ? AND email = ?");
+            $stmtGetParticipant->execute([$orgId, $email]);
             $pid = $stmtGetParticipant->fetchColumn();
 
             // 3. Link to event
@@ -156,14 +167,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $editPid = $_POST['edit_pid'];
         $fullName = trim($_POST['single_name'] ?? '');
         $email = trim($_POST['single_email'] ?? '');
-        $roleId = $_POST['role_id'] ?? null;
+        $roleId = resolveRoleId($_POST['role_id'] ?? null, $validRoleIds);
         $customText = trim($_POST['single_custom_text'] ?? '');
         $issueDateInput = trim($_POST['single_issue_date'] ?? '');
 
-        if ($fullName && filter_var($email, FILTER_VALIDATE_EMAIL) && $roleId) {
-            $stmtUpdate = $pdo->prepare("UPDATE participants SET full_name = ?, email = ? WHERE id = ?");
+        // The participant must be on THIS event and in THIS organization.
+        $stmtOwn = $pdo->prepare("
+            SELECT COUNT(*) FROM participants p
+            JOIN event_participants ep ON ep.participant_id = p.id
+            WHERE p.id = ? AND p.organization_id = ? AND ep.event_id = ?
+        ");
+        $stmtOwn->execute([$editPid, $orgId, $eventId]);
+        $ownsParticipant = $stmtOwn->fetchColumn() > 0;
+
+        if ($fullName && filter_var($email, FILTER_VALIDATE_EMAIL) && $roleId && $ownsParticipant) {
+            $stmtUpdate = $pdo->prepare("UPDATE participants SET full_name = ?, email = ? WHERE id = ? AND organization_id = ?");
             try {
-                $stmtUpdate->execute([$fullName, $email, $editPid]);
+                $stmtUpdate->execute([$fullName, $email, $editPid, $orgId]);
 
                 // Update role, custom text, and issue date in event_participants
                 $stmtUpdateRole = $pdo->prepare("UPDATE event_participants SET role_id = ?, custom_certificate_text = ?, issue_date = ? WHERE participant_id = ? AND event_id = ?");
@@ -199,8 +219,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $pdo->beginTransaction();
 
                     // Prepared statements
-                    $stmtInsertParticipant = $pdo->prepare("INSERT INTO participants (full_name, email) VALUES (?, ?) ON DUPLICATE KEY UPDATE full_name=VALUES(full_name)");
-                    $stmtGetParticipant = $pdo->prepare("SELECT id FROM participants WHERE email = ?");
+                    // Emails are unique per organization (organization_id + email),
+                    // so importing an address another tenant already has is fine,
+                    // and re-importing one of this tenant's own reuses its row.
+                    $stmtInsertParticipant = $pdo->prepare("INSERT INTO participants (organization_id, full_name, email) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE full_name=VALUES(full_name)");
+                    $stmtGetParticipant = $pdo->prepare("SELECT id FROM participants WHERE organization_id = ? AND email = ?");
                     $stmtLinkEvent = $pdo->prepare("INSERT IGNORE INTO event_participants (participant_id, event_id, role_id, certificate_id, custom_certificate_text) VALUES (?, ?, ?, ?, ?)");
 
                     while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
@@ -213,10 +236,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         if ($fullName && filter_var($email, FILTER_VALIDATE_EMAIL) && $roleId) {
                             // 1. Insert into participants
-                            $stmtInsertParticipant->execute([$fullName, $email]);
+                            $stmtInsertParticipant->execute([$orgId, $fullName, $email]);
 
                             // 2. Get participant ID
-                            $stmtGetParticipant->execute([$email]);
+                            $stmtGetParticipant->execute([$orgId, $email]);
                             $pid = $stmtGetParticipant->fetchColumn();
 
                             // 3. Link to event
