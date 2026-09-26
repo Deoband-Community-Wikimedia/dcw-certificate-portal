@@ -13,13 +13,14 @@ if (!$eventId) {
     exit;
 }
 
-$stmt = $pdo->prepare("SELECT * FROM events WHERE id = ?");
-$stmt->execute([$eventId]);
-$event = $stmt->fetch();
-
+// Anti-IDOR guard: Ensure user has permission to manage this event
+$event = verify_event_access($pdo, (int)$eventId);
 if (!$event) {
-    die("Event not found");
+    header("Location: dashboard.php?msg=unauthorized");
+    exit;
 }
+
+$eventOrg = get_organization($pdo, (int)($event['organization_id'] ?? 1));
 
 // Fetch Roles for dropdown
 $stmtRoles = $pdo->prepare("SELECT id, role_name FROM event_roles WHERE event_id = ?");
@@ -126,13 +127,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $issueDateInput = trim($_POST['single_issue_date'] ?? '');
 
         if ($fullName && filter_var($email, FILTER_VALIDATE_EMAIL) && $roleId) {
+            $eventOrgId = (int)($event['organization_id'] ?? get_current_tenant_id());
             // 1. Insert into participants
-            $stmtInsertParticipant = $pdo->prepare("INSERT INTO participants (full_name, email) VALUES (?, ?) ON DUPLICATE KEY UPDATE full_name=VALUES(full_name)");
-            $stmtInsertParticipant->execute([$fullName, $email]);
+            $stmtInsertParticipant = $pdo->prepare("INSERT INTO participants (full_name, email, organization_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE full_name=VALUES(full_name)");
+            $stmtInsertParticipant->execute([$fullName, $email, $eventOrgId]);
 
             // 2. Get participant ID
-            $stmtGetParticipant = $pdo->prepare("SELECT id FROM participants WHERE email = ?");
-            $stmtGetParticipant->execute([$email]);
+            $stmtGetParticipant = $pdo->prepare("SELECT id FROM participants WHERE email = ? AND organization_id = ?");
+            $stmtGetParticipant->execute([$email, $eventOrgId]);
             $pid = $stmtGetParticipant->fetchColumn();
 
             // 3. Link to event
@@ -306,6 +308,11 @@ $participants = $stmt->fetchAll();
     <div style="display: flex; align-items: center; gap: 15px;">
         <img src="../assets/DCW_logo.png" alt="DCW Logo" width="35" height="35" decoding="async" style="height: 35px; width: 35px; background: white; padding: 2px; border-radius: 50%;">
         <span style="font-size: 18px; font-weight: bold; letter-spacing: 0.5px;"><?= __('admin.manage-participants.nav-title', ['event' => htmlspecialchars($event['name'])]) ?></span>
+        <?php if (is_super_admin()): ?>
+            <span style="background: #fef3c7; color: #92400e; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Super Admin</span>
+        <?php elseif ($eventOrg): ?>
+            <span style="background: #e0f2fe; color: #0369a1; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;"><?= htmlspecialchars($eventOrg['name']) ?> (<?= htmlspecialchars($eventOrg['cert_code']) ?>)</span>
+        <?php endif; ?>
     </div>
     <div>
         <a href="dashboard.php"><?= __e('admin.common.nav.dashboard') ?></a>

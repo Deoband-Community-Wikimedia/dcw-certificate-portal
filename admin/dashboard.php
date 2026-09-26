@@ -12,20 +12,23 @@ if (isset($_POST['delete_event_id'])) {
     $csrf = $_POST['csrf_token'] ?? '';
     verify_csrf_token($csrf);
 
-    $passcode = trim($_POST['super_admin_passcode'] ?? '');
+    $deleteId = (int)$_POST['delete_event_id'];
 
+    // Anti-IDOR guard: Ensure user has permission to manage this event
+    $eventToDelete = verify_event_access($pdo, $deleteId);
+    if (!$eventToDelete) {
+        header("Location: dashboard.php?msg=auth_error");
+        exit;
+    }
+
+    $passcode = trim($_POST['super_admin_passcode'] ?? '');
     if ($passcode !== SUPER_ADMIN_PASSCODE) {
         // Redirect with error
         header("Location: dashboard.php?msg=auth_error");
         exit;
     }
 
-    $deleteId = $_POST['delete_event_id'];
-
-    // Get event name for logging before deleting
-    $stmtName = $pdo->prepare("SELECT name FROM events WHERE id = ?");
-    $stmtName->execute([$deleteId]);
-    $deletedEventName = $stmtName->fetchColumn() ?: 'Unknown';
+    $deletedEventName = $eventToDelete['name'] ?: 'Unknown';
 
     $stmt = $pdo->prepare("DELETE FROM events WHERE id = ?");
     $stmt->execute([$deleteId]);
@@ -40,28 +43,102 @@ $limit = 10;
 $page = isset($_GET['page']) && (int)$_GET['page'] > 0 ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $limit;
 
-$search = $_GET['search'] ?? '';
-$searchQuery = "";
+$search = trim($_GET['search'] ?? '');
+$orgFilter = isset($_GET['org_id']) && (int)$_GET['org_id'] > 0 ? (int)$_GET['org_id'] : 0;
+
+$whereClauses = [];
 $params = [];
 
+if (!is_super_admin()) {
+    $whereClauses[] = "e.organization_id = ?";
+    $params[] = get_current_tenant_id();
+} elseif ($orgFilter > 0) {
+    $whereClauses[] = "e.organization_id = ?";
+    $params[] = $orgFilter;
+}
+
 if ($search !== '') {
-    $searchQuery = " WHERE name LIKE ?";
+    $whereClauses[] = "e.name LIKE ?";
     $params[] = "%$search%";
 }
 
-$stmtCount = $pdo->prepare("SELECT COUNT(*) FROM events" . $searchQuery);
+$searchQuery = !empty($whereClauses) ? " WHERE " . implode(" AND ", $whereClauses) : "";
+
+$stmtCount = $pdo->prepare("SELECT COUNT(*) FROM events e" . $searchQuery);
 $stmtCount->execute($params);
 $totalRecords = $stmtCount->fetchColumn();
 $totalPages = ceil($totalRecords / $limit);
 
-$stmt = $pdo->prepare("SELECT * FROM events" . $searchQuery . " ORDER BY created_at DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset);
+$stmt = $pdo->prepare("
+    SELECT e.*, o.name as org_name, o.cert_code as org_code 
+    FROM events e 
+    LEFT JOIN organizations o ON e.organization_id = o.id 
+    $searchQuery 
+    ORDER BY e.created_at DESC 
+    LIMIT " . (int)$limit . " OFFSET " . (int)$offset
+);
 $stmt->execute($params);
 $events = $stmt->fetchAll();
 
-// Analytics Queries
-$totalEvents = $pdo->query("SELECT COUNT(*) FROM events")->fetchColumn();
-$totalParticipants = $pdo->query("SELECT COUNT(DISTINCT participant_id) FROM event_participants")->fetchColumn();
-$totalCerts = $pdo->query("SELECT COUNT(*) FROM event_participants WHERE certificate_id IS NOT NULL")->fetchColumn();
+// Analytics Queries (scoped by active tenant or filter)
+if (!is_super_admin()) {
+    $activeTenantId = get_current_tenant_id();
+
+    $stmtEv = $pdo->prepare("SELECT COUNT(*) FROM events WHERE organization_id = ?");
+    $stmtEv->execute([$activeTenantId]);
+    $totalEvents = $stmtEv->fetchColumn();
+
+    $stmtPart = $pdo->prepare("
+        SELECT COUNT(DISTINCT ep.participant_id) 
+        FROM event_participants ep
+        JOIN events e ON ep.event_id = e.id
+        WHERE e.organization_id = ?
+    ");
+    $stmtPart->execute([$activeTenantId]);
+    $totalParticipants = $stmtPart->fetchColumn();
+
+    $stmtCert = $pdo->prepare("
+        SELECT COUNT(*) 
+        FROM event_participants ep
+        JOIN events e ON ep.event_id = e.id
+        WHERE e.organization_id = ? AND ep.certificate_id IS NOT NULL
+    ");
+    $stmtCert->execute([$activeTenantId]);
+    $totalCerts = $stmtCert->fetchColumn();
+} elseif ($orgFilter > 0) {
+    $stmtEv = $pdo->prepare("SELECT COUNT(*) FROM events WHERE organization_id = ?");
+    $stmtEv->execute([$orgFilter]);
+    $totalEvents = $stmtEv->fetchColumn();
+
+    $stmtPart = $pdo->prepare("
+        SELECT COUNT(DISTINCT ep.participant_id) 
+        FROM event_participants ep
+        JOIN events e ON ep.event_id = e.id
+        WHERE e.organization_id = ?
+    ");
+    $stmtPart->execute([$orgFilter]);
+    $totalParticipants = $stmtPart->fetchColumn();
+
+    $stmtCert = $pdo->prepare("
+        SELECT COUNT(*) 
+        FROM event_participants ep
+        JOIN events e ON ep.event_id = e.id
+        WHERE e.organization_id = ? AND ep.certificate_id IS NOT NULL
+    ");
+    $stmtCert->execute([$orgFilter]);
+    $totalCerts = $stmtCert->fetchColumn();
+} else {
+    $totalEvents = $pdo->query("SELECT COUNT(*) FROM events")->fetchColumn();
+    $totalParticipants = $pdo->query("SELECT COUNT(DISTINCT participant_id) FROM event_participants")->fetchColumn();
+    $totalCerts = $pdo->query("SELECT COUNT(*) FROM event_participants WHERE certificate_id IS NOT NULL")->fetchColumn();
+}
+
+// Fetch all organizations for super admin filter dropdown
+$allOrganizations = [];
+if (is_super_admin()) {
+    $allOrganizations = $pdo->query("SELECT id, name, cert_code FROM organizations WHERE is_active = 1 ORDER BY name ASC")->fetchAll();
+}
+$currentOrg = get_organization($pdo, get_current_tenant_id());
 
 ?>
 <!DOCTYPE html>
@@ -79,6 +156,11 @@ $totalCerts = $pdo->query("SELECT COUNT(*) FROM event_participants WHERE certifi
     <div style="display: flex; align-items: center; gap: 15px;">
         <img src="../assets/DCW_logo.png" alt="DCW Logo" width="35" height="35" decoding="async" style="height: 35px; width: 35px; background: white; padding: 2px; border-radius: 50%;">
         <span style="font-size: 18px; font-weight: bold; letter-spacing: 0.5px;"><?= __e('admin.dashboard.nav-title') ?></span>
+        <?php if (is_super_admin()): ?>
+            <span style="background: #fef3c7; color: #92400e; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Super Admin</span>
+        <?php elseif ($currentOrg): ?>
+            <span style="background: #e0f2fe; color: #0369a1; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;"><?= htmlspecialchars($currentOrg['name']) ?> (<?= htmlspecialchars($currentOrg['cert_code']) ?>)</span>
+        <?php endif; ?>
     </div>
     <div style="display: flex; align-items: center; gap: 15px;">
         <?php i18n_lang_switcher(); ?>
@@ -127,13 +209,23 @@ $totalCerts = $pdo->query("SELECT COUNT(*) FROM event_participants WHERE certifi
             </div>
         </div>
     </div>
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
         <h2 style="margin: 0;"><?= __e('admin.dashboard.heading') ?></h2>
-        <div style="display: flex; gap: 15px;">
-            <form method="GET" style="display: flex; gap: 10px;">
-                <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="<?= __e('admin.dashboard.search-placeholder') ?>" style="width: 250px;">
+        <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+            <form method="GET" style="display: flex; gap: 10px; align-items: center;">
+                <?php if (is_super_admin() && !empty($allOrganizations)): ?>
+                    <select name="org_id" onchange="this.form.submit()" style="padding: 9px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; background: white;">
+                        <option value="0"><?= __('admin.dashboard.filter.all-organizations') ?: 'All Organizations' ?></option>
+                        <?php foreach ($allOrganizations as $org): ?>
+                            <option value="<?= $org['id'] ?>" <?= $orgFilter === (int)$org['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($org['name']) ?> (<?= htmlspecialchars($org['cert_code']) ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php endif; ?>
+                <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="<?= __e('admin.dashboard.search-placeholder') ?>" style="width: 230px;">
                 <button type="submit" class="btn"><?= __e('admin.common.search') ?></button>
-                <?php if($search): ?>
+                <?php if($search !== '' || $orgFilter > 0): ?>
                     <a href="dashboard.php" class="btn btn-red"><?= __e('admin.common.clear') ?></a>
                 <?php endif; ?>
             </form>
@@ -148,6 +240,9 @@ $totalCerts = $pdo->query("SELECT COUNT(*) FROM event_participants WHERE certifi
                     <tr>
                         <th><?= __e('admin.dashboard.table.id') ?></th>
                         <th><?= __e('admin.dashboard.table.name') ?></th>
+                        <?php if (is_super_admin()): ?>
+                            <th><?= __('admin.dashboard.table.organization') ?: 'Organization' ?></th>
+                        <?php endif; ?>
                         <th><?= __e('admin.dashboard.table.created-at') ?></th>
                         <th style="text-align: right;"><?= __e('admin.dashboard.table.actions') ?></th>
                     </tr>
@@ -161,6 +256,13 @@ $totalCerts = $pdo->query("SELECT COUNT(*) FROM event_participants WHERE certifi
                                     <?= htmlspecialchars($event['name']) ?>
                                 </a>
                             </td>
+                            <?php if (is_super_admin()): ?>
+                                <td>
+                                    <span class="badge" style="background:#f1f5f9; color:#334155; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 500;">
+                                        <?= htmlspecialchars($event['org_name'] ?? 'DCW') ?> (<?= htmlspecialchars($event['org_code'] ?? 'DCW') ?>)
+                                    </span>
+                                </td>
+                            <?php endif; ?>
                             <td><?= htmlspecialchars($event['created_at']) ?></td>
                             <td class="actions" style="text-align: right;">
                                 <div class="action-menu-container">
@@ -190,7 +292,10 @@ $totalCerts = $pdo->query("SELECT COUNT(*) FROM event_participants WHERE certifi
         </div>
         <div class="pagination">
             <?php
-            $searchParam = $search ? '&search=' . urlencode($search) : '';
+            $pageParams = [];
+            if ($search !== '') $pageParams['search'] = $search;
+            if ($orgFilter > 0) $pageParams['org_id'] = $orgFilter;
+            $searchParam = !empty($pageParams) ? '&' . http_build_query($pageParams) : '';
             ?>
             <a href="?page=<?= max(1, $page - 1) . $searchParam ?>" class="page-btn <?= ($page <= 1) ? 'disabled' : '' ?>"><?= __e('admin.dashboard.pagination.prev') ?></a>
 
@@ -246,6 +351,11 @@ $totalCerts = $pdo->query("SELECT COUNT(*) FROM event_participants WHERE certifi
 <?php elseif (isset($_GET['msg']) && $_GET['msg'] === 'auth_error'): ?>
 <script>
     window.flashMessage = <?= json_encode(__('admin.common.security-error-invalid-passcode')) ?>;
+    window.flashMessageType = 'error';
+</script>
+<?php elseif (isset($_GET['msg']) && $_GET['msg'] === 'unauthorized'): ?>
+<script>
+    window.flashMessage = <?= json_encode(__('admin.dashboard.flash.unauthorized') ?: 'Access denied. You do not have permission to view or manage that event.') ?>;
     window.flashMessageType = 'error';
 </script>
 <?php endif; ?>
