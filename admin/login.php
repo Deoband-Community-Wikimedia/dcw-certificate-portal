@@ -22,14 +22,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $admin = $stmt->fetch();
 
         if ($admin && password_verify($password, $admin['password_hash'])) {
-            session_regenerate_id(true);
-            $_SESSION['admin_logged_in'] = true;
-            $_SESSION['admin_id'] = $admin['id'];
-            $_SESSION['admin_username'] = $admin['username'];
-            $_SESSION['admin_role'] = $admin['role'] ?? 'super_admin';
-            $_SESSION['admin_org_id'] = (int)($admin['organization_id'] ?? 1);
-            header("Location: dashboard.php");
-            exit;
+            $userRole = $admin['role'] ?? 'super_admin';
+            $userOrgId = !empty($admin['organization_id']) ? (int)$admin['organization_id'] : null;
+
+            // Fail-closed guard: an org_admin must have a valid organization assigned
+            if ($userRole === 'org_admin' && (!$userOrgId || $userOrgId <= 0)) {
+                $error = 'Account configuration error: No organization assigned to this account. Please contact a super administrator.';
+            } else {
+                session_regenerate_id(true);
+                $_SESSION['admin_logged_in'] = true;
+                $_SESSION['admin_id'] = $admin['id'];
+                $_SESSION['admin_username'] = $admin['username'];
+                $_SESSION['admin_role'] = $userRole;
+                $_SESSION['admin_org_id'] = $userOrgId ?: 1;
+                header("Location: dashboard.php");
+                exit;
+            }
         } else {
             sleep(2); 
             $error = 'Invalid username or password.';

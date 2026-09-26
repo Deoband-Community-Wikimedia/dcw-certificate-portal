@@ -633,6 +633,10 @@ if (!function_exists('get_current_tenant_id')) {
         if (isset($_SESSION['admin_org_id']) && (int)$_SESSION['admin_org_id'] > 0) {
             return (int)$_SESSION['admin_org_id'];
         }
+        // Fail-closed guard: an authenticated org_admin without a valid tenant ID must not fall back to DCW
+        if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true && isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'org_admin') {
+            return 0;
+        }
         return 1;
     }
 }

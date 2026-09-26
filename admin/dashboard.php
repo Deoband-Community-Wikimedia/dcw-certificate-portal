@@ -167,6 +167,7 @@ $currentOrg = get_organization($pdo, get_current_tenant_id());
         <a href="email_logs.php"><?= __e('admin.common.nav.email-logs') ?></a>
         <a href="#" onclick="return viewAuditLogs();"><?= __e('admin.common.nav.audit-logs') ?></a>
         <a href="manage_users.php"><?= __e('admin.common.nav.manage-users') ?></a>
+        <a href="organization_settings.php"><?= __e('admin.common.nav.org-settings') ?></a>
         <a href="logout.php"><?= __e('admin.common.nav.logout') ?></a>
     </div>
 </div>
