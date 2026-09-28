@@ -92,5 +92,19 @@
 	"admin.forgot-password.submit.reset": "Passwuert aktualiséieren",
 	"email.password-reset.btn-reset": "Mäi Passwuert zerécksetzen",
 	"category.conference": "Konferenz",
-	"admin.editor.tab.properties": "Eegenschaften"
+	"admin.editor.tab.properties": "Eegenschaften",
+	"admin.common.nav.org-settings": "Organisatioun",
+	"admin.org-settings.page-title": "Organisatiounsastellungen",
+	"admin.org-settings.heading": "Organisatiounsprofil",
+	"admin.org-settings.label.cert-code": "Certificatscode",
+	"admin.org-settings.label.contact-email": "Kontakt-E-Mail-Adress",
+	"admin.org-settings.social.linkedin": "LinkedIn",
+	"admin.org-settings.social.facebook": "Facebook",
+	"admin.org-settings.social.youtube": "YouTube",
+	"admin.org-settings.social.github": "GitHub",
+	"admin.org-settings.logo.current-alt": "Aktuelle Logo vun der Organisatioun",
+	"admin.org-settings.submit": "Organisatiounsprofil späicheren",
+	"admin.org-settings.error.org-not-found": "Organisatioun net fonnt.",
+	"admin.org-settings.error.save-failed": "Den Organisatiounsprofil konnt net gespäichert ginn. Probéiert wgl. nach eng Kéier.",
+	"admin.org-settings.error.logo-too-large": "De Logo ass ze grouss. D'Limitt ass 2 MB."
 }
