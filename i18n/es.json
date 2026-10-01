@@ -396,5 +396,5 @@
 	"admin.org-settings.error.logo-invalid": "El logotipo debe ser una imagen PNG, JPG o WebP de 4000 x 4000 px como máximo.",
 	"admin.org-settings.error.logo-too-large": "El logotipo es demasiado grande. El límite es 2 MB.",
 	"admin.org-settings.error.logo-upload-failed": "No se pudo subir el logotipo. Inténtalo de nuevo.",
-    "admin.users.error.no-tenant": "Your account is not linked to an organization. Please contact a super admin."
+	"admin.users.error.no-tenant": "Tu cuenta no está vinculada a una organización. Contacta a un superadministrador."
 }

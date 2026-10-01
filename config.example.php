@@ -24,7 +24,7 @@ i18n_get_lang();
 
 
 $host = $_ENV['DB_HOST'] ?? 'localhost';
-$db = $_ENV['DB_NAME'] ?? 'certificate_system';
+$db   = $_ENV['DB_NAME'] ?? 'certificate_system';
 $user = $_ENV['DB_USER'] ?? 'root';
 $pass = $_ENV['DB_PASS'] ?? '';
 $charset = 'utf8mb4';
@@ -52,10 +52,10 @@ define('ORG_EMAIL_MODERATOR', $_ENV['ORG_EMAIL_MODERATOR'] ?? 'moderator@dcwwiki
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
 $options = [
-    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::ATTR_EMULATE_PREPARES => false,
-    PDO::ATTR_PERSISTENT => true,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+    PDO::ATTR_PERSISTENT         => true,
 ];
 
 try {
@@ -66,16 +66,14 @@ try {
 }
 
 // Security Helpers
-function generate_csrf_token()
-{
+function generate_csrf_token() {
     if (empty($_SESSION['csrf_token'])) {
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     }
     return $_SESSION['csrf_token'];
 }
 
-function verify_csrf_token($token)
-{
+function verify_csrf_token($token) {
     if (empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $token)) {
         die('Security Error: CSRF token validation failed. Please go back and refresh the page.');
     }
@@ -89,12 +87,11 @@ define('SUPER_ADMIN_PASSCODE', $_ENV['SUPER_ADMIN_PASSCODE'] ?? '1234');
 define('DYNAMIC_THUMBNAILS_ENABLED', filter_var($_ENV['DYNAMIC_THUMBNAILS_ENABLED'] ?? true, FILTER_VALIDATE_BOOLEAN));
 
 // Audit Log Helper (tenant-aware: every log row is tagged with the acting admin's organization)
-function log_audit_action($pdo, $action, $details = '')
-{
+function log_audit_action($pdo, $action, $details = '') {
     if (!isset($_SESSION['admin_username'])) {
         return; // Don't log if not authenticated
     }
-
+    
     $stmt = $pdo->prepare("INSERT INTO audit_logs (admin_username, action_type, details, organization_id) VALUES (?, ?, ?, ?)");
     $stmt->execute([
         $_SESSION['admin_username'],
@@ -102,41 +99,5 @@ function log_audit_action($pdo, $action, $details = '')
         substr($details, 0, 255),
         get_current_tenant_id()
     ]);
-}
-
-/**
- * Returns a SQL condition scoping $column to the current tenant and appends
- * its bound value to $params. Super admins get '' (no restriction).
- * Fails closed: an org admin with no tenant sees nothing.
- */
-function tenant_scope_clause(string $column, array &$params): string
-{
-    if (is_super_admin()) {
-        return '';
-    }
-    $tenantId = get_current_tenant_id();
-    if (empty($tenantId)) {
-        return '1 = 0';
-    }
-    $params[] = $tenantId;
-    return "$column = ?";
-}
-
-/**
- * IDOR guard: true only if the admin_users row belongs to the caller's tenant.
- * Super admins may access any user.
- */
-function admin_user_in_tenant($pdo, $userId): bool
-{
-    if (is_super_admin()) {
-        return true;
-    }
-    $tenantId = get_current_tenant_id();
-    if (empty($tenantId)) {
-        return false;
-    }
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM admin_users WHERE id = ? AND organization_id = ?");
-    $stmt->execute([(int) $userId, $tenantId]);
-    return $stmt->fetchColumn() > 0;
 }
 ?>

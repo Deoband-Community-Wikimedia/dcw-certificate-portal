@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config.php';
+require_once '../helpers.php';
 
 if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
     header("Location: login.php");
@@ -15,7 +16,7 @@ if ($isSuper) {
 
     // If they submitted a passcode, check it and unlock session
     if ($passcode !== '') {
-        if ($passcode === SUPER_ADMIN_PASSCODE) {
+        if (verify_super_admin_passcode($passcode)) {
             $_SESSION['audit_unlocked'] = true;
         } else {
             header("Location: dashboard.php?msg=auth_error");
