@@ -396,5 +396,6 @@
 	"admin.org-settings.error.social-url-invalid": "Validation error for a social link. Parameters: {platform} is the platform name, e.g. LinkedIn. Keep 'http://' and 'https://' unchanged.",
 	"admin.org-settings.error.logo-invalid": "Validation error when the uploaded logo is not a real PNG/JPG/WebP image or is too large in pixels.",
 	"admin.org-settings.error.logo-too-large": "Validation error when the uploaded logo exceeds the 2 MB file size limit.",
-	"admin.org-settings.error.logo-upload-failed": "Error when the logo upload failed on the server side."
+	"admin.org-settings.error.logo-upload-failed": "Error when the logo upload failed on the server side.",
+	"admin.users.error.no-tenant": "Error shown on the Manage Users page when an organization admin tries to create a new admin, but their account is not assigned to any organization (tenant)."
 }

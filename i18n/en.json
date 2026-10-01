@@ -395,5 +395,6 @@
     "admin.org-settings.error.social-url-invalid": "{platform}: please enter a full link starting with http:// or https://",
     "admin.org-settings.error.logo-invalid": "The logo must be a PNG, JPG or WebP image no larger than 4000 x 4000 px.",
     "admin.org-settings.error.logo-too-large": "The logo is too large. The limit is 2 MB.",
-    "admin.org-settings.error.logo-upload-failed": "The logo could not be uploaded. Please try again."
+    "admin.org-settings.error.logo-upload-failed": "The logo could not be uploaded. Please try again.",
+    "admin.users.error.no-tenant": "Your account is not linked to an organization. Please contact a super admin."
 }

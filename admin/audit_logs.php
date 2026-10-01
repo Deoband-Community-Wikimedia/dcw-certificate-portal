@@ -7,34 +7,45 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
     exit;
 }
 
-$passcode = trim($_POST['super_admin_passcode'] ?? '');
+$isSuper = is_super_admin();
 
-// If they submitted a passcode, check it and unlock session
-if ($passcode !== '') {
-    if ($passcode === SUPER_ADMIN_PASSCODE) {
-        $_SESSION['audit_unlocked'] = true;
-    } else {
+// Super admins still need the passcode; org admins only ever see their own tenant's trail.
+if ($isSuper) {
+    $passcode = trim($_POST['super_admin_passcode'] ?? '');
+
+    // If they submitted a passcode, check it and unlock session
+    if ($passcode !== '') {
+        if ($passcode === SUPER_ADMIN_PASSCODE) {
+            $_SESSION['audit_unlocked'] = true;
+        } else {
+            header("Location: dashboard.php?msg=auth_error");
+            exit;
+        }
+    }
+
+    // If session isn't unlocked, they are unauthorized
+    if (!isset($_SESSION['audit_unlocked']) || $_SESSION['audit_unlocked'] !== true) {
         header("Location: dashboard.php?msg=auth_error");
         exit;
     }
-}
-
-// If session isn't unlocked, they are unauthorized
-if (!isset($_SESSION['audit_unlocked']) || $_SESSION['audit_unlocked'] !== true) {
-    header("Location: dashboard.php?msg=auth_error");
-    exit;
 }
 
 $limit = 20;
 $page = isset($_GET['page']) && (int)$_GET['page'] > 0 ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $limit;
 
-$stmtCount = $pdo->query("SELECT COUNT(*) FROM audit_logs");
+// Tenant scoping (super admin: no restriction; org admin: own organization only)
+$params = [];
+$scope = tenant_scope_clause('organization_id', $params);
+$whereSql = $scope !== '' ? " WHERE $scope" : '';
+
+$stmtCount = $pdo->prepare("SELECT COUNT(*) FROM audit_logs" . $whereSql);
+$stmtCount->execute($params);
 $totalRecords = $stmtCount->fetchColumn();
 $totalPages = ceil($totalRecords / $limit);
 
-$stmt = $pdo->prepare("SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset);
-$stmt->execute();
+$stmt = $pdo->prepare("SELECT * FROM audit_logs" . $whereSql . " ORDER BY created_at DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset);
+$stmt->execute($params);
 $logs = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>

@@ -354,5 +354,6 @@
 	"admin.editor.color.none-yet": "nenhum ainda",
 	"admin.editor.tab.properties": "Propriedades",
 	"admin.editor.tab.layers": "Camadas e Grade",
-	"admin.editor.color.custom-toggle": "Controles deslizantes personalizados e conta-gotas"
+	"admin.editor.color.custom-toggle": "Controles deslizantes personalizados e conta-gotas",
+	"admin.users.error.no-tenant": "Sua conta não está vinculada a uma organização. Entre em contato com um superadministrador."
 }

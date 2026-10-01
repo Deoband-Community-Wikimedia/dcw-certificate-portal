@@ -49,7 +49,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $newPassword = $_POST['create_password'] ?? '';
         $newEmail = trim($_POST['new_email'] ?? '');
 
-        if (empty($newUsername) || empty($newPassword)) {
+        // New admins are always created inside the caller's own tenant.
+        $tenantId = get_current_tenant_id();
+
+        if (!is_super_admin() && empty($tenantId)) {
+            $error = __('admin.users.error.no-tenant');
+        } elseif (empty($newUsername) || empty($newPassword)) {
             $error = "Username and password are required.";
         } elseif (strlen($newPassword) < 6) {
             $error = "Password must be at least 6 characters long.";
@@ -63,8 +68,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = "Username already exists. Please choose another.";
             } else {
                 $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
-                $insertStmt = $pdo->prepare("INSERT INTO admin_users (username, password_hash, email) VALUES (?, ?, ?)");
-                if ($insertStmt->execute([$newUsername, $newHash, $newEmail ?: null])) {
+                $insertStmt = $pdo->prepare("INSERT INTO admin_users (username, password_hash, email, organization_id) VALUES (?, ?, ?, ?)");
+                if ($insertStmt->execute([$newUsername, $newHash, $newEmail ?: null, $tenantId])) {
                     log_audit_action($pdo, 'Created Admin', "New Admin User: {$newUsername}");
                     $success = "New admin user '{$newUsername}' created successfully.";
                 } else {
@@ -92,8 +97,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch all admins for display
-$stmtAdmins = $pdo->query("SELECT id, username, email FROM admin_users ORDER BY id ASC");
+// Fetch admins for display (tenant-scoped: org admins only see admins of their own organization)
+$adminParams = [];
+$adminScope = tenant_scope_clause('organization_id', $adminParams);
+$stmtAdmins = $pdo->prepare("SELECT id, username, email FROM admin_users" . ($adminScope !== '' ? " WHERE $adminScope" : "") . " ORDER BY id ASC");
+$stmtAdmins->execute($adminParams);
 $allAdmins = $stmtAdmins->fetchAll();
 
 // Current admin's email (for the recovery-email form).
@@ -244,4 +252,3 @@ foreach ($allAdmins as $adm) {
 <script>function togglePassword(id){const input=document.getElementById(id);input.type=input.type==='password'?'text':'password';}</script>
 </body>
 </html>
-

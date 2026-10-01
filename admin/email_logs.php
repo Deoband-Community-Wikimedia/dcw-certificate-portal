@@ -7,8 +7,12 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
     exit;
 }
 
-// Fetch all events for the filter dropdown
-$eventsList = $pdo->query("SELECT id, name FROM events ORDER BY created_at DESC")->fetchAll();
+// Fetch events for the filter dropdown (tenant-scoped: org admins only see their own events)
+$eventParams = [];
+$eventScope = tenant_scope_clause('organization_id', $eventParams);
+$stmtEvents = $pdo->prepare("SELECT id, name FROM events" . ($eventScope !== '' ? " WHERE $eventScope" : "") . " ORDER BY created_at DESC");
+$stmtEvents->execute($eventParams);
+$eventsList = $stmtEvents->fetchAll();
 
 $limit = 15;
 $page = isset($_GET['page']) && (int)$_GET['page'] > 0 ? (int)$_GET['page'] : 1;
@@ -24,6 +28,13 @@ $endDate = $_GET['end_date'] ?? '';
 
 $whereClauses = [];
 $params = [];
+
+// Tenant scope FIRST so its bound value stays in the same order as its placeholder.
+// Logs are tied to a tenant via email_logs -> event_participants -> events.organization_id.
+$scope = tenant_scope_clause('e.organization_id', $params);
+if ($scope !== '') {
+    $whereClauses[] = $scope;
+}
 
 if ($search !== '') {
     $whereClauses[] = "(el.recipient_email LIKE ? OR el.certificate_id LIKE ?)";
