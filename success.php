@@ -8,6 +8,11 @@ if (!isset($_GET['id'])) {
 
 $certId = trim($_GET['id']);
 
+if (!otp_is_claim_authorized($certId)) {
+    header("Location: index.php?error=" . urlencode(__('otp.error.unauthorized-access')));
+    exit;
+}
+
 $stmt = $pdo->prepare("
     SELECT p.full_name, e.name as event_name, e.linkedin_caption, e.certificate_issue_date, e.organization_id, ep.created_at
     FROM event_participants ep

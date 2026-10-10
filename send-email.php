@@ -15,6 +15,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['id'])) {
 
 $certId = trim($_POST['id']);
 
+if (!otp_is_claim_authorized($certId)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => __('otp.error.unauthorized-access')]);
+    exit;
+}
+
 // Define explicit font path for TCPDF
 define('K_PATH_FONTS', __DIR__ . '/vendor/tecnickcom/tcpdf/fonts/');
 

@@ -17,6 +17,11 @@ if (!isset($_GET['id'])) {
 $certId = trim($_GET['id']);
 $preview = isset($_GET['preview']) && $_GET['preview'] == 1;
 
+if (!defined('TEST_RUNNING') && !otp_is_claim_authorized($certId)) {
+    http_response_code(403);
+    die(__('otp.error.unauthorized-access'));
+}
+
 use setasign\Fpdi\Tcpdf\Fpdi;
 
 // 1. Verify certificate ID exists
