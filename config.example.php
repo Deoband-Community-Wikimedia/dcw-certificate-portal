@@ -5,8 +5,10 @@ $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->safeLoad(); // Use safeLoad so it doesn't crash in production if .env is missing and variables are set in server environment
 
 // Set application identification headers
-header("X-Project-Creator: Zaidusyy");
-header("X-Powered-By: DCW Certificate Engine");
+if (!headers_sent()) {
+    header("X-Project-Creator: Zaidusyy");
+    header("X-Powered-By: DCW Certificate Engine");
+}
 
 // Load shared helpers
 require_once __DIR__ . '/helpers.php';
@@ -82,6 +84,13 @@ function verify_csrf_token($token) {
 
 // Security Configuration
 define('SUPER_ADMIN_PASSCODE', $_ENV['SUPER_ADMIN_PASSCODE'] ?? '1234');
+
+function verify_super_admin_passcode(?string $passcode): bool {
+    if (!is_string($passcode) || $passcode === '') {
+        return false;
+    }
+    return hash_equals(SUPER_ADMIN_PASSCODE, $passcode);
+}
 
 // Dynamic Thumbnails Configuration (For Social Sharing Previews)
 define('DYNAMIC_THUMBNAILS_ENABLED', filter_var($_ENV['DYNAMIC_THUMBNAILS_ENABLED'] ?? true, FILTER_VALIDATE_BOOLEAN));

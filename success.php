@@ -9,7 +9,7 @@ if (!isset($_GET['id'])) {
 $certId = trim($_GET['id']);
 
 $stmt = $pdo->prepare("
-    SELECT p.full_name, e.name as event_name, e.linkedin_caption, e.certificate_issue_date, ep.created_at
+    SELECT p.full_name, e.name as event_name, e.linkedin_caption, e.certificate_issue_date, e.organization_id, ep.created_at
     FROM event_participants ep
     JOIN participants p ON ep.participant_id = p.id
     JOIN events e ON ep.event_id = e.id
@@ -22,16 +22,15 @@ if (!$certData) {
     die(__('page.download.error.not-found'));
 }
 
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-$baseDir = str_replace('\\', '/', dirname($_SERVER['PHP_SELF']));
-if ($baseDir === '/') $baseDir = '';
-$verifyUrl = $protocol . $_SERVER['HTTP_HOST'] . $baseDir . '/verify/' . $certId;
+$verifyUrl = adminPortalBaseUrl() . '/verify/' . $certId;
 
 $eventName = urlencode($certData['event_name']);
 $issueSource = !empty($certData['certificate_issue_date']) ? $certData['certificate_issue_date'] : $certData['created_at'];
 $issueYear = date('Y', strtotime($issueSource));
 $issueMonth = date('n', strtotime($issueSource));
-$organizationId = '92536649';
+
+$eventOrg = get_organization($pdo, (int)($certData['organization_id'] ?? 1));
+$organizationId = !empty($eventOrg['linkedin_org_id']) ? $eventOrg['linkedin_org_id'] : '92536649';
 
 $linkedInAddUrl = "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name={$eventName}&organizationId={$organizationId}&issueYear={$issueYear}&issueMonth={$issueMonth}&certUrl=" . urlencode($verifyUrl) . "&certId=" . urlencode($certId);
 $dbCaption = $certData['linkedin_caption'] ?? '';
@@ -475,6 +474,10 @@ if ($basePath === '/') {
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const currentCertId = document.getElementById('certId').value;
+            const sentKey = 'dcw_cert_emailed_' + currentCertId;
+            if (sessionStorage.getItem(sentKey)) {
+                return;
+            }
 
             fetch('send-email.php', {
                 method: 'POST',
@@ -485,8 +488,9 @@ if ($basePath === '/') {
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    console.log('Automated credential email queued successfully.');
+                if (data.success || data.rate_limited) {
+                    sessionStorage.setItem(sentKey, '1');
+                    console.log('Automated credential email status: ' + data.message);
                 } else {
                     console.warn('Email trigger warning: ' + data.message);
                 }

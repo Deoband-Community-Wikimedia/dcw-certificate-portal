@@ -57,15 +57,20 @@ if (($isBot || $isPreview) && extension_loaded('imagick')) {
 serveDefaultLogo();
 
 function serveDefaultLogo() {
-    $logoPath = __DIR__ . '/assets/DCW_logo.png';
-    if (file_exists($logoPath)) {
-        header('Content-Type: image/png');
-        header('Cache-Control: public, max-age=86400');
-        readfile($logoPath);
-        exit;
-    } else {
-        header('HTTP/1.1 404 Not Found');
-        echo "Default logo not found.";
-        exit;
+    $candidates = [
+        defined('ORG_LOGO_PATH') && ORG_LOGO_PATH !== '' ? __DIR__ . '/' . ltrim(ORG_LOGO_PATH, '/') : null,
+        __DIR__ . '/assets/logo.png',
+        __DIR__ . '/assets/DCW_logo.png'
+    ];
+    foreach ($candidates as $logoPath) {
+        if ($logoPath && file_exists($logoPath)) {
+            header('Content-Type: image/png');
+            header('Cache-Control: public, max-age=86400');
+            readfile($logoPath);
+            exit;
+        }
     }
+    header('HTTP/1.1 404 Not Found');
+    echo "Default logo not found.";
+    exit;
 }

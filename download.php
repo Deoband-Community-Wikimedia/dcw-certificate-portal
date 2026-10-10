@@ -1,8 +1,4 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 if (!defined('K_PATH_FONTS')) {
     define('K_PATH_FONTS', __DIR__ . '/vendor/tecnickcom/tcpdf/fonts/');
 }
@@ -11,16 +7,15 @@ if (defined('TEST_RUNNING')) {
     return;
 }
 
+require_once 'config.php';
+require_once 'helpers.php';
+
 if (!isset($_GET['id'])) {
     die(__('page.download.error.invalid-id'));
 }
 
 $certId = trim($_GET['id']);
 $preview = isset($_GET['preview']) && $_GET['preview'] == 1;
-
-require_once 'config.php';
-require_once 'helpers.php';
-require_once 'vendor/autoload.php';
 
 use setasign\Fpdi\Tcpdf\Fpdi;
 
@@ -189,11 +184,7 @@ function renderElement($pdf, $settings, $text, $linkUrl = '') {
 }
 
 // Calculate verification URL early for hyperlinks
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-$domainName = $_SERVER['HTTP_HOST'];
-$basePath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
-if ($basePath === '/') $basePath = '';
-$verifyUrl = $protocol . $domainName . $basePath . '/verify/' . $certId;
+$verifyUrl = adminPortalBaseUrl() . '/verify/' . $certId;
 
 // Render the elements and QR code
 if (is_array($visualSettings)) {
@@ -235,10 +226,8 @@ if (is_array($visualSettings)) {
     }
 }
 
-
-
 // Output
-// sanitizeForFilename() is defined in config.php so download.php and send-email.php stay consistent
+// sanitizeForFilename() is defined in helpers.php so download.php and send-email.php stay consistent
 $safeFullName = sanitizeForFilename($fullName);
 $safeEventName = sanitizeForFilename($certData['event_name']);
 $filename = "{$safeFullName} - {$safeEventName} - Certificate.pdf";

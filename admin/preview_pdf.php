@@ -34,6 +34,13 @@ if (!$role) {
     die("Role not found.");
 }
 
+// Anti-IDOR guard: Ensure user has permission to preview this event's template
+$event = verify_event_access($pdo, (int)$role['event_id']);
+if (!$event) {
+    http_response_code(403);
+    die("Unauthorized access to this event template.");
+}
+
 // Visual settings fallback
 $defaultSettings = [
     'name' => [

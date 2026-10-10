@@ -22,6 +22,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['id'])) {
 
 $certId = trim($_POST['id']);
 
+// Anti-IDOR guard: Ensure certificate belongs to an event the current tenant can access
+$stmtCertEvent = $pdo->prepare("SELECT event_id FROM event_participants WHERE certificate_id = ?");
+$stmtCertEvent->execute([$certId]);
+$certEventId = $stmtCertEvent->fetchColumn();
+
+if (!$certEventId || !verify_event_access($pdo, (int)$certEventId)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Unauthorized access to this certificate.']);
+    exit;
+}
+
 $result = sendAvailabilityEmail($pdo, $certId);
 
 echo json_encode($result);

@@ -1,11 +1,10 @@
 <?php
 require_once 'config.php';
 require_once 'helpers.php';
-// Include PHPMailer and FPDI
+
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use setasign\Fpdi\Tcpdf\Fpdi;
-require 'vendor/autoload.php';
 
 header('Content-Type: application/json');
 
@@ -19,9 +18,9 @@ $certId = trim($_POST['id']);
 // Define explicit font path for TCPDF
 define('K_PATH_FONTS', __DIR__ . '/vendor/tecnickcom/tcpdf/fonts/');
 
-// 1. Fetch Participant and Event Specific Data
+// 1. Fetch Participant and Event Specific Data (including organization_id for multi-tenant awareness)
 $stmt = $pdo->prepare("
-    SELECT ep.*, p.full_name, p.email, e.name as event_name, e.certificate_issue_date, er.template_file, er.visual_settings, er.rotation 
+    SELECT ep.*, p.full_name, p.email, e.name as event_name, e.certificate_issue_date, e.organization_id, er.template_file, er.visual_settings, er.rotation 
     FROM event_participants ep
     JOIN participants p ON ep.participant_id = p.id
     JOIN events e ON ep.event_id = e.id
@@ -33,6 +32,24 @@ $certData = $stmt->fetch();
 
 if (!$certData || empty($certData['email'])) {
     echo json_encode(['success' => false, 'message' => 'Invalid certificate or missing recipient email.']);
+    exit;
+}
+
+// Rate limiting / Dispatch cooldown (SEC-01):
+// Check if an email was already successfully sent for this certificate in the last 10 minutes
+$stmtRecent = $pdo->prepare("
+    SELECT created_at FROM email_logs 
+    WHERE certificate_id = ? AND status = 'Success' 
+      AND created_at >= (NOW() - INTERVAL 10 MINUTE)
+    ORDER BY created_at DESC LIMIT 1
+");
+$stmtRecent->execute([$certId]);
+if ($stmtRecent->fetch()) {
+    echo json_encode([
+        'success' => false,
+        'rate_limited' => true,
+        'message' => 'An email was already dispatched recently for this certificate. Please check your inbox or wait before requesting again.'
+    ]);
     exit;
 }
 
@@ -163,11 +180,8 @@ if (file_exists($templatePath)) {
     }
 
     // Calculate verification URL early for hyperlinks
-    $protocolPdf = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-    $domainNamePdf = $_SERVER['HTTP_HOST'];
-    $basePathPdf = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
-    if ($basePathPdf === '/') $basePathPdf = '';
-    $verifyUrlPdf = $protocolPdf . $domainNamePdf . $basePathPdf . '/verify/' . $certId;
+    $portalUrl = adminPortalBaseUrl();
+    $verifyUrlPdf = $portalUrl . '/verify/' . $certId;
 
     if (is_array($visualSettings)) {
         if (isset($visualSettings['name'])) {
@@ -205,20 +219,22 @@ if (file_exists($templatePath)) {
 $pdfString = $pdf->Output('', 'S');
 
 // 3. Rebuild Verification URL Context for Email
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-$baseDir = str_replace('\\', '/', dirname($_SERVER['PHP_SELF']));
-if ($baseDir === '/')
-    $baseDir = '';
-$verifyUrl = $protocol . $_SERVER['HTTP_HOST'] . $baseDir . '/verify/' . $certId;
+$portalUrl = adminPortalBaseUrl();
+$verifyUrl = $portalUrl . '/verify/' . $certId;
 
-// 4. Construct LinkedIn Pre-fill Parameters
+// 4. Construct LinkedIn Pre-fill Parameters & Organization Metadata (Multi-Tenant awareness)
 $eventName = urlencode($certData['event_name']);
 $issueYear = date('Y', strtotime($issueSource));
 $issueMonth = date('n', strtotime($issueSource));
-$organizationId = '92536649'; // DCW LinkedIn Organization ID
+
+$eventOrg = get_organization($pdo, (int)($certData['organization_id'] ?? 1));
+$organizationId = !empty($eventOrg['linkedin_org_id']) ? $eventOrg['linkedin_org_id'] : '92536649';
+$orgName = !empty($eventOrg['name']) ? $eventOrg['name'] : (defined('ORG_NAME') && ORG_NAME !== '' ? ORG_NAME : __('site.name'));
+$orgUrl = !empty($eventOrg['home_url']) ? $eventOrg['home_url'] : (defined('ORG_URL_HOME') ? ORG_URL_HOME : 'https://dcwwiki.org/');
+
 $linkedInAddUrl = "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name={$eventName}&organizationId={$organizationId}&issueYear={$issueYear}&issueMonth={$issueMonth}&certUrl=" . urlencode($verifyUrl) . "&certId=" . urlencode($certId);
 
-// 5. Fire SMTP via Hostinger
+// 5. Fire SMTP
 $mail = new PHPMailer(true);
 
 try {
@@ -232,9 +248,9 @@ try {
     $mail->SMTPSecure = $_ENV['SMTP_SECURE'];
     $mail->Port = $_ENV['SMTP_PORT'];
 
-    $orgName = defined('ORG_NAME') && ORG_NAME !== '' ? ORG_NAME : __('site.name');
-    $orgUrl = defined('ORG_URL_HOME') ? ORG_URL_HOME : 'https://dcwwiki.org/';
-    $logoUrl = $protocol . $_SERVER['HTTP_HOST'] . $baseDir . '/assets/DCW_logo.png';
+    $logoUrl = !empty($eventOrg['logo_path']) && file_exists(__DIR__ . '/' . $eventOrg['logo_path'])
+        ? $portalUrl . '/' . ltrim($eventOrg['logo_path'], '/')
+        : (file_exists(__DIR__ . '/assets/logo.png') ? $portalUrl . '/assets/logo.png' : $portalUrl . '/assets/DCW_logo.png');
 
     $mail->setFrom($_ENV['SMTP_USER'], $orgName);
     $mail->addAddress($recipientEmail, $fullName);
@@ -242,7 +258,7 @@ try {
     $mail->Subject = __('email.certificate.subject', ['event' => $certData['event_name']]);
 
     // Attach PDF
-    // sanitizeForFilename() is defined in config.php and shared with download.php
+    // sanitizeForFilename() is defined in helpers.php and shared with download.php
     // so the emailed attachment name matches the manually-downloaded filename format.
     $safeFullName = sanitizeForFilename($fullName);
     $safeEventName = sanitizeForFilename($certData['event_name']);

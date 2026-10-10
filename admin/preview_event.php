@@ -29,6 +29,15 @@ if (!$role) {
     die("Role not found");
 }
 
+// Anti-IDOR guard: Ensure user has permission to manage this event's role
+$event = verify_event_access($pdo, (int)$role['event_id']);
+if (!$event) {
+    header("Location: dashboard.php?msg=unauthorized");
+    exit;
+}
+
+$eventOrg = get_organization($pdo, (int)($event['organization_id'] ?? 1));
+
 // Auto-extracted color palette from the uploaded template (issue #90). Re-read fresh on
 // every load rather than persisted, so it always reflects the current template file.
 $extractedPalette = [];
@@ -552,7 +561,12 @@ if (is_dir($fontDir)) {
     <div class="navbar">
         <div style="display: flex; align-items: center; gap: 15px;">
             <img src="../assets/DCW_logo.png" alt="DCW Logo" width="35" height="35" decoding="async" style="height: 35px; width: 35px; background: white; padding: 2px; border-radius: 50%;">
-            <span style="font-size: 18px; font-weight: bold; letter-spacing: 0.5px; display: none; @media(min-width:600px){display:inline;}">Visual Editor - <?= htmlspecialchars($role['event_name']) ?></span>
+            <span style="font-size: 18px; font-weight: bold; letter-spacing: 0.5px;">Visual Editor - <?= htmlspecialchars($role['event_name']) ?></span>
+            <?php if (is_super_admin()): ?>
+                <span style="background: #fef3c7; color: #92400e; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Super Admin</span>
+            <?php elseif ($eventOrg): ?>
+                <span style="background: #e0f2fe; color: #0369a1; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;"><?= htmlspecialchars($eventOrg['name']) ?> (<?= htmlspecialchars($eventOrg['cert_code']) ?>)</span>
+            <?php endif; ?>
         </div>
         <div>
             <a href="manage_roles.php?event_id=<?= $role['event_id'] ?>">Back</a>

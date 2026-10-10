@@ -14,17 +14,17 @@ if (!$eventId) {
 }
 
 // Multi-tenant (#147/#148): only load an event this admin's organization owns.
-// Someone else's event gets the same answer as one that doesn't exist.
-$event = verify_event_access($pdo, $eventId);
+$event = verify_event_access($pdo, (int)$eventId);
 
 if (!$event) {
-    http_response_code(404);
-    die("Event not found");
+    header("Location: dashboard.php?msg=unauthorized");
+    exit;
 }
 
 // Participants belong to the organization that owns the event, so email
 // uniqueness is per organization: the same person can be on two tenants' lists.
-$orgId = (int)$event['organization_id'];
+$orgId = (int)($event['organization_id'] ?? 1);
+$eventOrg = get_organization($pdo, $orgId);
 
 // Fetch Roles for dropdown
 $stmtRoles = $pdo->prepare("SELECT id, role_name FROM event_roles WHERE event_id = ?");
@@ -62,7 +62,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'delete_participant') {
     verify_csrf_token($csrf);
 
     $passcode = trim($_POST['super_admin_passcode'] ?? '');
-    if ($passcode !== SUPER_ADMIN_PASSCODE) {
+    if (!verify_super_admin_passcode($passcode)) {
         $message = __('admin.common.security-error-invalid-passcode');
         $messageType = 'error';
     } else {
@@ -110,13 +110,13 @@ if (isset($_GET['export'])) {
     ));
     foreach ($exportData as $row) {
         fputcsv($output, array(
-            $row['full_name'],
-            $row['email'],
-            $row['role_name'] ?? __('admin.manage-participants.no-role-badge'),
-            $row['certificate_id'] ?? __('admin.manage-participants.csv.pending'),
-            $row['created_at'],
-            $row['custom_certificate_text'] ?? '',
-            $row['issue_date'] ?? ''
+            sanitize_csv_cell($row['full_name']),
+            sanitize_csv_cell($row['email']),
+            sanitize_csv_cell($row['role_name'] ?? __('admin.manage-participants.no-role-badge')),
+            sanitize_csv_cell($row['certificate_id'] ?? __('admin.manage-participants.csv.pending')),
+            sanitize_csv_cell($row['created_at']),
+            sanitize_csv_cell($row['custom_certificate_text'] ?? ''),
+            sanitize_csv_cell($row['issue_date'] ?? '')
         ));
     }
     fclose($output);
@@ -329,6 +329,11 @@ $participants = $stmt->fetchAll();
     <div style="display: flex; align-items: center; gap: 15px;">
         <img src="../assets/DCW_logo.png" alt="DCW Logo" width="35" height="35" decoding="async" style="height: 35px; width: 35px; background: white; padding: 2px; border-radius: 50%;">
         <span style="font-size: 18px; font-weight: bold; letter-spacing: 0.5px;"><?= __('admin.manage-participants.nav-title', ['event' => htmlspecialchars($event['name'])]) ?></span>
+        <?php if (is_super_admin()): ?>
+            <span style="background: #fef3c7; color: #92400e; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Super Admin</span>
+        <?php elseif ($eventOrg): ?>
+            <span style="background: #e0f2fe; color: #0369a1; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;"><?= htmlspecialchars($eventOrg['name']) ?> (<?= htmlspecialchars($eventOrg['cert_code']) ?>)</span>
+        <?php endif; ?>
     </div>
     <div>
         <a href="dashboard.php"><?= __e('admin.common.nav.dashboard') ?></a>

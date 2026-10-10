@@ -122,8 +122,8 @@ try {
     // Update default admin to super_admin and org 1
     $pdo->exec("UPDATE admin_users SET role = 'super_admin', organization_id = 1 WHERE username = 'admin'");
     
-    // Ensure any non-null organization_id in admin_users points to a valid organization
-    $pdo->exec("UPDATE admin_users SET organization_id = 1 WHERE organization_id IS NOT NULL AND organization_id NOT IN (SELECT id FROM organizations)");
+    // Ensure all existing admin_users are linked to DCW (tenant 1)
+    $pdo->exec("UPDATE admin_users SET organization_id = 1 WHERE organization_id IS NULL OR organization_id = 0 OR organization_id NOT IN (SELECT id FROM organizations)");
 
     // Add FK constraint if missing on organization_id
     if (!foreignKeyOnColumnExists($pdo, 'admin_users', 'organization_id')) {
