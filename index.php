@@ -10,7 +10,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// Handle form submission
+// Handle OTP Verification submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'verify_otp') {
+    if (!isset($_SESSION['pending_otp'])) {
+        header("Location: index.php");
+        exit;
+    }
+
+    $pending = $_SESSION['pending_otp'];
+    $code = trim($_POST['otp_code'] ?? '');
+
+    if ($code === '' || strlen($code) < 6) {
+        header("Location: index.php?step=otp&error=" . urlencode(__('otp.error.invalid-code', ['remaining' => 5])));
+        exit;
+    }
+
+    $result = otp_verify_code($pdo, $pending['certificate_id'], $pending['recipient_email'], $code);
+    if ($result['success']) {
+        otp_authorize_claim($pending['certificate_id']);
+        $certId = $pending['certificate_id'];
+        unset($_SESSION['pending_otp']);
+        header("Location: success.php?id=" . urlencode($certId));
+        exit;
+    } else {
+        $errType = $result['error'];
+        if ($errType === 'expired') {
+            $errMsg = __('otp.error.expired');
+        } elseif ($errType === 'too_many_attempts') {
+            $errMsg = __('otp.error.too-many-attempts');
+        } else {
+            $errMsg = __('otp.error.invalid-code', ['remaining' => $result['attempts_remaining']]);
+        }
+        header("Location: index.php?step=otp&error=" . urlencode($errMsg));
+        exit;
+    }
+}
+
+// Handle OTP Resend request
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'resend_otp') {
+    if (!isset($_SESSION['pending_otp'])) {
+        header("Location: index.php");
+        exit;
+    }
+
+    $pending = $_SESSION['pending_otp'];
+    $timeSince = time() - ($pending['last_sent_at'] ?? 0);
+    if ($timeSince < 60) {
+        $wait = 60 - $timeSince;
+        header("Location: index.php?step=otp&error=" . urlencode(__('otp.error.cooldown', ['seconds' => $wait])));
+        exit;
+    }
+
+    $clientIp = otp_client_ip();
+    $rateCheck = otp_is_rate_limited($pdo, $clientIp, $pending['recipient_email']);
+    if ($rateCheck['limited']) {
+        header("Location: index.php?step=otp&error=" . urlencode(__('otp.error.rate-limited')));
+        exit;
+    }
+
+    $newCode = otp_generate_code(6);
+    otp_create_record($pdo, $pending['certificate_id'], $pending['recipient_email'], $newCode, $clientIp);
+    $org = get_organization($pdo, (int)($pending['organization_id'] ?? 1));
+    sendCertificateOtpEmail($pdo, $pending['certificate_id'], $pending['recipient_email'], $pending['full_name'], $pending['event_name'], $newCode, $org);
+
+    $_SESSION['pending_otp']['last_sent_at'] = time();
+    header("Location: index.php?step=otp&msg=" . urlencode(__('otp.msg.resent')));
+    exit;
+}
+
+// Handle OTP Cancel / Start Over
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'cancel_otp') {
+    unset($_SESSION['pending_otp']);
+    header("Location: index.php");
+    exit;
+}
+
+// Handle initial claim form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'claim') {
     $eventId = $_POST['event_id'] ?? null;
     $fullName = trim($_POST['full_name'] ?? '');
@@ -18,26 +93,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
     if ($eventId && $fullName && filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $stmt = $pdo->prepare("
-            SELECT ep.certificate_id 
+            SELECT ep.certificate_id, ep.event_id, p.full_name, p.email, e.name as event_name, e.organization_id
             FROM participants p
             JOIN event_participants ep ON p.id = ep.participant_id
+            JOIN events e ON ep.event_id = e.id
             WHERE p.full_name = ? AND p.email = ? AND ep.event_id = ?
         ");
         $stmt->execute([$fullName, $email, $eventId]);
-        $certId = $stmt->fetchColumn();
+        $certData = $stmt->fetch();
 
-        if ($certId) {
-            header("Location: success.php?id=" . $certId);
+        if ($certData) {
+            $clientIp = otp_client_ip();
+            $rateCheck = otp_is_rate_limited($pdo, $clientIp, $email);
+            if ($rateCheck['limited']) {
+                header("Location: index.php?error=" . urlencode(__('otp.error.rate-limited')));
+                exit;
+            }
+
+            $otpCode = otp_generate_code(6);
+            otp_create_record($pdo, $certData['certificate_id'], $certData['email'], $otpCode, $clientIp);
+            $org = get_organization($pdo, (int)($certData['organization_id'] ?? 1));
+            sendCertificateOtpEmail($pdo, $certData['certificate_id'], $certData['email'], $certData['full_name'], $certData['event_name'], $otpCode, $org);
+
+            $_SESSION['pending_otp'] = [
+                'certificate_id'  => $certData['certificate_id'],
+                'recipient_email' => $certData['email'],
+                'full_name'       => $certData['full_name'],
+                'event_name'      => $certData['event_name'],
+                'organization_id' => (int)($certData['organization_id'] ?? 1),
+                'created_at'      => time(),
+                'last_sent_at'    => time(),
+            ];
+
+            header("Location: index.php?step=otp&msg=" . urlencode(__('otp.msg.sent')));
             exit;
         } else {
-            header("Location: index.php?error=" . urlencode("Verification failed. You are not registered for this event."));
+            header("Location: index.php?error=" . urlencode(__('page.claim.error.not-found')));
             exit;
         }
     } else {
-        header("Location: index.php?error=" . urlencode("Please fill in all fields correctly."));
+        header("Location: index.php?error=" . urlencode(__('page.claim.error.required')));
         exit;
     }
 }
+
+// Guard OTP verification step: if step=otp but no pending OTP session exists, redirect
+$isOtpStep = (isset($_GET['step']) && $_GET['step'] === 'otp');
+if ($isOtpStep && !isset($_SESSION['pending_otp'])) {
+    header("Location: index.php");
+    exit;
+}
+
 
 // Fetch all events for the dropdown, grouped by category then name (issue #59).
 // Ordering by category keeps the <optgroup> blocks together; uncategorised events
@@ -335,6 +441,46 @@ if ($basePath === '/') {
             text-align: center;
         }
 
+        .success-message {
+            color: #15803d;
+            background-color: #f0fdf4;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1px solid #bbf7d0;
+            text-align: center;
+        }
+
+        .otp-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1.5px solid #cbd5e1;
+            color: #475569;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s ease;
+            text-align: center;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-outline:hover {
+            border-color: #94a3b8;
+            background: #f8fafc;
+            color: #1e293b;
+        }
+
         <?php if (isset($_GET['error'])): ?>
             .error-message {
                 display: block;
@@ -457,6 +603,63 @@ if ($basePath === '/') {
     </header>
 
     <div class="main-wrapper">
+        <?php if ($isOtpStep): ?>
+        <!-- OTP Verification Column -->
+        <div class="container">
+            <div style="text-align: center; margin-bottom: 15px;">
+                <svg viewBox="0 0 24 24" width="40" height="40" style="color: var(--primary-color);">
+                    <path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 6h2v2h-2V7zm0 4h2v6h-2v-6z"/>
+                </svg>
+            </div>
+            <h1><?= __e('otp.title') ?></h1>
+            <div class="subtitle">
+                <?= __('otp.subtitle', ['email' => htmlspecialchars(otp_mask_email($_SESSION['pending_otp']['recipient_email'] ?? ''))]) ?>
+            </div>
+
+            <?php if (isset($_GET['msg'])): ?>
+                <div class="success-message">
+                    <?= htmlspecialchars($_GET['msg']) ?>
+                </div>
+            <?php endif; ?>
+
+            <div class="error-message">
+                <?php
+                if (isset($_GET['error'])) {
+                    echo htmlspecialchars($_GET['error']);
+                }
+                ?>
+            </div>
+
+            <form action="" method="POST">
+                <input type="hidden" name="action" value="verify_otp">
+
+                <div class="form-group">
+                    <label for="otp_code"><?= __e('otp.label.code') ?></label>
+                    <input type="text" id="otp_code" name="otp_code" required maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" autofocus style="text-align: center; font-size: 26px; font-weight: 700; letter-spacing: 10px; font-family: monospace;">
+                </div>
+
+                <button type="submit" class="btn-submit">
+                    <?= __e('otp.submit') ?>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </form>
+
+            <div class="otp-actions">
+                <form action="" method="POST" style="flex: 1;">
+                    <input type="hidden" name="action" value="resend_otp">
+                    <button type="submit" class="btn-outline">
+                        <?= __e('otp.resend') ?>
+                    </button>
+                </form>
+                <form action="" method="POST" style="flex: 1;">
+                    <input type="hidden" name="action" value="cancel_otp">
+                    <button type="submit" class="btn-outline">
+                        <?= __e('otp.cancel') ?>
+                    </button>
+                </form>
+            </div>
+        </div>
+        <?php else: ?>
         <!-- Claim Certificate Column -->
         <div class="container">
             <div style="text-align: center; margin-bottom: 15px;">
@@ -525,6 +728,7 @@ if ($basePath === '/') {
                 </button>
             </form>
         </div>
+        <?php endif; ?>
 
         <!-- Verify Credential Column -->
         <div class="container" style="background: #f8fafc; border: 1px solid #e2e8f0;">

@@ -3,6 +3,8 @@
  * Shared helper functions for the DCW Certificate Portal
  */
 
+require_once __DIR__ . '/helpers/otp.php';
+
 if (!function_exists('event_categories')) {
     /**
      * Canonical list of event categories/types (issue #59).

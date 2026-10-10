@@ -137,9 +137,37 @@ CREATE TABLE IF NOT EXISTS email_logs (
     certificate_id VARCHAR(50) NULL,
     recipient_email VARCHAR(255) NOT NULL,
     status VARCHAR(20) NOT NULL,
-    -- Which flow produced this row: 'notification', 'download', or 'password_reset'.
+    -- Which flow produced this row: 'notification', 'download', 'otp', or 'password_reset'.
     trigger_type VARCHAR(20) NOT NULL DEFAULT 'download',
     error_message TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (certificate_id) REFERENCES event_participants(certificate_id) ON DELETE CASCADE
 );
+
+-- Create Certificate OTPs Table (Issue #144)
+CREATE TABLE IF NOT EXISTS certificate_otps (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    certificate_id VARCHAR(50) NOT NULL,
+    recipient_email VARCHAR(255) NOT NULL,
+    otp_hash VARCHAR(255) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    is_verified TINYINT(1) NOT NULL DEFAULT 0,
+    ip_address VARCHAR(45) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_cert_otps (certificate_id, recipient_email),
+    INDEX idx_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Create Verification Logs Table (Issue #144)
+CREATE TABLE IF NOT EXISTS verification_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    certificate_id VARCHAR(50) NULL,
+    ip_address VARCHAR(45) NULL,
+    user_agent VARCHAR(255) NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'valid',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_verification_cert (certificate_id),
+    INDEX idx_verification_ip (ip_address, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+

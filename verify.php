@@ -11,6 +11,13 @@ if (!$certId) {
     exit;
 }
 
+$clientIp = otp_client_ip();
+if (verification_is_rate_limited($pdo, $clientIp)) {
+    verification_log_attempt($pdo, $certId, $clientIp, null, 'rate_limited');
+    http_response_code(429);
+    die(__('otp.error.rate-limited'));
+}
+
 $basePath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
 if ($basePath === '/')
     $basePath = '';
@@ -31,7 +38,10 @@ $certData = $stmt->fetch();
 // page so visitors understand what happened and who to contact.
 $notFound = !$certData;
 if ($notFound) {
+    verification_log_attempt($pdo, $certId, $clientIp, null, 'not_found');
     header("HTTP/1.0 404 Not Found");
+} else {
+    verification_log_attempt($pdo, $certId, $clientIp, null, 'valid');
 }
 
 if (!$notFound) {
