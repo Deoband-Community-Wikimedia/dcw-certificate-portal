@@ -222,7 +222,13 @@ $totalCerts = $pdo->query("SELECT COUNT(*) FROM event_participants WHERE certifi
         }
     }
 
-    function viewAuditLogs() {
+       function viewAuditLogs() {
+        const isSuperAdmin = <?= json_encode(is_super_admin()) ?>;
+        if (!isSuperAdmin) {
+            // Org admins only see their own tenant's trail, so no super admin passcode is needed.
+            document.getElementById('auditLogForm').submit();
+            return false;
+        }
         let code = prompt(<?= json_encode(__('admin.dashboard.prompt.audit-passcode')) ?>);
         if (code) {
             document.getElementById('audit_passcode').value = code;

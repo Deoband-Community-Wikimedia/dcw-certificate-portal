@@ -86,17 +86,18 @@ define('SUPER_ADMIN_PASSCODE', $_ENV['SUPER_ADMIN_PASSCODE'] ?? '1234');
 // Dynamic Thumbnails Configuration (For Social Sharing Previews)
 define('DYNAMIC_THUMBNAILS_ENABLED', filter_var($_ENV['DYNAMIC_THUMBNAILS_ENABLED'] ?? true, FILTER_VALIDATE_BOOLEAN));
 
-// Audit Log Helper
+// Audit Log Helper (tenant-aware: every log row is tagged with the acting admin's organization)
 function log_audit_action($pdo, $action, $details = '') {
     if (!isset($_SESSION['admin_username'])) {
         return; // Don't log if not authenticated
     }
     
-    $stmt = $pdo->prepare("INSERT INTO audit_logs (admin_username, action_type, details) VALUES (?, ?, ?)");
+    $stmt = $pdo->prepare("INSERT INTO audit_logs (admin_username, action_type, details, organization_id) VALUES (?, ?, ?, ?)");
     $stmt->execute([
         $_SESSION['admin_username'],
         substr($action, 0, 50),
-        substr($details, 0, 255)
+        substr($details, 0, 255),
+        get_current_tenant_id()
     ]);
 }
 ?>

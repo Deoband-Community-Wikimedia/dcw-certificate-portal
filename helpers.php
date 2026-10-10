@@ -707,3 +707,60 @@ if (!function_exists('get_organization')) {
     }
 }
 
+if (!function_exists('verify_super_admin_passcode')) {
+    /**
+     * Timing-safe comparison of a submitted passcode against SUPER_ADMIN_PASSCODE.
+     *
+     * @param string $passcode
+     * @return bool
+     */
+    function verify_super_admin_passcode(string $passcode): bool {
+        return defined('SUPER_ADMIN_PASSCODE') && hash_equals((string)SUPER_ADMIN_PASSCODE, $passcode);
+    }
+}
+
+if (!function_exists('tenant_scope_clause')) {
+    /**
+     * Returns a SQL condition scoping $column to the current tenant and appends
+     * its bound value to $params. Super admins get '' (no restriction).
+     * Defensive: an org admin with no resolvable tenant matches nothing.
+     *
+     * @param string $column
+     * @param array  $params Bound values; the tenant id is appended here.
+     * @return string
+     */
+    function tenant_scope_clause(string $column, array &$params): string {
+        if (is_super_admin()) {
+            return '';
+        }
+        $tenantId = get_current_tenant_id();
+        if (empty($tenantId)) {
+            return '1 = 0';
+        }
+        $params[] = $tenantId;
+        return "$column = ?";
+    }
+}
+
+if (!function_exists('admin_user_in_tenant')) {
+    /**
+     * IDOR guard: true only if the admin_users row belongs to the caller's tenant.
+     * Super admins may access any user.
+     *
+     * @param PDO $pdo
+     * @param int $userId
+     * @return bool
+     */
+    function admin_user_in_tenant($pdo, $userId): bool {
+        if (is_super_admin()) {
+            return true;
+        }
+        $tenantId = get_current_tenant_id();
+        if (empty($tenantId)) {
+            return false;
+        }
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM admin_users WHERE id = ? AND organization_id = ?");
+        $stmt->execute([(int)$userId, $tenantId]);
+        return $stmt->fetchColumn() > 0;
+    }
+}

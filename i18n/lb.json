@@ -106,5 +106,6 @@
 	"admin.org-settings.submit": "Organisatiounsprofil späicheren",
 	"admin.org-settings.error.org-not-found": "Organisatioun net fonnt.",
 	"admin.org-settings.error.save-failed": "Den Organisatiounsprofil konnt net gespäichert ginn. Probéiert wgl. nach eng Kéier.",
-	"admin.org-settings.error.logo-too-large": "De Logo ass ze grouss. D'Limitt ass 2 MB."
+	"admin.org-settings.error.logo-too-large": "De Logo ass ze grouss. D'Limitt ass 2 MB.",
+	"admin.users.error.no-tenant": "Äre Kont ass net mat enger Organisatioun verbonnen. Kontaktéiert w.e.g. e Superadministrateur."
 }
