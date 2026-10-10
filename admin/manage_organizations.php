@@ -82,6 +82,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = __('admin.orgs.error.create-failed');
             }
         }
+
+        if (!empty($fieldErrors) && empty($error)) {
+            $error = __('admin.org-settings.error.fix-fields');
+        }
     } elseif ($action === 'toggle_status') {
         $targetOrgId = (int)($_POST['org_id'] ?? 0);
 
@@ -315,7 +319,7 @@ $allOrgs = $stmtOrgs->fetchAll();
 
                                         <?php if ((int)$org['id'] > 1): ?>
                                             <form method="POST" action="manage_organizations.php" style="display: inline;"
-                                                  onsubmit="return confirm('<?= $org['is_active'] ? __e('admin.orgs.confirm.deactivate') : __e('admin.orgs.confirm.activate') ?>');">
+                                                  onsubmit="return confirm(<?= htmlspecialchars(json_encode($org['is_active'] ? __('admin.orgs.confirm.deactivate') : __('admin.orgs.confirm.activate')), ENT_QUOTES, 'UTF-8') ?>);">
                                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generate_csrf_token()) ?>">
                                                 <input type="hidden" name="action" value="toggle_status">
                                                 <input type="hidden" name="org_id" value="<?= (int)$org['id'] ?>">

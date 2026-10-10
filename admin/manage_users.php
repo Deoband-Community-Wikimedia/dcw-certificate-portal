@@ -152,6 +152,11 @@ foreach ($allAdmins as $adm) {
         break;
     }
 }
+if ($myEmail === '' && !empty($_SESSION['admin_id'])) {
+    $stmtMe = $pdo->prepare("SELECT email FROM admin_users WHERE id = ?");
+    $stmtMe->execute([(int)$_SESSION['admin_id']]);
+    $myEmail = (string)($stmtMe->fetchColumn() ?: '');
+}
 
 ?>
 <!DOCTYPE html>
@@ -236,12 +241,12 @@ foreach ($allAdmins as $adm) {
                 <input type="hidden" name="action" value="create_user">
                 <div class="form-group">
                     <label>Username</label>
-                    <input type="text" name="new_username" required>
+                    <input type="text" name="new_username" required value="<?= htmlspecialchars($_POST['new_username'] ?? '') ?>">
                 </div>
 
                 <div class="form-group">
                     <label>Email <span style="font-size: 11px; color: #999; font-weight: normal;">(recommended &mdash; needed for password resets)</span></label>
-                    <input type="email" name="new_email" placeholder="admin@example.org">
+                    <input type="email" name="new_email" placeholder="admin@example.org" value="<?= htmlspecialchars($_POST['new_email'] ?? '') ?>">
                 </div>
 
                 <div class="form-group">

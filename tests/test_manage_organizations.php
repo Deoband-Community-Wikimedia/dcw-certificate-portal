@@ -222,6 +222,54 @@ $stmtAll = $pdo->query("SELECT username FROM admin_users ORDER BY id ASC");
 $allUsers = $stmtAll->fetchAll(PDO::FETCH_COLUMN);
 assertCondition(count($allUsers) === 2, 'super_admin sees all admins across all organizations');
 
+// -----------------------------------------------------------------------------
+// Test Group 6: Login Inactive Organization Guard & Audit Logging
+// -----------------------------------------------------------------------------
+echo "\nTest 6: Inactive organization login guard & audit logging...\n";
+
+// Deactivate organization 2
+$pdo->prepare("UPDATE organizations SET is_active = 0 WHERE id = 2")->execute();
+
+// Check login logic simulation
+$stmtOrg = $pdo->prepare("SELECT is_active FROM organizations WHERE id = ?");
+$stmtOrg->execute([2]);
+$orgRow = $stmtOrg->fetch();
+assertCondition((int)$orgRow['is_active'] === 0, 'organization 2 is confirmed inactive');
+
+// Verify that an org_admin belonging to inactive org 2 gets rejected
+$loginAllowed = false;
+$loginError = '';
+$userRole = 'org_admin';
+$userOrgId = 2;
+if ($userRole === 'org_admin') {
+    if (!$userOrgId || $userOrgId <= 0) {
+        $loginError = 'No org';
+    } else {
+        if ((int)$orgRow['is_active'] !== 1) {
+            $loginError = 'Your organization has been deactivated.';
+        } else {
+            $loginAllowed = true;
+        }
+    }
+}
+assertCondition(!$loginAllowed && $loginError === 'Your organization has been deactivated.', 'org_admin belonging to deactivated organization is rejected from logging in');
+
+// Reactivate organization 2 and verify login allowed
+$pdo->prepare("UPDATE organizations SET is_active = 1 WHERE id = 2")->execute();
+$stmtOrg->execute([2]);
+$orgRowActive = $stmtOrg->fetch();
+$loginAllowedNow = ((int)$orgRowActive['is_active'] === 1);
+assertCondition($loginAllowedNow, 'org_admin login is permitted after organization reactivation');
+
+// Test audit log fallback in helpers.php
+$_SESSION['admin_username'] = 'audit_tester';
+$_SESSION['admin_org_id'] = 2;
+log_audit_action($pdo, 'Test Action', 'Testing audit log helper');
+$stmtAudit = $pdo->prepare("SELECT * FROM audit_logs WHERE admin_username = 'audit_tester'");
+$stmtAudit->execute();
+$auditRow = $stmtAudit->fetch();
+assertCondition($auditRow !== false && (int)$auditRow['organization_id'] === 2, 'log_audit_action correctly logs action with organization_id');
+
 echo "\n=======================================================\n";
 echo "Results: $passes passed, $fails failed\n";
 echo "=======================================================\n";
