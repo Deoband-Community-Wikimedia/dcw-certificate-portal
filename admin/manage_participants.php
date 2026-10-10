@@ -62,7 +62,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'delete_participant') {
     verify_csrf_token($csrf);
 
     $passcode = trim($_POST['super_admin_passcode'] ?? '');
-    if ($passcode !== SUPER_ADMIN_PASSCODE) {
+    if (!verify_super_admin_passcode($passcode)) {
         $message = __('admin.common.security-error-invalid-passcode');
         $messageType = 'error';
     } else {
@@ -110,13 +110,13 @@ if (isset($_GET['export'])) {
     ));
     foreach ($exportData as $row) {
         fputcsv($output, array(
-            $row['full_name'],
-            $row['email'],
-            $row['role_name'] ?? __('admin.manage-participants.no-role-badge'),
-            $row['certificate_id'] ?? __('admin.manage-participants.csv.pending'),
-            $row['created_at'],
-            $row['custom_certificate_text'] ?? '',
-            $row['issue_date'] ?? ''
+            sanitize_csv_cell($row['full_name']),
+            sanitize_csv_cell($row['email']),
+            sanitize_csv_cell($row['role_name'] ?? __('admin.manage-participants.no-role-badge')),
+            sanitize_csv_cell($row['certificate_id'] ?? __('admin.manage-participants.csv.pending')),
+            sanitize_csv_cell($row['created_at']),
+            sanitize_csv_cell($row['custom_certificate_text'] ?? ''),
+            sanitize_csv_cell($row['issue_date'] ?? '')
         ));
     }
     fclose($output);

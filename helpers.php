@@ -768,3 +768,26 @@ if (!function_exists('admin_user_in_tenant')) {
         return $stmt->fetchColumn() > 0;
     }
 }
+
+if (!function_exists('sanitize_csv_cell')) {
+    /**
+     * Sanitizes a string for CSV export to prevent formula/CSV injection (SEC-03).
+     * If the cell begins with =, +, -, @, \t, or \r, spreadsheet software could
+     * interpret it as a formula. We prepend a single quote to force text interpretation.
+     *
+     * @param mixed $value
+     * @return string
+     */
+    function sanitize_csv_cell($value): string {
+        $str = (string)($value ?? '');
+        if ($str === '') {
+            return '';
+        }
+        $first = $str[0];
+        if ($first === '=' || $first === '+' || $first === '-' || $first === '@' || $first === "\t" || $first === "\r") {
+            return "'" . $str;
+        }
+        return $str;
+    }
+}
+
