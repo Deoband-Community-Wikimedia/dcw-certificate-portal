@@ -96,12 +96,11 @@ check('org_admin B can access own tenant admin user', admin_user_in_tenant($pdo,
 check('org_admin B is blocked from tenant A admin user', admin_user_in_tenant($pdo, 1) === false);
 
 // ---- Org admin without a tenant in session: never unrestricted ----
-// get_current_tenant_id() falls back to the default tenant, so the scope must
-// still be a real filter with a bound value.
+// Fails closed: an org_admin with no tenant returns '1 = 0' or a bound scope (never unrestricted).
 set_session(null);
 $params = [];
 $scope = tenant_scope_clause('organization_id', $params);
-check('org_admin without tenant in session is still scoped', $scope !== '' && count($params) === 1);
+check('org_admin without tenant in session is still scoped', $scope !== '' && ($scope === '1 = 0' || count($params) === 1));
 
 // ---- Logged-out session is never a super admin ----
 $_SESSION = ['admin_role' => 'super_admin'];
