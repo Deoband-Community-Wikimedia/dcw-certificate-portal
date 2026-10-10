@@ -50,10 +50,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $newPassword = $_POST['create_password'] ?? '';
         $newEmail = trim($_POST['new_email'] ?? '');
 
-        // New admins are always created inside the caller's own tenant.
-        $tenantId = get_current_tenant_id();
+        // Determine organization and role
+        if (is_super_admin()) {
+            $assignedRole = trim($_POST['assigned_role'] ?? 'org_admin');
+            if (!in_array($assignedRole, ['super_admin', 'org_admin'], true)) {
+                $assignedRole = 'org_admin';
+            }
+            if ($assignedRole === 'super_admin') {
+                $assignedOrgId = 1; // Default to root org for super admins
+            } else {
+                $assignedOrgId = isset($_POST['assigned_org_id']) ? (int)$_POST['assigned_org_id'] : 0;
+            }
+        } else {
+            $assignedRole = 'org_admin';
+            $assignedOrgId = get_current_tenant_id();
+        }
 
-        if (!is_super_admin() && empty($tenantId)) {
+        if ($assignedOrgId <= 0) {
             $error = __('admin.users.error.no-tenant');
         } elseif (empty($newUsername) || empty($newPassword)) {
             $error = "Username and password are required.";
@@ -62,19 +75,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($newEmail !== '' && !filter_var($newEmail, FILTER_VALIDATE_EMAIL)) {
             $error = "Please enter a valid email address (required for password resets).";
         } else {
-            // Check if username exists
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM admin_users WHERE username = ?");
-            $stmt->execute([$newUsername]);
-            if ($stmt->fetchColumn() > 0) {
-                $error = "Username already exists. Please choose another.";
+            // Validate organization exists and is active
+            $stmtOrgCheck = $pdo->prepare("SELECT id, is_active FROM organizations WHERE id = ?");
+            $stmtOrgCheck->execute([$assignedOrgId]);
+            $targetOrgRow = $stmtOrgCheck->fetch();
+
+            if (!$targetOrgRow) {
+                $error = "Selected organization does not exist.";
+            } elseif (!$targetOrgRow['is_active']) {
+                $error = "Cannot assign user to an inactive organization.";
             } else {
-                $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
-                $insertStmt = $pdo->prepare("INSERT INTO admin_users (username, password_hash, email, organization_id) VALUES (?, ?, ?, ?)");
-                if ($insertStmt->execute([$newUsername, $newHash, $newEmail ?: null, $tenantId])) {
-                    log_audit_action($pdo, 'Created Admin', "New Admin User: {$newUsername}");
-                    $success = "New admin user '{$newUsername}' created successfully.";
+                // Check if username exists
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM admin_users WHERE username = ?");
+                $stmt->execute([$newUsername]);
+                if ($stmt->fetchColumn() > 0) {
+                    $error = "Username already exists. Please choose another.";
                 } else {
-                    $error = "Failed to create user. Please try again.";
+                    $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
+                    $insertStmt = $pdo->prepare("
+                        INSERT INTO admin_users (username, password_hash, email, organization_id, role)
+                        VALUES (?, ?, ?, ?, ?)
+                    ");
+                    if ($insertStmt->execute([$newUsername, $newHash, $newEmail ?: null, $assignedOrgId, $assignedRole])) {
+                        log_audit_action($pdo, 'Created Admin', "New Admin User: {$newUsername} [Role: {$assignedRole}, Org ID: {$assignedOrgId}]");
+                        $success = "New admin user '{$newUsername}' created successfully.";
+                    } else {
+                        $error = "Failed to create user. Please try again.";
+                    }
                 }
             }
         }
@@ -100,10 +127,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Fetch admins for display (tenant-scoped: org admins only see admins of their own organization)
 $adminParams = [];
-$adminScope = tenant_scope_clause('organization_id', $adminParams);
-$stmtAdmins = $pdo->prepare("SELECT id, username, email FROM admin_users" . ($adminScope !== '' ? " WHERE $adminScope" : "") . " ORDER BY id ASC");
+$adminScope = tenant_scope_clause('u.organization_id', $adminParams);
+$stmtAdmins = $pdo->prepare("
+    SELECT u.id, u.username, u.email, u.role, u.organization_id, o.name AS organization_name, o.cert_code
+    FROM admin_users u
+    LEFT JOIN organizations o ON u.organization_id = o.id
+    " . ($adminScope !== '' ? " WHERE $adminScope" : "") . "
+    ORDER BY u.id ASC
+");
 $stmtAdmins->execute($adminParams);
 $allAdmins = $stmtAdmins->fetchAll();
+
+// Fetch active organizations for super admin creation dropdown
+$activeOrgs = [];
+if (is_super_admin()) {
+    $activeOrgs = $pdo->query("SELECT id, name, cert_code FROM organizations WHERE is_active = 1 ORDER BY id ASC")->fetchAll();
+}
 
 // Current admin's email (for the recovery-email form).
 $myEmail = '';
@@ -113,15 +152,21 @@ foreach ($allAdmins as $adm) {
         break;
     }
 }
+if ($myEmail === '' && !empty($_SESSION['admin_id'])) {
+    $stmtMe = $pdo->prepare("SELECT email FROM admin_users WHERE id = ?");
+    $stmtMe->execute([(int)$_SESSION['admin_id']]);
+    $myEmail = (string)($stmtMe->fetchColumn() ?: '');
+}
 
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= htmlspecialchars(i18n_get_lang()) ?>" dir="<?= i18n_get_dir() ?>">
 <head>
     <link rel="icon" type="image/png" href="../assets/DCW_logo.png">
     <meta charset="UTF-8">
     <title>User Management</title>
     <link rel="stylesheet" href="style.css?v=<?= time() ?>">
+    <?php i18n_lang_switcher_css(); ?>
 </head>
 <body>
 
@@ -129,10 +174,18 @@ foreach ($allAdmins as $adm) {
     <div style="display: flex; align-items: center; gap: 15px;">
         <img src="../assets/DCW_logo.png" alt="DCW Logo" width="35" height="35" decoding="async" style="height: 35px; width: 35px; background: white; padding: 2px; border-radius: 50%;">
         <span style="font-size: 18px; font-weight: bold; letter-spacing: 0.5px;">Admin Panel - User Management</span>
+        <?php if (is_super_admin()): ?>
+            <span style="background: #fef3c7; color: #92400e; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase;">Super Admin</span>
+        <?php endif; ?>
     </div>
-    <div>
-        <a href="dashboard.php">Dashboard</a>
-        <a href="logout.php">Logout</a>
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <?php i18n_lang_switcher(); ?>
+        <a href="dashboard.php"><?= __e('admin.common.nav.dashboard') ?></a>
+        <?php if (is_super_admin()): ?>
+            <a href="manage_organizations.php"><?= __e('admin.common.nav.manage-orgs') ?></a>
+        <?php endif; ?>
+        <a href="organization_settings.php"><?= __e('admin.common.nav.org-settings') ?></a>
+        <a href="logout.php"><?= __e('admin.common.nav.logout') ?></a>
     </div>
 </div>
 
@@ -188,18 +241,47 @@ foreach ($allAdmins as $adm) {
                 <input type="hidden" name="action" value="create_user">
                 <div class="form-group">
                     <label>Username</label>
-                    <input type="text" name="new_username" required>
+                    <input type="text" name="new_username" required value="<?= htmlspecialchars($_POST['new_username'] ?? '') ?>">
                 </div>
 
                 <div class="form-group">
                     <label>Email <span style="font-size: 11px; color: #999; font-weight: normal;">(recommended &mdash; needed for password resets)</span></label>
-                    <input type="email" name="new_email" placeholder="admin@example.org">
+                    <input type="email" name="new_email" placeholder="admin@example.org" value="<?= htmlspecialchars($_POST['new_email'] ?? '') ?>">
                 </div>
 
                 <div class="form-group">
                     <label>Password</label>
                     <div class="password-wrapper"><input type="password" name="create_password" required id="create-password"><button type="button" class="password-toggle" onclick="togglePassword('create-password')"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg></button></div>
                 </div>
+
+                <?php if (is_super_admin()): ?>
+                    <div class="form-group">
+                        <label><?= __e('admin.users.label.role') ?></label>
+                        <select name="assigned_role" id="assigned_role" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" onchange="toggleOrgSelect(this.value)">
+                            <option value="org_admin"><?= __e('admin.users.role.org-admin') ?></option>
+                            <option value="super_admin"><?= __e('admin.users.role.super-admin') ?></option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="org_select_group">
+                        <label><?= __e('admin.users.label.org') ?></label>
+                        <select name="assigned_org_id" id="assigned_org_id" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;">
+                            <?php foreach ($activeOrgs as $ao): ?>
+                                <option value="<?= (int)$ao['id'] ?>">
+                                    <?= htmlspecialchars($ao['name']) ?> (<?= htmlspecialchars($ao['cert_code']) ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <script>
+                    function toggleOrgSelect(role) {
+                        var group = document.getElementById('org_select_group');
+                        if (group) {
+                            group.style.display = (role === 'super_admin') ? 'none' : 'block';
+                        }
+                    }
+                    </script>
+                <?php endif; ?>
                 
                 <button type="submit" class="btn" style="width: 100%;">Create Admin User</button>
             </form>
@@ -213,6 +295,10 @@ foreach ($allAdmins as $adm) {
                         <tr>
                             <th style="padding: 10px; border-bottom: 2px solid #ddd; text-align: left;">Username</th>
                             <th style="padding: 10px; border-bottom: 2px solid #ddd; text-align: left;">Email</th>
+                            <?php if (is_super_admin()): ?>
+                                <th style="padding: 10px; border-bottom: 2px solid #ddd; text-align: center;"><?= __e('admin.users.th.role') ?></th>
+                                <th style="padding: 10px; border-bottom: 2px solid #ddd; text-align: left;"><?= __e('admin.users.th.org') ?></th>
+                            <?php endif; ?>
                         </tr>
                     </thead>
                     <tbody>
@@ -227,6 +313,21 @@ foreach ($allAdmins as $adm) {
                                 <td style="padding: 10px; border-bottom: 1px solid #eee; color: <?= empty($adm['email']) ? '#c0392b' : '#555' ?>;">
                                     <?= !empty($adm['email']) ? htmlspecialchars($adm['email']) : '<em>Not set</em>' ?>
                                 </td>
+                                <?php if (is_super_admin()): ?>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">
+                                        <?php if (($adm['role'] ?? '') === 'super_admin'): ?>
+                                            <span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; text-transform: uppercase;">Super Admin</span>
+                                        <?php else: ?>
+                                            <span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;">Org Admin</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-size: 12px; color: #475569;">
+                                        <?= htmlspecialchars($adm['organization_name'] ?? 'Root') ?>
+                                        <?php if (!empty($adm['cert_code'])): ?>
+                                            <code style="font-size: 11px; background: #f1f5f9; padding: 1px 4px; border-radius: 3px;">[<?= htmlspecialchars($adm['cert_code']) ?>]</code>
+                                        <?php endif; ?>
+                                    </td>
+                                <?php endif; ?>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>

@@ -166,6 +166,9 @@ $currentOrg = get_organization($pdo, get_current_tenant_id());
         <?php i18n_lang_switcher(); ?>
         <a href="email_logs.php"><?= __e('admin.common.nav.email-logs') ?></a>
         <a href="#" onclick="return viewAuditLogs();"><?= __e('admin.common.nav.audit-logs') ?></a>
+        <?php if (is_super_admin()): ?>
+            <a href="manage_organizations.php"><?= __e('admin.common.nav.manage-orgs') ?></a>
+        <?php endif; ?>
         <a href="manage_users.php"><?= __e('admin.common.nav.manage-users') ?></a>
         <a href="organization_settings.php"><?= __e('admin.common.nav.org-settings') ?></a>
         <a href="logout.php"><?= __e('admin.common.nav.logout') ?></a>

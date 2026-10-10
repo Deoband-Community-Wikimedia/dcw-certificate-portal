@@ -8,10 +8,15 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
     exit;
 }
 
-// An admin can only ever see and change their own organization. The id comes
-// from the session and is never read from the request, so there is nothing a
-// crafted form field or URL could point at another tenant's record with.
-$orgId = get_current_tenant_id();
+// An admin can only see and change their own organization, unless they
+// have global super_admin privileges and pass an explicit org_id parameter.
+$isSuper = is_super_admin();
+$requestedOrgId = isset($_GET['org_id']) && (int)$_GET['org_id'] > 0 ? (int)$_GET['org_id'] : 0;
+if ($isSuper && $requestedOrgId > 0) {
+    $orgId = $requestedOrgId;
+} else {
+    $orgId = get_current_tenant_id();
+}
 $org = get_organization($pdo, $orgId);
 
 if (!$org) {
@@ -114,7 +119,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             log_audit_action($pdo, 'Updated Organization', "Organization ID: {$orgId}");
 
-            header("Location: organization_settings.php?saved=1");
+            $redirectUrl = 'organization_settings.php?' . ($isSuper && $requestedOrgId > 0 ? "org_id={$orgId}&saved=1" : "saved=1");
+            header("Location: " . $redirectUrl);
             exit;
         } catch (PDOException $e) {
             // Lost a race with another admin taking the same slug/code.
@@ -138,13 +144,14 @@ function org_field_error(array $fieldErrors, string $field, array $params = []):
 $logoUrl = !empty($org['logo_path']) ? '../' . $org['logo_path'] : null;
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= htmlspecialchars(i18n_get_lang()) ?>" dir="<?= i18n_get_dir() ?>">
 <head>
     <link rel="icon" type="image/png" href="../assets/DCW_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= __e('admin.org-settings.page-title') ?></title>
     <link rel="stylesheet" href="style.css?v=<?= time() ?>">
+    <?php i18n_lang_switcher_css(); ?>
     <style>
         .field-error { color: #c0392b; font-size: 12px; margin-top: 4px; display: block; }
         .field-hint { color: #777; font-size: 12px; margin-top: 4px; display: block; }
@@ -161,19 +168,33 @@ $logoUrl = !empty($org['logo_path']) ? '../' . $org['logo_path'] : null;
     <div style="display: flex; align-items: center; gap: 15px;">
         <img src="../assets/DCW_logo.png" alt="DCW Logo" width="35" height="35" decoding="async" style="height: 35px; width: 35px; background: white; padding: 2px; border-radius: 50%;">
         <span style="font-size: 18px; font-weight: bold; letter-spacing: 0.5px;"><?= __e('admin.org-settings.nav-title') ?></span>
+        <?php if ($isSuper): ?>
+            <span style="background: #fef3c7; color: #92400e; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase;">Super Admin</span>
+        <?php endif; ?>
     </div>
-    <div>
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <?php i18n_lang_switcher(); ?>
         <a href="dashboard.php"><?= __e('admin.common.nav.dashboard') ?></a>
+        <?php if ($isSuper): ?>
+            <a href="manage_organizations.php"><?= __e('admin.common.nav.manage-orgs') ?></a>
+        <?php endif; ?>
         <a href="manage_users.php"><?= __e('admin.common.nav.manage-users') ?></a>
         <a href="logout.php"><?= __e('admin.common.nav.logout') ?></a>
     </div>
 </div>
 
 <div class="container" style="max-width: 720px;">
+    <?php if ($isSuper && $requestedOrgId > 0): ?>
+        <div style="background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+            <span><strong>Super Admin Mode:</strong> Editing organization #<?= (int)$orgId ?> (<?= htmlspecialchars($org['name']) ?>)</span>
+            <a href="manage_organizations.php" style="color: #0284c7; font-weight: 600; text-decoration: none;">&larr; Back to Organizations</a>
+        </div>
+    <?php endif; ?>
+
     <h2 style="margin-top: 0;"><?= __e('admin.org-settings.heading') ?></h2>
     <p style="font-size: 14px; color: #555;"><?= __e('admin.org-settings.intro') ?></p>
 
-    <form method="POST" action="" enctype="multipart/form-data" class="upload-box">
+    <form method="POST" action="<?= $isSuper && $requestedOrgId > 0 ? 'organization_settings.php?org_id=' . (int)$orgId : '' ?>" enctype="multipart/form-data" class="upload-box">
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generate_csrf_token()) ?>">
 
         <div class="form-group">

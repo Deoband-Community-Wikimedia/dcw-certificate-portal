@@ -791,3 +791,32 @@ if (!function_exists('sanitize_csv_cell')) {
     }
 }
 
+if (!function_exists('log_audit_action')) {
+    /**
+     * Audit Log Helper (tenant-aware: tags each row with the acting admin's organization).
+     * Defensively catches exceptions so audit logging failures never break primary execution.
+     *
+     * @param PDO    $pdo
+     * @param string $action
+     * @param string $details
+     * @return void
+     */
+    function log_audit_action($pdo, $action, $details = '') {
+        if (!isset($_SESSION['admin_username']) || !($pdo instanceof PDO)) {
+            return;
+        }
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO audit_logs (admin_username, action_type, details, organization_id)
+                VALUES (?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                $_SESSION['admin_username'],
+                substr($action, 0, 50),
+                substr($details, 0, 255),
+                get_current_tenant_id()
+            ]);
+        } catch (\Exception $ignored) {}
+    }
+}
+

@@ -22,13 +22,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $admin = $stmt->fetch();
 
         if ($admin && password_verify($password, $admin['password_hash'])) {
-            $userRole = $admin['role'] ?? 'super_admin';
+            $userRole = !empty($admin['role']) ? $admin['role'] : 'org_admin';
             $userOrgId = !empty($admin['organization_id']) ? (int)$admin['organization_id'] : null;
 
-            // Fail-closed guard: an org_admin must have a valid organization assigned
-            if ($userRole === 'org_admin' && (!$userOrgId || $userOrgId <= 0)) {
-                $error = 'Account configuration error: No organization assigned to this account. Please contact a super administrator.';
-            } else {
+            // Fail-closed guard: an org_admin must have a valid and active organization assigned
+            if ($userRole === 'org_admin') {
+                if (!$userOrgId || $userOrgId <= 0) {
+                    $error = 'Account configuration error: No organization assigned to this account. Please contact a super administrator.';
+                } else {
+                    $stmtOrg = $pdo->prepare("SELECT is_active FROM organizations WHERE id = ?");
+                    $stmtOrg->execute([$userOrgId]);
+                    $orgRow = $stmtOrg->fetch();
+                    if (!$orgRow) {
+                        $error = 'Account configuration error: Assigned organization does not exist. Please contact a super administrator.';
+                    } elseif ((int)$orgRow['is_active'] !== 1) {
+                        $error = 'Your organization has been deactivated. Please contact a super administrator.';
+                    }
+                }
+            }
+
+            if (!$error) {
                 session_regenerate_id(true);
                 $_SESSION['admin_logged_in'] = true;
                 $_SESSION['admin_id'] = $admin['id'];
