@@ -284,7 +284,7 @@ $currentOrgName = $targetOrg['name'] ?? __('site.name');
 $currentOrgLogo = !empty($targetOrg['logo_path']) && file_exists($targetOrg['logo_path'])
     ? $basePath . '/' . $targetOrg['logo_path']
     : $basePath . '/assets/DCW_logo.png';
-$currentOrgUrl = (!empty($targetOrg['home_url']) && org_is_http_url($targetOrg['home_url']))
+$currentOrgUrl = (!empty($targetOrg['home_url']) && function_exists('org_is_http_url') && org_is_http_url($targetOrg['home_url']))
     ? $targetOrg['home_url']
     : ORG_URL_HOME;
 
@@ -862,7 +862,7 @@ if ($isDirectEventClaim && $directEvent) {
                     </div>
                 </div>
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    <?php if (!empty($targetOrg['home_url']) && org_is_http_url($targetOrg['home_url'])): ?>
+                    <?php if (!empty($targetOrg['home_url']) && (!function_exists('org_is_http_url') || org_is_http_url($targetOrg['home_url']))): ?>
                         <a href="<?= htmlspecialchars($targetOrg['home_url']) ?>" target="_blank" class="pill-btn" style="text-decoration: none;">
                             🌐 Website
                         </a>
@@ -898,7 +898,7 @@ if ($isDirectEventClaim && $directEvent) {
                                     <?php endif; ?>
                                     <?php if (!empty($ev['description'])): ?>
                                         <div style="font-size: 13px; color: #64748b; margin-top: 8px; line-height: 1.4;">
-                                            <?= htmlspecialchars(mb_strimwidth($ev['description'], 0, 110, '...')) ?>
+                                            <?= htmlspecialchars(function_exists('mb_strimwidth') ? mb_strimwidth((string)$ev['description'], 0, 110, '...') : (strlen((string)$ev['description']) > 110 ? substr((string)$ev['description'], 0, 107) . '...' : (string)$ev['description'])) ?>
                                         </div>
                                     <?php endif; ?>
                                 </div>
