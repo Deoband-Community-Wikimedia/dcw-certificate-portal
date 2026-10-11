@@ -14,6 +14,7 @@
 	"nav.news": "Navigation menu link to the 'News' page.",
 	"nav.vision": "Navigation menu link to the 'Vision & Objectives' page.",
 	"nav.partner-communities": "Header navigation dropdown label listing affiliate partner communities.",
+	"nav.communities": "Label for the clickable communities navigation bar above the main claim columns.",
 	"page.claim.title": "Card heading on the claim certificate form.",
 	"page.claim.subtitle": "Subtitle explaining how to claim a certificate.",
 	"page.claim.label.category": "Label for the category filter dropdown on the certificate claim card.",
