@@ -34,6 +34,15 @@ RewriteEngine On
 # Clean URL for Verification
 RewriteRule ^verify/([a-zA-Z0-9_-]+)$ verify.php?id=$1 [L,QSA]
 
+# Community Hub Hierarchical Event Claim Route (e.g. /c/wmsp/e/wikiversary-2026)
+RewriteRule ^c/([a-zA-Z0-9_-]+)/e/([a-zA-Z0-9_-]+)/?$ index.php?community_slug=$1&event_slug=$2 [L,QSA]
+
+# Community Hub Showcase Route (e.g. /c/wmsp)
+RewriteRule ^c/([a-zA-Z0-9_-]+)/?$ index.php?community_slug=$1 [L,QSA]
+
+# Direct Event Claim Shortlink (e.g. /e/wikiversary-2026)
+RewriteRule ^e/([a-zA-Z0-9_-]+)/?$ index.php?event_slug=$1 [L,QSA]
+
 # --- PERFORMANCE CACHING ---
 <IfModule mod_expires.c>
     ExpiresActive On

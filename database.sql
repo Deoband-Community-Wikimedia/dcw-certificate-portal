@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS events (
     id INT AUTO_INCREMENT PRIMARY KEY,
     organization_id INT NOT NULL DEFAULT 1,
     name VARCHAR(255) NOT NULL,
+    slug VARCHAR(100) NULL,
     category VARCHAR(50) NULL,
     linkedin_caption TEXT NULL,
     custom_verification_text TEXT NULL,
@@ -63,6 +64,7 @@ CREATE TABLE IF NOT EXISTS events (
     color_presets TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_events_org_id (organization_id),
+    INDEX idx_events_slug (slug),
     CONSTRAINT fk_events_org FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 );
 
@@ -169,5 +171,21 @@ CREATE TABLE IF NOT EXISTS verification_logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_verification_cert (certificate_id),
     INDEX idx_verification_ip (ip_address, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Create Admin Invitations Table (Multi-Tenant Onboarding)
+CREATE TABLE IF NOT EXISTS admin_invitations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    organization_id INT NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    username VARCHAR(100) NOT NULL,
+    invite_token_hash VARCHAR(255) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    is_accepted TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_inv_org (organization_id),
+    INDEX idx_inv_email (email),
+    INDEX idx_inv_token (invite_token_hash),
+    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

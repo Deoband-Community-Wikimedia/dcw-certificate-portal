@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/helpers/otp.php';
+require_once __DIR__ . '/helpers/invitation.php';
 
 if (!function_exists('event_categories')) {
     /**

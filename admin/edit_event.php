@@ -61,18 +61,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $oldEventName = $event['name'];
 
-        $stmtUpdate = $pdo->prepare("UPDATE events SET name = ?, category = ?, linkedin_caption = ?, custom_verification_text = ?, certificate_issue_date = ?, completion_date = ?, description = ?, partners = ? WHERE id = ?");
-        $stmtUpdate->execute([$eventName, $category, $linkedinCaption, $customVerificationText, $certificateIssueDate, $completionDate, $description, $partners, $eventId]);
+        invitation_ensure_schema($pdo);
+        $eventSlug = trim($_POST['slug'] ?? ($event['slug'] ?? ''));
+        if ($eventSlug === '') {
+            $eventSlug = generate_unique_event_slug($pdo, $eventName, (int)$eventId);
+        } else {
+            $eventSlug = slugify($eventSlug);
+            if (is_reserved_slug($eventSlug)) {
+                $eventSlug .= '-event';
+            }
+            $chkSlug = $pdo->prepare("SELECT COUNT(*) FROM events WHERE slug = ? AND id != ?");
+            $chkSlug->execute([$eventSlug, (int)$eventId]);
+            if ($chkSlug->fetchColumn() > 0) {
+                $eventSlug = generate_unique_event_slug($pdo, $eventSlug, (int)$eventId);
+            }
+        }
+
+        $stmtUpdate = $pdo->prepare("UPDATE events SET name = ?, slug = ?, category = ?, linkedin_caption = ?, custom_verification_text = ?, certificate_issue_date = ?, completion_date = ?, description = ?, partners = ? WHERE id = ?");
+        $stmtUpdate->execute([$eventName, $eventSlug, $category, $linkedinCaption, $customVerificationText, $certificateIssueDate, $completionDate, $description, $partners, $eventId]);
 
         if ($nameChanged) {
             syncEventTemplateFolder($pdo, $eventId, $oldEventName);
         }
 
-        log_audit_action($pdo, 'Edited Event', "Event ID: {$eventId}, New Name: {$eventName}");
+        log_audit_action($pdo, 'Edited Event', "Event ID: {$eventId}, New Name: {$eventName}, Slug: {$eventSlug}");
 
         $success = __('admin.edit-event.success.updated');
         // Refresh event data
         $event['name'] = $eventName;
+        $event['slug'] = $eventSlug;
         $event['category'] = $category;
         $event['linkedin_caption'] = $linkedinCaption;
         $event['custom_verification_text'] = $customVerificationText;
@@ -127,6 +144,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="form-group">
             <label><?= __e('admin.event-form.label.name') ?></label>
             <input type="text" name="name" id="eventNameInput" required value="<?= htmlspecialchars($event['name']) ?>">
+        </div>
+
+        <div class="form-group">
+            <label><?= __e('admin.event-form.label.slug') ?></label>
+            <input type="text" name="slug" value="<?= htmlspecialchars($event['slug'] ?? '') ?>" placeholder="e.g. wikiversary-2026">
+            <div style="font-size: 11px; color: #777; margin-top: 5px;">
+                <?= __e('admin.event-form.hint.slug') ?>
+                <?php if (!empty($event['slug'])): ?>
+                    &bull; <a href="../e/<?= urlencode($event['slug']) ?>" target="_blank" style="color: #0284c7; text-decoration: none;">Direct claim link: /e/<?= htmlspecialchars($event['slug']) ?></a>
+                <?php endif; ?>
+            </div>
         </div>
 
         <div class="form-group">
