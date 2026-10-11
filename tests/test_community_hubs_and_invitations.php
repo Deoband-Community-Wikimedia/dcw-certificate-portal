@@ -320,6 +320,22 @@ assertTest($url2 === '/portal/c/wmsp', 'generates clean community hub URL');
 $url3 = $makeUrlClean($cSlug, $eSlug, ['step' => 'otp'], $testBasePath, false);
 assertTest($url3 === '/portal/index.php?community_slug=wmsp&event_slug=wikiversary-madrid&step=otp', 'falls back to index.php query parameters on direct script access');
 
+// Root Organization Redirection Rule (/c/dcw -> /)
+$redirectTarget = function($c, $e, $base) {
+    if ($c === 'dcw') {
+        if ($e !== '') {
+            return ($base !== '' ? $base : '') . '/e/' . rawurlencode($e);
+        } else {
+            return ($base !== '' ? $base : '') . '/';
+        }
+    }
+    return null;
+};
+assertTest($redirectTarget('dcw', '', '') === '/', '/c/dcw redirects to root /');
+assertTest($redirectTarget('dcw', '', '/portal') === '/portal/', '/c/dcw with basePath redirects to /portal/');
+assertTest($redirectTarget('dcw', 'annual-meet', '') === '/e/annual-meet', '/c/dcw/e/event redirects to /e/event');
+assertTest($redirectTarget('wmsp', '', '') === null, 'partner org slug wmsp does not redirect to root');
+
 // -----------------------------------------------------------------------------
 // Test 11: CLI Migration Script Verification
 // -----------------------------------------------------------------------------

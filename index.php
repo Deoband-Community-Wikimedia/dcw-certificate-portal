@@ -15,6 +15,16 @@ if (isset($_SERVER['SCRIPT_NAME'])) {
 $communitySlug = trim($_GET['community_slug'] ?? '');
 $eventSlug = trim($_GET['event_slug'] ?? '');
 
+// Clean Redirect: /c/dcw (and /c/dcw/e/<event>) redirects to root or /e/<event>
+if ($communitySlug === 'dcw') {
+    if ($eventSlug !== '') {
+        header("Location: " . ($basePath !== '' ? $basePath : '') . "/e/" . rawurlencode($eventSlug), true, 302);
+    } else {
+        header("Location: " . ($basePath !== '' ? $basePath : '') . "/", true, 302);
+    }
+    exit;
+}
+
 function buildCurrentUrl(array $extraParams = []): string {
     global $communitySlug, $eventSlug, $basePath;
     $isCleanRoute = (isset($_SERVER['REQUEST_URI']) && (strpos($_SERVER['REQUEST_URI'], '/c/') !== false || strpos($_SERVER['REQUEST_URI'], '/e/') !== false));
@@ -22,9 +32,9 @@ function buildCurrentUrl(array $extraParams = []): string {
 
     if ($isCleanRoute) {
         $query = !empty($extraParams) ? '?' . http_build_query($extraParams) : '';
-        if ($communitySlug !== '' && $eventSlug !== '') {
+        if ($communitySlug !== '' && $communitySlug !== 'dcw' && $eventSlug !== '') {
             return $prefix . '/c/' . rawurlencode($communitySlug) . '/e/' . rawurlencode($eventSlug) . $query;
-        } elseif ($communitySlug !== '') {
+        } elseif ($communitySlug !== '' && $communitySlug !== 'dcw') {
             return $prefix . '/c/' . rawurlencode($communitySlug) . $query;
         } elseif ($eventSlug !== '') {
             return $prefix . '/e/' . rawurlencode($eventSlug) . $query;
@@ -32,7 +42,7 @@ function buildCurrentUrl(array $extraParams = []): string {
     }
 
     $params = [];
-    if ($communitySlug !== '') $params['community_slug'] = $communitySlug;
+    if ($communitySlug !== '' && $communitySlug !== 'dcw') $params['community_slug'] = $communitySlug;
     if ($eventSlug !== '') $params['event_slug'] = $eventSlug;
     $merged = array_merge($params, $extraParams);
     return $prefix . '/index.php' . (!empty($merged) ? '?' . http_build_query($merged) : '');
@@ -122,7 +132,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
-// Resolve Community Hub or Direct Event
+// Resolve Organization & Direct Event
+$rootOrg = get_organization($pdo, 1);
+if (!$rootOrg) {
+    $rootOrg = get_default_organization();
+}
+
 $targetOrg = null;
 $hubNotFound = false;
 if ($communitySlug !== '') {
@@ -131,6 +146,14 @@ if ($communitySlug !== '') {
     $targetOrg = $stmtOrg->fetch();
     if (!$targetOrg) {
         $hubNotFound = true;
+    } elseif ((int)$targetOrg['id'] === 1) {
+        // Redirection guard: Deoband Community Wikimedia is the root portal
+        if ($eventSlug !== '') {
+            header("Location: " . ($basePath !== '' ? $basePath : '') . "/e/" . rawurlencode($eventSlug), true, 302);
+        } else {
+            header("Location: " . ($basePath !== '' ? $basePath : '') . "/", true, 302);
+        }
+        exit;
     }
 }
 
@@ -174,9 +197,14 @@ if ($eventSlug !== '') {
     }
 }
 
+// Default to root organization (DCW) when on root portal
+if ($targetOrg === null && !$hubNotFound) {
+    $targetOrg = $rootOrg;
+}
+
 $isDirectEventClaim = ($directEvent !== null && !$eventNotFound);
-$isCommunityHub = ($targetOrg !== null && !$isDirectEventClaim && !$hubNotFound);
-$isRootPortal = (!$isDirectEventClaim && !$isCommunityHub && !$hubNotFound && !$eventNotFound);
+$isCommunityHub = ($targetOrg !== null && (int)$targetOrg['id'] !== 1 && !$isDirectEventClaim && !$hubNotFound);
+$isRootPortal = (!$isCommunityHub && !$isDirectEventClaim && !$hubNotFound && !$eventNotFound);
 
 // Handle initial claim form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'claim') {
@@ -194,6 +222,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         ");
         $stmt->execute([$fullName, $email, $eventId]);
         $certData = $stmt->fetch();
+
+        // Cross-tenant guard: verify event belongs to current targetOrg
+        if ($certData && $targetOrg && (int)$certData['organization_id'] !== (int)$targetOrg['id']) {
+            $certData = false;
+        }
 
         if ($certData) {
             $clientIp = otp_client_ip();
@@ -237,35 +270,24 @@ if ($isOtpStep && !isset($_SESSION['pending_otp'])) {
     exit;
 }
 
-// Fetch Community Hub events if viewing a community hub
-$hubEvents = [];
-if ($isCommunityHub && $targetOrg) {
-    $stmtHubEv = $pdo->prepare("
-        SELECT * FROM events
-        WHERE organization_id = ?
-        ORDER BY (certificate_issue_date IS NULL), certificate_issue_date DESC, created_at DESC
-    ");
-    $stmtHubEv->execute([(int)$targetOrg['id']]);
-    $hubEvents = $stmtHubEv->fetchAll();
-}
+// Fetch active communities for partner switcher
+$stmtAllOrgs = $pdo->query("SELECT id, name, slug, cert_code, logo_path FROM organizations WHERE is_active = 1 ORDER BY id ASC");
+$activeCommunities = $stmtAllOrgs->fetchAll();
 
-// Fetch all events and active communities for root portal
+// Fetch events scoped specifically to targetOrg
 $events = [];
 $eventsByCategory = [];
 $hasCategorisedEvents = false;
-$activeCommunities = [];
 
-if ($isRootPortal) {
-    $stmtAllOrgs = $pdo->query("SELECT id, name, slug, cert_code, logo_path FROM organizations WHERE is_active = 1 ORDER BY id ASC");
-    $activeCommunities = $stmtAllOrgs->fetchAll();
-
-    $stmt = $pdo->query("
+if ($targetOrg && !$hubNotFound && !$eventNotFound) {
+    $stmt = $pdo->prepare("
         SELECT e.id, e.name, e.slug, e.category, e.organization_id, o.name as org_name, o.slug as org_slug
         FROM events e
         JOIN organizations o ON e.organization_id = o.id
-        WHERE o.is_active = 1
+        WHERE e.organization_id = ? AND o.is_active = 1
         ORDER BY (e.category IS NULL), e.category ASC, e.name ASC
     ");
+    $stmt->execute([(int)$targetOrg['id']]);
     $events = $stmt->fetchAll();
 
     foreach ($events as $e) {
@@ -506,26 +528,88 @@ if ($isDirectEventClaim && $directEvent) {
             margin-bottom: 20px;
         }
 
-        /* Community Filter Pills */
-        .filter-pills-bar {
+        /* Partner Communities Dropdown */
+        .comm-switcher {
+            position: relative;
+            display: inline-block;
+            font-family: inherit;
+            text-align: left;
+        }
+        .comm-switcher-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #334155;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            line-height: 1.4;
+        }
+        .comm-switcher-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            background: #f8fafc;
+        }
+        .comm-switcher.open .comm-switcher-btn {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(16, 107, 154, 0.15);
+        }
+        .comm-switcher-caret {
+            font-size: 10px;
+            opacity: 0.7;
+            transition: transform 0.2s ease;
+        }
+        .comm-switcher.open .comm-switcher-caret {
+            transform: rotate(180deg);
+        }
+        .comm-switcher-menu {
+            display: none;
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
             background: #ffffff;
             border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 14px 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.06);
+            padding: 6px;
+            margin: 0;
+            list-style: none;
+            z-index: 1000;
+            min-width: 220px;
+        }
+        .comm-switcher.open .comm-switcher-menu {
+            display: block;
+        }
+        .comm-switcher-menu li a {
             display: flex;
             align-items: center;
             gap: 10px;
-            flex-wrap: wrap;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #334155;
+            text-decoration: none;
+            border-radius: 6px;
+            transition: background 0.15s ease, color 0.15s ease;
         }
-        .filter-pill-label {
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #64748b;
-            margin-right: 4px;
+        .comm-switcher-menu li a:hover {
+            background: #f1f5f9;
+            color: var(--primary-color);
         }
+        .comm-switcher-menu li a.active {
+            background: #f0f9ff;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
         .pill-btn {
             background: #f1f5f9;
             color: #334155;
@@ -544,20 +628,6 @@ if ($isDirectEventClaim && $directEvent) {
             background: #e2e8f0;
             color: #0f172a;
         }
-        .pill-btn.active {
-            background: #106b9a;
-            color: #ffffff;
-            border-color: #106b9a;
-            font-weight: 600;
-        }
-        .pill-hub-link {
-            font-size: 11px;
-            color: #0284c7;
-            text-decoration: none;
-            margin-left: 2px;
-            opacity: 0.8;
-        }
-        .pill-hub-link:hover { opacity: 1; text-decoration: underline; }
 
         /* Community Hub Showcase */
         .hub-hero {
@@ -771,7 +841,40 @@ if ($isDirectEventClaim && $directEvent) {
                 <span class="portal-badge"><?= __e('site.portal-badge') ?></span>
             </div>
             <nav class="header-nav">
-                <a href="<?= $basePath ?>/"><?= __e('root.filter.all-communities') ?></a>
+                <?php if (count($activeCommunities) > 1): ?>
+                    <div class="comm-switcher" role="navigation" aria-label="<?= __e('nav.partner-communities') ?>">
+                        <button class="comm-switcher-btn" aria-haspopup="true" aria-expanded="false" onclick="this.parentElement.classList.toggle('open')" type="button">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                            <span><?= __e('nav.partner-communities') ?></span>
+                            <span class="comm-switcher-caret" aria-hidden="true">▾</span>
+                        </button>
+                        <ul class="comm-switcher-menu" role="menu">
+                            <?php foreach ($activeCommunities as $comm): ?>
+                                <?php
+                                    $isDcw = ((int)$comm['id'] === 1 || $comm['slug'] === 'dcw');
+                                    $commUrl = $isDcw ? ($basePath !== '' ? $basePath : '') . '/' : $basePath . '/c/' . rawurlencode($comm['slug']);
+                                    $isCurrent = ($targetOrg && (int)$targetOrg['id'] === (int)$comm['id']);
+                                ?>
+                                <li role="none">
+                                    <a href="<?= htmlspecialchars($commUrl) ?>" role="menuitem" <?= $isCurrent ? 'class="active" aria-current="true"' : '' ?>>
+                                        <?php if (!empty($comm['logo_path']) && file_exists($comm['logo_path'])): ?>
+                                            <img src="<?= htmlspecialchars($basePath . '/' . $comm['logo_path']) ?>" alt="" style="height: 16px; width: auto; max-width: 24px; object-fit: contain;">
+                                        <?php endif; ?>
+                                        <span><?= htmlspecialchars($comm['name']) ?></span>
+                                        <?php if ($isCurrent): ?>
+                                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        <?php endif; ?>
+                                    </a>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php endif; ?>
                 <a href="<?= ORG_URL_ABOUT ?>" target="_blank"><?= __e('nav.about') ?></a>
                 <a href="<?= ORG_URL_PROGRAMS ?>" target="_blank"><?= __e('nav.programs') ?></a>
                 <a href="<?= $basePath ?>/admin/login.php"><?= __e('admin.login.page-title') ?></a>
@@ -850,253 +953,164 @@ if ($isDirectEventClaim && $directEvent) {
                 </div>
             </div>
 
-        <?php elseif ($isCommunityHub && $targetOrg): ?>
-            <!-- Community Hub View (/c/<slug>) -->
-            <div class="hub-hero">
-                <div class="hub-identity">
-                    <img src="<?= htmlspecialchars($currentOrgLogo) ?>" alt="Logo" class="hub-logo">
-                    <div class="hub-meta">
-                        <h1><?= htmlspecialchars($targetOrg['name']) ?></h1>
-                        <span class="badge-affiliate">🛡️ <?= __e('hub.verified-affiliate') ?></span>
-                        <span style="font-size: 13px; color: #64748b; margin-left: 8px;">(<?= htmlspecialchars($targetOrg['cert_code']) ?>)</span>
-                    </div>
-                </div>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <?php if (!empty($targetOrg['home_url']) && (!function_exists('org_is_http_url') || org_is_http_url($targetOrg['home_url']))): ?>
-                        <a href="<?= htmlspecialchars($targetOrg['home_url']) ?>" target="_blank" class="pill-btn" style="text-decoration: none;">
-                            🌐 Website
-                        </a>
-                    <?php endif; ?>
-                    <a href="<?= $basePath ?>/" class="pill-btn" style="text-decoration: none;">
-                        ← <?= __e('hub.view-all-communities') ?>
-                    </a>
-                </div>
-            </div>
-
-            <div>
-                <h2 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0;">
-                    <?= __e('hub.events-heading') ?>
-                </h2>
-                <p style="font-size: 14px; color: #64748b; margin: 0 0 16px 0;">
-                    <?= __e('hub.events-subheading') ?>
-                </p>
-
-                <?php if (empty($hubEvents)): ?>
-                    <div class="container" style="text-align: center; padding: 40px 20px; color: #64748b;">
-                        <div style="font-size: 32px; margin-bottom: 10px;">📅</div>
-                        <p style="margin: 0;"><?= __e('hub.no-events') ?></p>
-                    </div>
-                <?php else: ?>
-                    <div class="hub-events-grid">
-                        <?php foreach ($hubEvents as $ev): ?>
-                            <div class="event-card">
-                                <div>
-                                    <span class="event-card-cat"><?= htmlspecialchars(event_category_label($ev['category'] ?? 'Event')) ?></span>
-                                    <div class="event-card-title"><?= htmlspecialchars($ev['name']) ?></div>
-                                    <?php if (!empty($ev['certificate_issue_date'])): ?>
-                                        <div class="event-card-date">🗓️ <?= htmlspecialchars($ev['certificate_issue_date']) ?></div>
-                                    <?php endif; ?>
-                                    <?php if (!empty($ev['description'])): ?>
-                                        <div style="font-size: 13px; color: #64748b; margin-top: 8px; line-height: 1.4;">
-                                            <?= htmlspecialchars(function_exists('mb_strimwidth') ? mb_strimwidth((string)$ev['description'], 0, 110, '...') : (strlen((string)$ev['description']) > 110 ? substr((string)$ev['description'], 0, 107) . '...' : (string)$ev['description'])) ?>
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
-                                <div>
-                                    <a href="<?= $basePath ?>/c/<?= urlencode($targetOrg['slug']) ?>/e/<?= urlencode(!empty($ev['slug']) ? $ev['slug'] : $ev['id']) ?>" class="btn-claim-card">
-                                        <?= __e('hub.claim-btn') ?> →
-                                    </a>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
-            </div>
-
-            <!-- Verify Credential Column -->
-            <div class="container" style="background: #f8fafc; border: 1px solid #e2e8f0; margin-top: 10px;">
-                <div style="text-align: center; margin-bottom: 12px;">
-                    <svg viewBox="0 0 24 24" width="32" height="32" style="color: var(--secondary-color);">
-                        <path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
-                    </svg>
-                </div>
-                <h2 style="text-align: center; font-size: 18px; margin: 0 0 6px 0;"><?= __e('page.verify.title') ?></h2>
-                <div class="subtitle" style="margin-bottom: 16px;">
-                    <?= __e('page.verify.label.cert-id') ?> — <?= __e('page.verify.submit') ?>
-                </div>
-                <form action="" method="POST" style="max-width: 480px; margin: 0 auto;">
-                    <input type="hidden" name="action" value="verify">
-                    <div class="form-group">
-                        <input type="text" name="verify_id" required placeholder="<?= __e('page.verify.label.cert-id-placeholder') ?>">
-                    </div>
-                    <button type="submit" class="btn-submit btn-secondary">
-                        <?= __e('page.verify.submit') ?>
-                    </button>
-                </form>
-            </div>
-
-        <?php elseif ($isDirectEventClaim && $directEvent): ?>
-            <!-- Direct Event Claim View (/e/<slug> or /c/<org>/e/<slug>) -->
-            <div class="columns-grid">
-                <div class="container">
-                    <div class="direct-claim-header">
-                        <div>
-                            <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #0284c7;">
-                                <?= __e('direct-claim.organized-by') ?>:
-                            </span>
-                            <div style="font-size: 14px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px; margin-top: 2px;">
-                                <img src="<?= htmlspecialchars($currentOrgLogo) ?>" alt="Logo" style="height: 24px; width: auto;">
-                                <a href="<?= $basePath ?>/c/<?= urlencode($directEvent['org_slug']) ?>" style="color: inherit; text-decoration: none;">
-                                    <?= htmlspecialchars($directEvent['org_name']) ?>
-                                </a>
-                            </div>
-                        </div>
-                        <span class="event-card-cat"><?= htmlspecialchars(event_category_label($directEvent['category'] ?? 'Event')) ?></span>
-                    </div>
-
-                    <h1><?= htmlspecialchars($directEvent['name']) ?></h1>
-                    <div class="subtitle">
-                        <?= __e('page.claim.subtitle') ?>
-                    </div>
-
-                    <?php if (isset($_GET['error'])): ?>
-                        <div class="error-message"><?= htmlspecialchars($_GET['error']) ?></div>
-                    <?php endif; ?>
-
-                    <form action="" method="POST">
-                        <input type="hidden" name="action" value="claim">
-
-                        <div class="form-group">
-                            <label for="full_name"><?= __e('page.claim.label.name') ?></label>
-                            <input type="text" id="full_name" name="full_name" required placeholder="<?= __e('page.claim.label.name-placeholder') ?>">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="email"><?= __e('page.claim.label.email') ?></label>
-                            <input type="email" id="email" name="email" required placeholder="<?= __e('page.claim.label.email-placeholder') ?>">
-                        </div>
-
-                        <button type="submit" class="btn-submit">
-                            <?= __e('page.claim.submit') ?>
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </button>
-                    </form>
-
-                    <div style="text-align: center; margin-top: 20px;">
-                        <a href="<?= $basePath ?>/c/<?= urlencode($directEvent['org_slug']) ?>" style="color: #0284c7; font-size: 13px; text-decoration: none; font-weight: 500;">
-                            ← <?= __('direct-claim.all-org-events', ['org' => htmlspecialchars($directEvent['org_name'])]) ?>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Verify Credential Column -->
-                <div class="container" style="background: #f8fafc; border: 1px solid #e2e8f0;">
-                    <div style="text-align: center; margin-bottom: 15px;">
-                        <svg viewBox="0 0 24 24" width="40" height="40" style="color: var(--secondary-color);">
-                            <path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
-                        </svg>
-                    </div>
-                    <h1><?= __e('page.verify.title') ?></h1>
-                    <div class="subtitle">
-                        <?= __e('page.verify.label.cert-id') ?> — <?= __e('page.verify.submit') ?>
-                    </div>
-
-                    <form action="" method="POST">
-                        <input type="hidden" name="action" value="verify">
-                        <div class="form-group">
-                            <label for="verify_id"><?= __e('page.verify.label.cert-id') ?></label>
-                            <input type="text" id="verify_id" name="verify_id" required placeholder="<?= __e('page.verify.label.cert-id-placeholder') ?>">
-                        </div>
-                        <button type="submit" class="btn-submit btn-secondary">
-                            <?= __e('page.verify.submit') ?>
-                        </button>
-                    </form>
-                </div>
-            </div>
-
         <?php else: ?>
-            <!-- Root Multi-Tenant Portal -->
-            <?php if (!empty($activeCommunities)): ?>
-                <div class="filter-pills-bar">
-                    <span class="filter-pill-label"><?= __e('root.filter.all-communities') ?>:</span>
-                    <button type="button" class="pill-btn active" data-org-id="0">
-                        <?= __e('root.filter.all-communities') ?> (<?= count($events) ?>)
-                    </button>
-                    <?php foreach ($activeCommunities as $comm): ?>
-                        <button type="button" class="pill-btn" data-org-id="<?= (int)$comm['id'] ?>" data-slug="<?= htmlspecialchars($comm['slug']) ?>">
-                            <?= htmlspecialchars($comm['name']) ?>
-                            <a href="<?= $basePath ?>/c/<?= urlencode($comm['slug']) ?>" class="pill-hub-link" title="Open Community Hub">↗</a>
-                        </button>
-                    <?php endforeach; ?>
+            <?php if ($isCommunityHub && $targetOrg): ?>
+                <!-- Community Hub Showcase Header (/c/<slug>) -->
+                <div class="hub-hero">
+                    <div class="hub-identity">
+                        <img src="<?= htmlspecialchars($currentOrgLogo) ?>" alt="Logo" class="hub-logo">
+                        <div class="hub-meta">
+                            <h1><?= htmlspecialchars($targetOrg['name']) ?></h1>
+                            <span class="badge-affiliate">🛡️ <?= __e('hub.verified-affiliate') ?></span>
+                            <span style="font-size: 13px; color: #64748b; margin-left: 8px;">(<?= htmlspecialchars($targetOrg['cert_code']) ?>)</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <?php if (!empty($targetOrg['home_url']) && (!function_exists('org_is_http_url') || org_is_http_url($targetOrg['home_url']))): ?>
+                            <a href="<?= htmlspecialchars($targetOrg['home_url']) ?>" target="_blank" class="pill-btn" style="text-decoration: none;">
+                                🌐 Website
+                            </a>
+                        <?php endif; ?>
+                        <a href="<?= $basePath ?>/" class="pill-btn" style="text-decoration: none;">
+                            ← <?= htmlspecialchars($rootOrg['name'] ?? 'Deoband Community Wikimedia') ?>
+                        </a>
+                    </div>
                 </div>
             <?php endif; ?>
 
             <div class="columns-grid">
                 <!-- Claim Certificate Column -->
                 <div class="container">
-                    <div style="text-align: center; margin-bottom: 15px;">
-                        <svg viewBox="0 0 24 24" width="40" height="40" style="color: var(--primary-color);">
-                            <path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
-                        </svg>
-                    </div>
-                    <h1><?= __e('page.claim.title') ?></h1>
-                    <div class="subtitle">
-                        <?= __e('page.claim.subtitle') ?>
-                    </div>
-
-                    <?php if (isset($_GET['error'])): ?>
-                        <div class="error-message"><?= htmlspecialchars($_GET['error']) ?></div>
-                    <?php endif; ?>
-
-                    <form action="" method="POST">
-                        <input type="hidden" name="action" value="claim">
-
-                        <?php if ($hasCategorisedEvents): ?>
-                        <div class="form-group" id="category_group">
-                            <label for="category_filter"><?= __e('page.claim.label.category') ?></label>
-                            <select id="category_filter">
-                                <option value=""><?= __e('page.claim.label.category-placeholder') ?></option>
-                                <?php foreach (array_keys($eventsByCategory) as $catName): ?>
-                                    <?php if ($catName !== 'Other Events'): ?>
-                                        <option value="<?= htmlspecialchars($catName) ?>"><?= htmlspecialchars(event_category_label($catName)) ?></option>
+                    <?php if ($isDirectEventClaim && $directEvent): ?>
+                        <div class="direct-claim-header">
+                            <div>
+                                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #0284c7;">
+                                    <?= __e('direct-claim.organized-by') ?>:
+                                </span>
+                                <div style="font-size: 14px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px; margin-top: 2px;">
+                                    <img src="<?= htmlspecialchars($currentOrgLogo) ?>" alt="Logo" style="height: 24px; width: auto;">
+                                    <?php if ((int)$targetOrg['id'] === 1): ?>
+                                        <a href="<?= $basePath ?>/" style="color: inherit; text-decoration: none;">
+                                            <?= htmlspecialchars($directEvent['org_name']) ?>
+                                        </a>
+                                    <?php else: ?>
+                                        <a href="<?= $basePath ?>/c/<?= urlencode($directEvent['org_slug']) ?>" style="color: inherit; text-decoration: none;">
+                                            <?= htmlspecialchars($directEvent['org_name']) ?>
+                                        </a>
                                     <?php endif; ?>
-                                <?php endforeach; ?>
-                                <?php if (isset($eventsByCategory['Other Events'])): ?>
-                                    <option value="Other Events"><?= htmlspecialchars(__('admin.event-form.option.uncategorised')) ?></option>
-                                <?php endif; ?>
-                            </select>
+                                </div>
+                            </div>
+                            <span class="event-card-cat"><?= htmlspecialchars(event_category_label($directEvent['category'] ?? 'Event')) ?></span>
                         </div>
+
+                        <h1><?= htmlspecialchars($directEvent['name']) ?></h1>
+                        <div class="subtitle">
+                            <?= __e('page.claim.subtitle') ?>
+                        </div>
+
+                        <?php if (isset($_GET['error'])): ?>
+                            <div class="error-message"><?= htmlspecialchars($_GET['error']) ?></div>
                         <?php endif; ?>
 
-                        <div class="form-group">
-                            <label for="event_id"><?= __e('page.claim.label.event') ?></label>
-                            <select id="event_id" name="event_id" required>
-                                <option value=""><?= __e('page.claim.label.event-placeholder') ?></option>
-                                <?php foreach ($events as $e): ?>
-                                    <option value="<?= htmlspecialchars($e['id']) ?>"
-                                            data-org-id="<?= (int)$e['organization_id'] ?>"
-                                            data-category="<?= htmlspecialchars(!empty($e['category']) ? $e['category'] : 'Other Events') ?>">
-                                        <?= htmlspecialchars($e['name']) ?> (<?= htmlspecialchars($e['org_name'] ?? 'DCW') ?>)
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                        <form action="" method="POST">
+                            <input type="hidden" name="action" value="claim">
+
+                            <div class="form-group">
+                                <label for="full_name"><?= __e('page.claim.label.name') ?></label>
+                                <input type="text" id="full_name" name="full_name" required placeholder="<?= __e('page.claim.label.name-placeholder') ?>">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="email"><?= __e('page.claim.label.email') ?></label>
+                                <input type="email" id="email" name="email" required placeholder="<?= __e('page.claim.label.email-placeholder') ?>">
+                            </div>
+
+                            <button type="submit" class="btn-submit">
+                                <?= __e('page.claim.submit') ?>
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </button>
+                        </form>
+
+                        <div style="text-align: center; margin-top: 20px;">
+                            <?php if ((int)$targetOrg['id'] === 1): ?>
+                                <a href="<?= $basePath ?>/" style="color: #0284c7; font-size: 13px; text-decoration: none; font-weight: 500;">
+                                    ← <?= __('direct-claim.all-org-events', ['org' => htmlspecialchars($directEvent['org_name'])]) ?>
+                                </a>
+                            <?php else: ?>
+                                <a href="<?= $basePath ?>/c/<?= urlencode($directEvent['org_slug']) ?>" style="color: #0284c7; font-size: 13px; text-decoration: none; font-weight: 500;">
+                                    ← <?= __('direct-claim.all-org-events', ['org' => htmlspecialchars($directEvent['org_name'])]) ?>
+                                </a>
+                            <?php endif; ?>
                         </div>
 
-                        <div class="form-group">
-                            <label for="full_name"><?= __e('page.claim.label.name') ?></label>
-                            <input type="text" id="full_name" name="full_name" required placeholder="<?= __e('page.claim.label.name-placeholder') ?>">
+                    <?php else: ?>
+                        <div style="text-align: center; margin-bottom: 15px;">
+                            <svg viewBox="0 0 24 24" width="40" height="40" style="color: var(--primary-color);">
+                                <path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                            </svg>
+                        </div>
+                        <h1><?= __e('page.claim.title') ?></h1>
+                        <div class="subtitle">
+                            <?= __e('page.claim.subtitle') ?>
                         </div>
 
-                        <div class="form-group">
-                            <label for="email"><?= __e('page.claim.label.email') ?></label>
-                            <input type="email" id="email" name="email" required placeholder="<?= __e('page.claim.label.email-placeholder') ?>">
-                        </div>
+                        <?php if (isset($_GET['error'])): ?>
+                            <div class="error-message"><?= htmlspecialchars($_GET['error']) ?></div>
+                        <?php endif; ?>
 
-                        <button type="submit" class="btn-submit">
-                            <?= __e('page.claim.submit') ?>
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </button>
-                    </form>
+                        <form action="" method="POST">
+                            <input type="hidden" name="action" value="claim">
+
+                            <?php if ($hasCategorisedEvents): ?>
+                            <div class="form-group" id="category_group">
+                                <label for="category_filter"><?= __e('page.claim.label.category') ?></label>
+                                <select id="category_filter">
+                                    <option value=""><?= __e('page.claim.label.category-placeholder') ?></option>
+                                    <?php foreach (array_keys($eventsByCategory) as $catName): ?>
+                                        <?php if ($catName !== 'Other Events'): ?>
+                                            <option value="<?= htmlspecialchars($catName) ?>"><?= htmlspecialchars(event_category_label($catName)) ?></option>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                    <?php if (isset($eventsByCategory['Other Events'])): ?>
+                                        <option value="Other Events"><?= htmlspecialchars(__('admin.event-form.option.uncategorised')) ?></option>
+                                    <?php endif; ?>
+                                </select>
+                            </div>
+                            <?php endif; ?>
+
+                            <div class="form-group">
+                                <label for="event_id"><?= __e('page.claim.label.event') ?></label>
+                                <select id="event_id" name="event_id" required>
+                                    <option value=""><?= __e('page.claim.label.event-placeholder') ?></option>
+                                    <?php if (empty($events)): ?>
+                                        <option value="" disabled><?= __e('hub.no-events') ?></option>
+                                    <?php else: ?>
+                                        <?php foreach ($events as $e): ?>
+                                            <option value="<?= htmlspecialchars($e['id']) ?>"
+                                                    data-category="<?= htmlspecialchars(!empty($e['category']) ? $e['category'] : 'Other Events') ?>">
+                                                <?= htmlspecialchars($e['name']) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="full_name"><?= __e('page.claim.label.name') ?></label>
+                                <input type="text" id="full_name" name="full_name" required placeholder="<?= __e('page.claim.label.name-placeholder') ?>">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="email"><?= __e('page.claim.label.email') ?></label>
+                                <input type="email" id="email" name="email" required placeholder="<?= __e('page.claim.label.email-placeholder') ?>">
+                            </div>
+
+                            <button type="submit" class="btn-submit">
+                                <?= __e('page.claim.submit') ?>
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </button>
+                        </form>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Verify Credential Column -->
@@ -1170,70 +1184,61 @@ if ($isDirectEventClaim && $directEvent) {
     document.addEventListener('DOMContentLoaded', function () {
         const categoryFilter = document.getElementById('category_filter');
         const eventSelect = document.getElementById('event_id');
-        const pills = document.querySelectorAll('.pill-btn');
-        if (!eventSelect) return;
+        if (eventSelect) {
+            const allEventOptions = Array.from(eventSelect.querySelectorAll('option')).filter(function (opt) {
+                return opt.value !== '';
+            });
+            const placeholderOption = eventSelect.querySelector('option[value=""]');
 
-        const allEventOptions = Array.from(eventSelect.querySelectorAll('option')).filter(function (opt) {
-            return opt.value !== '';
-        });
-        const placeholderOption = eventSelect.querySelector('option[value=""]');
+            function applyFilters() {
+                const selectedCategory = categoryFilter ? categoryFilter.value.trim() : '';
+                const currentSelectedValue = eventSelect.value;
 
-        let activeOrgId = 0;
-
-        function applyFilters() {
-            const selectedCategory = categoryFilter ? categoryFilter.value.trim() : '';
-            const currentSelectedValue = eventSelect.value;
-
-            eventSelect.innerHTML = '';
-            if (placeholderOption) {
-                eventSelect.appendChild(placeholderOption);
-            }
-
-            let matchCount = 0;
-            allEventOptions.forEach(function (opt) {
-                const optOrgId = parseInt(opt.getAttribute('data-org-id') || '0', 10);
-                const optCategory = opt.getAttribute('data-category') || '';
-
-                const matchesOrg = (activeOrgId === 0 || optOrgId === activeOrgId);
-                const matchesCat = (!selectedCategory || optCategory === selectedCategory);
-
-                if (matchesOrg && matchesCat) {
-                    eventSelect.appendChild(opt);
-                    matchCount++;
+                eventSelect.innerHTML = '';
+                if (placeholderOption) {
+                    eventSelect.appendChild(placeholderOption);
                 }
-            });
 
-            if (matchCount === 0 && (selectedCategory !== '' || activeOrgId !== 0)) {
-                const noMatch = document.createElement('option');
-                noMatch.value = '';
-                noMatch.disabled = true;
-                noMatch.textContent = <?= json_encode(__('page.claim.label.no-events-category')) ?>;
-                eventSelect.appendChild(noMatch);
+                let matchCount = 0;
+                allEventOptions.forEach(function (opt) {
+                    const optCategory = opt.getAttribute('data-category') || '';
+                    const matchesCat = (!selectedCategory || optCategory === selectedCategory);
+
+                    if (matchesCat) {
+                        eventSelect.appendChild(opt);
+                        matchCount++;
+                    }
+                });
+
+                if (matchCount === 0 && selectedCategory !== '') {
+                    const noMatch = document.createElement('option');
+                    noMatch.value = '';
+                    noMatch.disabled = true;
+                    noMatch.textContent = <?= json_encode(__('page.claim.label.no-events-category')) ?>;
+                    eventSelect.appendChild(noMatch);
+                }
+
+                const stillValid = Array.from(eventSelect.options).some(function (o) {
+                    return o.value === currentSelectedValue && o.value !== '';
+                });
+                if (stillValid) {
+                    eventSelect.value = currentSelectedValue;
+                } else {
+                    eventSelect.value = '';
+                }
             }
 
-            const stillValid = Array.from(eventSelect.options).some(function (o) {
-                return o.value === currentSelectedValue && o.value !== '';
-            });
-            if (stillValid) {
-                eventSelect.value = currentSelectedValue;
-            } else {
-                eventSelect.value = '';
+            if (categoryFilter) {
+                categoryFilter.addEventListener('change', applyFilters);
             }
         }
 
-        if (categoryFilter) {
-            categoryFilter.addEventListener('change', applyFilters);
-        }
-
-        pills.forEach(function (pill) {
-            pill.addEventListener('click', function (e) {
-                if (e.target.classList.contains('pill-hub-link')) {
-                    return; // Let user open community hub directly
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function (e) {
+            document.querySelectorAll('.comm-switcher.open, .lang-switcher.open').forEach(function (el) {
+                if (!el.contains(e.target)) {
+                    el.classList.remove('open');
                 }
-                pills.forEach(p => p.classList.remove('active'));
-                this.classList.add('active');
-                activeOrgId = parseInt(this.getAttribute('data-org-id') || '0', 10);
-                applyFilters();
             });
         });
     });
