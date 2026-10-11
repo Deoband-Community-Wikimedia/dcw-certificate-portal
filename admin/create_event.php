@@ -60,11 +60,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$eventName) {
         $error = __('admin.event-form.error.name-required');
     } else {
-        $stmt = $pdo->prepare("INSERT INTO events (name, category, linkedin_caption, custom_verification_text, cert_prefix, certificate_issue_date, completion_date, description, partners, organization_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$eventName, $category, $linkedinCaption, $customVerificationText, $certPrefix, $certificateIssueDate, $completionDate, $description, $partners, $eventOrgId]);
+        invitation_ensure_schema($pdo);
+        $eventSlug = trim($_POST['slug'] ?? '');
+        if ($eventSlug === '') {
+            $eventSlug = generate_unique_event_slug($pdo, $eventName);
+        } else {
+            $eventSlug = slugify($eventSlug);
+            if (is_reserved_slug($eventSlug)) {
+                $eventSlug .= '-event';
+            }
+            $chkSlug = $pdo->prepare("SELECT COUNT(*) FROM events WHERE slug = ?");
+            $chkSlug->execute([$eventSlug]);
+            if ($chkSlug->fetchColumn() > 0) {
+                $eventSlug = generate_unique_event_slug($pdo, $eventSlug);
+            }
+        }
+
+        $stmt = $pdo->prepare("INSERT INTO events (name, slug, category, linkedin_caption, custom_verification_text, cert_prefix, certificate_issue_date, completion_date, description, partners, organization_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$eventName, $eventSlug, $category, $linkedinCaption, $customVerificationText, $certPrefix, $certificateIssueDate, $completionDate, $description, $partners, $eventOrgId]);
         $newEventId = $pdo->lastInsertId();
 
-        log_audit_action($pdo, 'Created Event', "Event ID: {$newEventId}, Name: {$eventName}, Org ID: {$eventOrgId}");
+        log_audit_action($pdo, 'Created Event', "Event ID: {$newEventId}, Name: {$eventName}, Slug: {$eventSlug}, Org ID: {$eventOrgId}");
 
         header("Location: manage_roles.php?event_id=" . $newEventId);
         exit;
@@ -128,7 +144,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="form-group">
             <label><?= __e('admin.event-form.label.name') ?></label>
-            <input type="text" name="name" required placeholder="<?= __e('admin.create-event.placeholder.name') ?>">
+            <input type="text" id="event_name" name="name" required placeholder="<?= __e('admin.create-event.placeholder.name') ?>">
+        </div>
+
+        <div class="form-group">
+            <label><?= __e('admin.event-form.label.slug') ?></label>
+            <input type="text" id="event_slug" name="slug" placeholder="e.g. wikiversary-2026">
+            <div style="font-size: 11px; color: #777; margin-top: 5px;">
+                <?= __e('admin.event-form.hint.slug') ?>
+            </div>
         </div>
 
         <div class="form-group">
@@ -214,6 +238,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     document.getElementById('cert_prefix')?.addEventListener('input', function() {
         this.dataset.touched = 'true';
     });
+
+    const nameIn = document.getElementById('event_name');
+    const slugIn = document.getElementById('event_slug');
+    if (nameIn && slugIn) {
+        let slugTouched = false;
+        slugIn.addEventListener('input', () => { slugTouched = true; });
+        nameIn.addEventListener('input', () => {
+            if (!slugTouched) {
+                slugIn.value = nameIn.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').substring(0, 50);
+            }
+        });
+    }
 </script>
 <?php if ($error): ?>
 <script>

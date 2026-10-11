@@ -296,8 +296,11 @@ function i18n_lang_switcher(): void
     // Build base URL preserving existing query params (minus 'lang')
     $params = $_GET;
     unset($params['lang']);
-    $baseQuery = http_build_query($params);
     $baseUrl   = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
+    if ($baseUrl && (strpos($baseUrl, '/c/') !== false || strpos($baseUrl, '/e/') !== false)) {
+        unset($params['community_slug'], $params['event_slug']);
+    }
+    $baseQuery = http_build_query($params);
 
     echo '<div class="lang-switcher" role="navigation" aria-label="Language selector">';
     echo '<button class="lang-switcher-btn" '

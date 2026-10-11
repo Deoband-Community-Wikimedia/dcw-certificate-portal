@@ -140,6 +140,24 @@ if (is_super_admin()) {
 }
 $currentOrg = get_organization($pdo, get_current_tenant_id());
 
+// First-time Quickstart Checklist calculations
+$isOrgLead = !is_super_admin();
+$showWelcome = isset($_GET['welcome']);
+$step1Done = false;
+$step2Done = false;
+$step3Done = false;
+
+if ($currentOrg) {
+    $hasCustomLogo = !empty($currentOrg['logo_path']) && $currentOrg['logo_path'] !== 'assets/DCW_logo.png';
+    $hasDetails = !empty($currentOrg['contact_email']) || !empty($currentOrg['home_url']);
+    $step1Done = ($hasCustomLogo || $hasDetails);
+    $step2Done = ($totalEvents > 0);
+    $step3Done = ($totalCerts > 0);
+}
+
+$completedSteps = ($step1Done ? 1 : 0) + ($step2Done ? 1 : 0) + ($step3Done ? 1 : 0);
+$progressPct = (int)round(($completedSteps / 3) * 100);
+$allDone = ($completedSteps === 3);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -149,6 +167,102 @@ $currentOrg = get_organization($pdo, get_current_tenant_id());
     <title><?= __e('admin.dashboard.page-title') ?></title>
     <link rel="stylesheet" href="style.css?v=<?= time() ?>">
     <?php i18n_lang_switcher_css(); ?>
+    <style>
+        .quickstart-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 24px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+        }
+        .quickstart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .quickstart-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .progress-bar-bg {
+            background: #f1f5f9;
+            border-radius: 999px;
+            height: 8px;
+            overflow: hidden;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .progress-bar-fill {
+            background: linear-gradient(90deg, #106b9a, #0284c7);
+            height: 100%;
+            transition: width 0.4s ease;
+        }
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+        }
+        .step-item {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .step-item.done {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+        .step-top {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .step-check {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .step-check.done { background: #22c55e; color: white; }
+        .step-check.pending { background: #cbd5e1; color: #475569; }
+        .step-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+        .step-desc {
+            font-size: 12px;
+            color: #64748b;
+            line-height: 1.4;
+        }
+        .step-btn {
+            align-self: flex-start;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 6px;
+            text-decoration: none;
+            display: inline-block;
+        }
+    </style>
 </head>
 <body>
 
@@ -181,6 +295,98 @@ $currentOrg = get_organization($pdo, get_current_tenant_id());
 </form>
 
 <div class="container">
+
+    <?php if ($showWelcome): ?>
+        <div style="background: #e0f2fe; border: 1px solid #7dd3fc; color: #0369a1; padding: 14px 18px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 22px;">🎉</span>
+            <div>
+                <strong><?= __e('admin.dashboard.welcome-title') ?></strong><br>
+                <span style="font-size: 13px;"><?= __e('admin.dashboard.welcome-desc') ?></span>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($isOrgLead && (!$allDone || $showWelcome)): ?>
+        <!-- Partner First-Time Quickstart Checklist -->
+        <div class="quickstart-card">
+            <div class="quickstart-header">
+                <div class="quickstart-title">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="#106b9a"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    <?= __e('admin.dashboard.quickstart.heading') ?>
+                    <span style="font-size: 12px; font-weight: normal; color: #64748b;">(<?= $completedSteps ?>/3 <?= __e('admin.dashboard.quickstart.completed') ?>)</span>
+                </div>
+                <div style="font-size: 13px; font-weight: 700; color: #106b9a;">
+                    <?= $progressPct ?>%
+                </div>
+            </div>
+
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" style="width: <?= $progressPct ?>%;"></div>
+            </div>
+
+            <div class="steps-grid">
+                <!-- Step 1 -->
+                <div class="step-item <?= $step1Done ? 'done' : '' ?>">
+                    <div class="step-top">
+                        <div class="step-check <?= $step1Done ? 'done' : 'pending' ?>">
+                            <?= $step1Done ? '✓' : '1' ?>
+                        </div>
+                        <div>
+                            <div class="step-title"><?= __e('admin.dashboard.step1.title') ?></div>
+                            <div class="step-desc"><?= __e('admin.dashboard.step1.desc') ?></div>
+                        </div>
+                    </div>
+                    <div>
+                        <a href="organization_settings.php" class="step-btn" style="<?= $step1Done ? 'background: #dcfce7; color: #166534;' : 'background: #106b9a; color: white;' ?>">
+                            <?= $step1Done ? __e('admin.dashboard.step.manage') : __e('admin.dashboard.step1.btn') ?>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="step-item <?= $step2Done ? 'done' : '' ?>">
+                    <div class="step-top">
+                        <div class="step-check <?= $step2Done ? 'done' : 'pending' ?>">
+                            <?= $step2Done ? '✓' : '2' ?>
+                        </div>
+                        <div>
+                            <div class="step-title"><?= __e('admin.dashboard.step2.title') ?></div>
+                            <div class="step-desc"><?= __e('admin.dashboard.step2.desc') ?></div>
+                        </div>
+                    </div>
+                    <div>
+                        <a href="create_event.php" class="step-btn" style="<?= $step2Done ? 'background: #dcfce7; color: #166534;' : 'background: #106b9a; color: white;' ?>">
+                            <?= $step2Done ? __e('admin.dashboard.step.manage') : __e('admin.dashboard.step2.btn') ?>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="step-item <?= $step3Done ? 'done' : '' ?>">
+                    <div class="step-top">
+                        <div class="step-check <?= $step3Done ? 'done' : 'pending' ?>">
+                            <?= $step3Done ? '✓' : '3' ?>
+                        </div>
+                        <div>
+                            <div class="step-title"><?= __e('admin.dashboard.step3.title') ?></div>
+                            <div class="step-desc"><?= __e('admin.dashboard.step3.desc') ?></div>
+                        </div>
+                    </div>
+                    <div>
+                        <?php if ($totalEvents > 0 && !empty($events[0]['id'])): ?>
+                            <a href="manage_participants.php?event_id=<?= (int)$events[0]['id'] ?>" class="step-btn" style="<?= $step3Done ? 'background: #dcfce7; color: #166534;' : 'background: #106b9a; color: white;' ?>">
+                                <?= $step3Done ? __e('admin.dashboard.step.manage') : __e('admin.dashboard.step3.btn') ?>
+                            </a>
+                        <?php else: ?>
+                            <a href="create_event.php" class="step-btn" style="background: #cbd5e1; color: #475569; pointer-events: none;">
+                                <?= __e('admin.dashboard.step3.btn') ?>
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
 
     <div class="stats-grid">
         <div class="stat-card">
