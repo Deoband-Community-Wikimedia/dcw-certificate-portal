@@ -466,6 +466,7 @@
 	"otp.error.unauthorized-access": "Error message shown when a user tries to access success, download, or email dispatch without verifying OTP.",
 	"hub.verified-affiliate": "Badge text indicating verified Wikimedia affiliate status on community hub header.",
 	"hub.events-heading": "Heading for the events section on the public community hub page.",
+	"hub.events": "Word meaning events, used in event counter tooltips (e.g. 5 events).",
 	"hub.events-subheading": "Subheading explaining how participants can claim certificates for active events on the community hub.",
 	"hub.no-events": "Empty state message when a community has not yet published any certificate events.",
 	"hub.claim-btn": "Button text on community hub event cards to claim an issued certificate.",

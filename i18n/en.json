@@ -465,6 +465,7 @@
     "otp.error.unauthorized-access": "Unauthorized access. Please claim and verify your certificate first.",
     "hub.verified-affiliate": "Verified Wikimedia Affiliate",
     "hub.events-heading": "Active & Past Events",
+    "hub.events": "events",
     "hub.events-subheading": "Select an event to claim and verify your issued certificates.",
     "hub.no-events": "No events have been published by this community yet.",
     "hub.claim-btn": "Claim Certificate",

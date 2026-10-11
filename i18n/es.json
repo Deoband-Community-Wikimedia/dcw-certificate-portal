@@ -465,6 +465,7 @@
 	"otp.error.unauthorized-access": "Acceso no autorizado. Primero reclama y verifica tu certificado.",
 	"hub.verified-affiliate": "Afiliado verificado de Wikimedia",
 	"hub.events-heading": "Eventos activos y pasados",
+	"hub.events": "eventos",
 	"hub.events-subheading": "Selecciona un evento para reclamar y verificar tus certificados emitidos.",
 	"hub.no-events": "Esta comunidad aún no ha publicado ningún evento.",
 	"hub.claim-btn": "Reclamar certificado",
