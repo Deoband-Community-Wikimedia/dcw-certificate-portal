@@ -347,6 +347,49 @@ $lintOutput = shell_exec('php -l ' . escapeshellarg($migFile));
 assertTest(strpos($lintOutput, 'No syntax errors') !== false, 'migration script passes PHP syntax check');
 
 // -----------------------------------------------------------------------------
+// Test 12: Community Navigation Bar Ranking & URL Routing
+// -----------------------------------------------------------------------------
+echo "\nTest 12: Community navigation bar activity ranking & URL generation...\n";
+$pdo->exec("
+    CREATE TABLE IF NOT EXISTS event_participants (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id INTEGER NOT NULL,
+        participant_id INTEGER NOT NULL
+    );
+");
+
+// Insert sample organizations with varying events and participants
+$pdo->exec("
+    INSERT OR IGNORE INTO organizations (id, name, slug, cert_code, is_active)
+    VALUES 
+        (3, 'Low Activity Chapter', 'low-act', 'LOW', 1),
+        (4, 'High Activity Chapter', 'high-act', 'HIGH', 1);
+
+    INSERT INTO events (id, organization_id, name, slug) VALUES (20, 4, 'Event 1', 'ev-1');
+    INSERT INTO events (id, organization_id, name, slug) VALUES (21, 4, 'Event 2', 'ev-2');
+    INSERT INTO event_participants (event_id, participant_id) VALUES (20, 101), (20, 102), (21, 103);
+");
+
+$stmtRanked = $pdo->query("
+    SELECT 
+        o.id, o.name, o.slug, o.cert_code, o.logo_path,
+        COUNT(DISTINCT e.id) AS event_count,
+        COUNT(DISTINCT ep.participant_id) AS participant_count
+    FROM organizations o
+    LEFT JOIN events e ON e.organization_id = o.id
+    LEFT JOIN event_participants ep ON ep.event_id = e.id
+    WHERE o.is_active = 1
+    GROUP BY o.id, o.name, o.slug, o.cert_code, o.logo_path
+    ORDER BY (o.id = 1) DESC, event_count DESC, participant_count DESC, o.name ASC
+");
+$rankedOrgs = $stmtRanked->fetchAll();
+
+assertTest((int)$rankedOrgs[0]['id'] === 1, 'DCW (ID 1) is pinned first in community navigation');
+assertTest((int)$rankedOrgs[1]['id'] === 4, 'High activity affiliate ranked next due to higher event count');
+assertTest((int)$rankedOrgs[1]['event_count'] === 2, 'High activity affiliate correctly counts distinct events');
+assertTest((int)$rankedOrgs[1]['participant_count'] === 3, 'High activity affiliate correctly counts distinct participants');
+
+// -----------------------------------------------------------------------------
 // Summary
 // -----------------------------------------------------------------------------
 echo "\n=======================================================\n";

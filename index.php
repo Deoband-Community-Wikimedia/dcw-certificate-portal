@@ -270,8 +270,19 @@ if ($isOtpStep && !isset($_SESSION['pending_otp'])) {
     exit;
 }
 
-// Fetch active communities for partner switcher
-$stmtAllOrgs = $pdo->query("SELECT id, name, slug, cert_code, logo_path FROM organizations WHERE is_active = 1 ORDER BY id ASC");
+// Fetch active communities ordered by activity (DCW first, then most events/participants)
+$stmtAllOrgs = $pdo->query("
+    SELECT 
+        o.id, o.name, o.slug, o.cert_code, o.logo_path,
+        COUNT(DISTINCT e.id) AS event_count,
+        COUNT(DISTINCT ep.participant_id) AS participant_count
+    FROM organizations o
+    LEFT JOIN events e ON e.organization_id = o.id
+    LEFT JOIN event_participants ep ON ep.event_id = e.id
+    WHERE o.is_active = 1
+    GROUP BY o.id, o.name, o.slug, o.cert_code, o.logo_path
+    ORDER BY (o.id = 1) DESC, event_count DESC, participant_count DESC, o.name ASC
+");
 $activeCommunities = $stmtAllOrgs->fetchAll();
 
 // Fetch events scoped specifically to targetOrg
@@ -608,6 +619,88 @@ if ($isDirectEventClaim && $directEvent) {
             background: #f0f9ff;
             color: var(--primary-color);
             font-weight: 600;
+        }
+
+        /* Clickable Community Navigation Bar */
+        .community-nav-bar {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        }
+        .community-nav-label {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        .community-nav-list {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 0;
+            padding: 0;
+        }
+        .community-nav-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #334155;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .community-nav-btn:hover {
+            background: #f1f5f9;
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+        }
+        .community-nav-btn.active {
+            background: #106b9a;
+            border-color: #106b9a;
+            color: #ffffff;
+            font-weight: 600;
+            box-shadow: 0 2px 6px rgba(16, 107, 154, 0.25);
+        }
+        .community-nav-logo {
+            height: 18px;
+            width: auto;
+            max-width: 22px;
+            object-fit: contain;
+            border-radius: 3px;
+            background: #ffffff;
+            padding: 1px;
+        }
+        .community-nav-count {
+            font-size: 11px;
+            padding: 1px 7px;
+            border-radius: 10px;
+            background: #e2e8f0;
+            color: #475569;
+            font-weight: 600;
+        }
+        .community-nav-btn.active .community-nav-count {
+            background: rgba(255, 255, 255, 0.25);
+            color: #ffffff;
         }
 
         .pill-btn {
@@ -974,6 +1067,41 @@ if ($isDirectEventClaim && $directEvent) {
                         <a href="<?= $basePath ?>/" class="pill-btn" style="text-decoration: none;">
                             ← <?= htmlspecialchars($rootOrg['name'] ?? 'Deoband Community Wikimedia') ?>
                         </a>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <?php if (count($activeCommunities) > 1): ?>
+                <!-- Clickable Affiliated Communities Bar -->
+                <div class="community-nav-bar" role="navigation" aria-label="<?= __e('nav.partner-communities') ?>">
+                    <div class="community-nav-label">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        <span><?= __e('nav.partner-communities') ?>:</span>
+                    </div>
+                    <div class="community-nav-list">
+                        <?php foreach ($activeCommunities as $comm): ?>
+                            <?php
+                                $isDcw = ((int)$comm['id'] === 1 || $comm['slug'] === 'dcw');
+                                $commUrl = $isDcw ? ($basePath !== '' ? $basePath : '') . '/' : $basePath . '/c/' . rawurlencode($comm['slug']);
+                                $isCurrent = ($targetOrg && (int)$targetOrg['id'] === (int)$comm['id'] && !$isDirectEventClaim);
+                                $commLogo = (!empty($comm['logo_path']) && file_exists($comm['logo_path']))
+                                    ? $basePath . '/' . $comm['logo_path']
+                                    : $basePath . '/assets/DCW_logo.png';
+                                $evCount = (int)($comm['event_count'] ?? 0);
+                            ?>
+                            <a href="<?= htmlspecialchars($commUrl) ?>" class="community-nav-btn <?= $isCurrent ? 'active' : '' ?>">
+                                <img src="<?= htmlspecialchars($commLogo) ?>" alt="" class="community-nav-logo">
+                                <span><?= htmlspecialchars($comm['name']) ?></span>
+                                <?php if ($evCount > 0): ?>
+                                    <span class="community-nav-count"><?= $evCount ?></span>
+                                <?php endif; ?>
+                            </a>
+                        <?php endforeach; ?>
                     </div>
                 </div>
             <?php endif; ?>
