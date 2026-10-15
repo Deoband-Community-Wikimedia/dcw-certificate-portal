@@ -7,6 +7,7 @@
 	"nav.about": "Iwwer",
 	"nav.programs": "Programmen",
 	"nav.vision": "Visioun",
+	"nav.communities": "Communautéiten",
 	"page.claim.label.category": "Kategorie wielen (fakultativ)",
 	"page.claim.label.category-placeholder": "-- All Kategorien --",
 	"page.claim.label.event": "Evenement wielen",
@@ -155,5 +156,6 @@
 	"email.otp.security-notice": "Wann Dir dëse Code net ugefrot hutt, kënnt Dir dës E-Mail roueg ignoréieren.",
 	"otp.placeholder.code": "123456",
 	"otp.error.rate-limited": "Ze vill Ufroen. Waart wgl. e puer Minutten, ier Dir nach eng Kéier probéiert.",
+	"hub.events": "Evenementer",
 	"admin.orgs.lead.active": "Aktiv"
 }
