@@ -14,7 +14,7 @@ if (!otp_is_claim_authorized($certId)) {
 }
 
 $stmt = $pdo->prepare("
-    SELECT p.full_name, e.name as event_name, e.linkedin_caption, e.certificate_issue_date, e.organization_id, ep.created_at
+    SELECT p.full_name, e.name as event_name, e.linkedin_caption, e.certificate_issue_date, e.organization_id, ep.created_at, ep.status
     FROM event_participants ep
     JOIN participants p ON ep.participant_id = p.id
     JOIN events e ON ep.event_id = e.id
@@ -25,6 +25,12 @@ $certData = $stmt->fetch();
 
 if (!$certData) {
     die(__('page.download.error.not-found'));
+}
+
+// Revoked certificates (issue #159): no download/share page, show the public revocation notice instead.
+if (($certData['status'] ?? 'active') === 'revoked') {
+    header("Location: verify.php?id=" . urlencode($certId));
+    exit;
 }
 
 $verifyUrl = adminPortalBaseUrl() . '/verify/' . $certId;

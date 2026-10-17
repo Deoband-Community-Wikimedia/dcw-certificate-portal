@@ -39,6 +39,10 @@ $certData = $stmt->fetch();
 if (!$certData) {
     die(__('page.download.error.not-found'));
 }
+if (($certData['status'] ?? 'active') === 'revoked') {
+    http_response_code(410);
+    die(__('page.download.error.revoked'));
+}
 
 $fullName = $certData['full_name'];
 $visualSettingsStr = !empty($certData['visual_settings']) ? $certData['visual_settings'] : '{}';

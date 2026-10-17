@@ -15,6 +15,10 @@ if (!$certId) {
 if (!defined('DYNAMIC_THUMBNAILS_ENABLED') || !DYNAMIC_THUMBNAILS_ENABLED) {
     serveDefaultLogo();
 }
+// Revoked certificates must never get a rendered preview; show the logo instead.
+if (certificate_is_revoked($pdo, $certId)) {
+    serveDefaultLogo();
+}
 
 // User-Agent Bot check (LinkedIn, Twitter/X, Facebook, Slack, Telegram, WhatsApp)
 // Also allow manual preview via query param for testing/admin purposes

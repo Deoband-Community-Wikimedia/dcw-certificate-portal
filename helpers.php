@@ -6,6 +6,7 @@
 require_once __DIR__ . '/helpers/otp.php';
 require_once __DIR__ . '/helpers/invitation.php';
 require_once __DIR__ . '/helpers/organization.php';
+require_once __DIR__ . '/helpers/revocation.php';
 
 if (!function_exists('event_categories')) {
     /**
@@ -14,7 +15,8 @@ if (!function_exists('event_categories')) {
      *
      * @return string[]
      */
-    function event_categories() {
+    function event_categories()
+    {
         return [
             'Conference',
             'Workshop',
@@ -37,7 +39,8 @@ if (!function_exists('event_category_label')) {
      * @param string $category
      * @return string
      */
-    function event_category_label($category) {
+    function event_category_label($category)
+    {
         if (empty($category)) {
             return '';
         }
@@ -56,7 +59,8 @@ if (!function_exists('sanitizeForFilename')) {
      * @param string $str
      * @return string
      */
-    function sanitizeForFilename($str) {
+    function sanitizeForFilename($str)
+    {
         // Remove characters that are illegal in Windows/Linux/macOS filenames
         $str = preg_replace('/[\/\\\:\*\?"<>\|]/', '', $str);
         // Remove control characters (ASCII 0-31)
@@ -75,12 +79,13 @@ if (!function_exists('getUniqueFilename')) {
      * @param string $filename Original file name
      * @return string
      */
-    function getUniqueFilename($dir, $filename) {
+    function getUniqueFilename($dir, $filename)
+    {
         $filename = preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $filename);
         $info = pathinfo($filename);
         $name = $info['filename'];
-        $ext  = isset($info['extension']) ? '.' . $info['extension'] : '';
-        
+        $ext = isset($info['extension']) ? '.' . $info['extension'] : '';
+
         $counter = 1;
         $newFilename = $filename;
         while (file_exists($dir . $newFilename)) {
@@ -100,7 +105,8 @@ if (!function_exists('syncEventTemplateFolder')) {
      * @param string|null $oldEventName Previous event name if renamed in current request
      * @return array Summary of actions performed
      */
-    function syncEventTemplateFolder($pdo, $eventId, $oldEventName = null) {
+    function syncEventTemplateFolder($pdo, $eventId, $oldEventName = null)
+    {
         $summary = [
             'event_id' => $eventId,
             'folders_renamed' => 0,
@@ -136,7 +142,8 @@ if (!function_exists('syncEventTemplateFolder')) {
                         // Target already exists, move files over
                         $items = @scandir($oldDir) ?: [];
                         foreach ($items as $item) {
-                            if ($item === '.' || $item === '..') continue;
+                            if ($item === '.' || $item === '..')
+                                continue;
                             $src = $oldDir . $item;
                             if (is_file($src)) {
                                 $destFilename = file_exists($expectedDir . $item) ? getUniqueFilename($expectedDir, $item) : $item;
@@ -181,7 +188,8 @@ if (!function_exists('syncEventTemplateFolder')) {
 
         foreach ($roles as $role) {
             $tf = $role['template_file'];
-            if (empty($tf)) continue;
+            if (empty($tf))
+                continue;
 
             if (strpos($tf, '/') !== false) {
                 list($currentFolder, $filename) = explode('/', $tf, 2);
@@ -245,7 +253,8 @@ if (!function_exists('syncEventTemplateFolder')) {
                     }
                     $items = @scandir($legacyDir) ?: [];
                     foreach ($items as $item) {
-                        if ($item === '.' || $item === '..') continue;
+                        if ($item === '.' || $item === '..')
+                            continue;
                         $src = $legacyDir . $item;
                         if (is_file($src)) {
                             $destFilename = file_exists($expectedDir . $item) ? getUniqueFilename($expectedDir, $item) : $item;
@@ -289,7 +298,8 @@ if (!function_exists('extractPdfColorPalette')) {
      * @param  int    $limit   Max colors to return.
      * @return string[] Hex colors (#RRGGBB), most frequent first.
      */
-    function extractPdfColorPalette(string $pdfPath, int $limit = 6): array {
+    function extractPdfColorPalette(string $pdfPath, int $limit = 6): array
+    {
         if (!is_file($pdfPath)) {
             return [];
         }
@@ -313,7 +323,7 @@ if (!function_exists('extractPdfColorPalette')) {
 
             if (preg_match_all('/([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+(rg|RG)\b/', $content, $m, PREG_SET_ORDER)) {
                 foreach ($m as $match) {
-                    $hex = pdfRgbToHex((float)$match[1], (float)$match[2], (float)$match[3]);
+                    $hex = pdfRgbToHex((float) $match[1], (float) $match[2], (float) $match[3]);
                     if ($hex !== null) {
                         $counts[$hex] = ($counts[$hex] ?? 0) + 1;
                     }
@@ -322,7 +332,7 @@ if (!function_exists('extractPdfColorPalette')) {
 
             if (preg_match_all('/([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+(k|K)\b/', $content, $m, PREG_SET_ORDER)) {
                 foreach ($m as $match) {
-                    [$r, $g, $b] = pdfCmykToRgb((float)$match[1], (float)$match[2], (float)$match[3], (float)$match[4]);
+                    [$r, $g, $b] = pdfCmykToRgb((float) $match[1], (float) $match[2], (float) $match[3], (float) $match[4]);
                     $hex = pdfRgbToHex($r, $g, $b);
                     if ($hex !== null) {
                         $counts[$hex] = ($counts[$hex] ?? 0) + 1;
@@ -342,16 +352,18 @@ if (!function_exists('extractPdfColorPalette')) {
 }
 
 if (!function_exists('pdfRgbToHex')) {
-    function pdfRgbToHex(float $r, float $g, float $b): ?string {
+    function pdfRgbToHex(float $r, float $g, float $b): ?string
+    {
         if ($r < 0 || $r > 1 || $g < 0 || $g > 1 || $b < 0 || $b > 1) {
             return null;
         }
-        return sprintf('#%02X%02X%02X', (int)round($r * 255), (int)round($g * 255), (int)round($b * 255));
+        return sprintf('#%02X%02X%02X', (int) round($r * 255), (int) round($g * 255), (int) round($b * 255));
     }
 }
 
 if (!function_exists('pdfCmykToRgb')) {
-    function pdfCmykToRgb(float $c, float $m, float $y, float $k): array {
+    function pdfCmykToRgb(float $c, float $m, float $y, float $k): array
+    {
         $r = 1 - min(1, $c * (1 - $k) + $k);
         $g = 1 - min(1, $m * (1 - $k) + $k);
         $b = 1 - min(1, $y * (1 - $k) + $k);
@@ -360,7 +372,8 @@ if (!function_exists('pdfCmykToRgb')) {
 }
 
 if (!function_exists('pdfColorIsNearWhiteOrBlack')) {
-    function pdfColorIsNearWhiteOrBlack(string $hex): bool {
+    function pdfColorIsNearWhiteOrBlack(string $hex): bool
+    {
         $r = hexdec(substr($hex, 1, 2));
         $g = hexdec(substr($hex, 3, 2));
         $b = hexdec(substr($hex, 5, 2));
@@ -377,22 +390,22 @@ if (!function_exists('sendAvailabilityEmail')) {
      * @param string $certId
      * @return array Array with success status and message/error.
      */
-    function sendAvailabilityEmail($pdo, $certId) {
+    function sendAvailabilityEmail($pdo, $certId)
+    {
         // Fetch participant and event details
         $stmt = $pdo->prepare("
-            SELECT ep.certificate_id, p.full_name, p.email, e.name as event_name 
-            FROM event_participants ep
-            JOIN participants p ON ep.participant_id = p.id
-            JOIN events e ON ep.event_id = e.id
-            WHERE ep.certificate_id = ?
-        ");
+    SELECT ep.certificate_id, ep.status, p.full_name, p.email, e.name as event_name 
+    ...
+");
         $stmt->execute([$certId]);
         $certData = $stmt->fetch();
 
         if (!$certData || empty($certData['email'])) {
             return ['success' => false, 'message' => 'Invalid certificate or missing recipient email.'];
         }
-
+        if (($certData['status'] ?? 'active') === 'revoked') {
+            return ['success' => false, 'message' => 'Certificate has been revoked; notification not sent.'];
+        }
         $recipientEmail = $certData['email'];
         $fullName = $certData['full_name'];
         $eventName = $certData['event_name'];
@@ -468,7 +481,7 @@ if (!function_exists('sendAvailabilityEmail')) {
             $mail->AltBody = "Hello {$fullName},\n\nYour certificate for {$eventName} is now available on the {$orgName} Certificate Portal:\n{$portalUrl}\n\nPlease use your registered email address ({$recipientEmail}) to claim your certificate.";
 
             $mail->send();
-            
+
             // Log success to email_logs
             $stmtLog = $pdo->prepare("INSERT INTO email_logs (certificate_id, recipient_email, status, trigger_type, error_message) VALUES (?, ?, 'Success', 'notification', NULL)");
             $stmtLog->execute([$certId, $recipientEmail]);
@@ -480,7 +493,7 @@ if (!function_exists('sendAvailabilityEmail')) {
             return ['success' => true, 'message' => 'Notification email sent successfully.'];
         } catch (\Exception $e) {
             $errorMsg = $mail->ErrorInfo ?: $e->getMessage();
-            
+
             // Log failure to email_logs
             $stmtLog = $pdo->prepare("INSERT INTO email_logs (certificate_id, recipient_email, status, trigger_type, error_message) VALUES (?, ?, 'Failed', 'notification', ?)");
             $stmtLog->execute([$certId, $recipientEmail, $errorMsg]);
@@ -502,7 +515,8 @@ if (!function_exists('adminPortalBaseUrl')) {
      *
      * @return string e.g. https://example.org/certs
      */
-    function adminPortalBaseUrl() {
+    function adminPortalBaseUrl()
+    {
         if (!empty($_ENV['PORTAL_BASE_URL'])) {
             return rtrim(trim($_ENV['PORTAL_BASE_URL']), '/');
         }
@@ -526,7 +540,8 @@ if (!function_exists('sendAdminResetEmail')) {
      * @param string $resetUrl   Fully-qualified reset link (includes the raw token).
      * @return array{success: bool, message: string}
      */
-    function sendAdminResetEmail($recipientEmail, $username, $resetUrl, $pdo = null) {
+    function sendAdminResetEmail($recipientEmail, $username, $resetUrl, $pdo = null)
+    {
         if ($pdo === null) {
             global $pdo;
         }
@@ -602,7 +617,8 @@ if (!function_exists('sendAdminResetEmail')) {
                 try {
                     $stmtLog = $pdo->prepare("INSERT INTO email_logs (certificate_id, recipient_email, status, trigger_type, error_message) VALUES (NULL, ?, 'Success', 'password_reset', NULL)");
                     $stmtLog->execute([$recipientEmail]);
-                } catch (\Exception $e) {}
+                } catch (\Exception $e) {
+                }
             }
 
             return ['success' => true, 'message' => 'Reset email sent successfully.'];
@@ -614,7 +630,8 @@ if (!function_exists('sendAdminResetEmail')) {
                 try {
                     $stmtLog = $pdo->prepare("INSERT INTO email_logs (certificate_id, recipient_email, status, trigger_type, error_message) VALUES (NULL, ?, 'Failed', 'password_reset', ?)");
                     $stmtLog->execute([$recipientEmail, $errorMsg]);
-                } catch (\Exception $ignored) {}
+                } catch (\Exception $ignored) {
+                }
             }
 
             return ['success' => false, 'message' => 'Mail dispatch failed: ' . $errorMsg];
@@ -633,9 +650,10 @@ if (!function_exists('get_current_tenant_id')) {
      *
      * @return int
      */
-    function get_current_tenant_id(): int {
-        if (isset($_SESSION['admin_org_id']) && (int)$_SESSION['admin_org_id'] > 0) {
-            return (int)$_SESSION['admin_org_id'];
+    function get_current_tenant_id(): int
+    {
+        if (isset($_SESSION['admin_org_id']) && (int) $_SESSION['admin_org_id'] > 0) {
+            return (int) $_SESSION['admin_org_id'];
         }
         // Fail-closed guard: an authenticated org_admin without a valid tenant ID must not fall back to DCW
         if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true && isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'org_admin') {
@@ -651,7 +669,8 @@ if (!function_exists('is_super_admin')) {
      *
      * @return bool
      */
-    function is_super_admin(): bool {
+    function is_super_admin(): bool
+    {
         if (empty($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
             return false;
         }
@@ -668,7 +687,8 @@ if (!function_exists('verify_event_access')) {
      * @param int $eventId
      * @return array|null
      */
-    function verify_event_access(PDO $pdo, int $eventId): ?array {
+    function verify_event_access(PDO $pdo, int $eventId): ?array
+    {
         if ($eventId <= 0) {
             return null;
         }
@@ -688,7 +708,7 @@ if (!function_exists('verify_event_access')) {
 
         // Org admins can only access events matching their active organization
         $currentOrgId = get_current_tenant_id();
-        if ((int)($event['organization_id'] ?? 1) === $currentOrgId) {
+        if ((int) ($event['organization_id'] ?? 1) === $currentOrgId) {
             return $event;
         }
 
@@ -704,7 +724,8 @@ if (!function_exists('get_organization')) {
      * @param int $orgId
      * @return array|null
      */
-    function get_organization(PDO $pdo, int $orgId): ?array {
+    function get_organization(PDO $pdo, int $orgId): ?array
+    {
         if ($orgId <= 0) {
             return null;
         }
@@ -722,8 +743,9 @@ if (!function_exists('verify_super_admin_passcode')) {
      * @param string $passcode
      * @return bool
      */
-    function verify_super_admin_passcode(string $passcode): bool {
-        return defined('SUPER_ADMIN_PASSCODE') && hash_equals((string)SUPER_ADMIN_PASSCODE, $passcode);
+    function verify_super_admin_passcode(string $passcode): bool
+    {
+        return defined('SUPER_ADMIN_PASSCODE') && hash_equals((string) SUPER_ADMIN_PASSCODE, $passcode);
     }
 }
 
@@ -737,7 +759,8 @@ if (!function_exists('tenant_scope_clause')) {
      * @param array  $params Bound values; the tenant id is appended here.
      * @return string
      */
-    function tenant_scope_clause(string $column, array &$params): string {
+    function tenant_scope_clause(string $column, array &$params): string
+    {
         if (is_super_admin()) {
             return '';
         }
@@ -759,7 +782,8 @@ if (!function_exists('admin_user_in_tenant')) {
      * @param int $userId
      * @return bool
      */
-    function admin_user_in_tenant($pdo, $userId): bool {
+    function admin_user_in_tenant($pdo, $userId): bool
+    {
         if (is_super_admin()) {
             return true;
         }
@@ -768,7 +792,7 @@ if (!function_exists('admin_user_in_tenant')) {
             return false;
         }
         $stmt = $pdo->prepare("SELECT COUNT(*) FROM admin_users WHERE id = ? AND organization_id = ?");
-        $stmt->execute([(int)$userId, $tenantId]);
+        $stmt->execute([(int) $userId, $tenantId]);
         return $stmt->fetchColumn() > 0;
     }
 }
@@ -782,8 +806,9 @@ if (!function_exists('sanitize_csv_cell')) {
      * @param mixed $value
      * @return string
      */
-    function sanitize_csv_cell($value): string {
-        $str = (string)($value ?? '');
+    function sanitize_csv_cell($value): string
+    {
+        $str = (string) ($value ?? '');
         if ($str === '') {
             return '';
         }
@@ -805,7 +830,8 @@ if (!function_exists('log_audit_action')) {
      * @param string $details
      * @return void
      */
-    function log_audit_action($pdo, $action, $details = '') {
+    function log_audit_action($pdo, $action, $details = '')
+    {
         if (!isset($_SESSION['admin_username']) || !($pdo instanceof PDO)) {
             return;
         }
@@ -820,7 +846,8 @@ if (!function_exists('log_audit_action')) {
                 substr($details, 0, 255),
                 get_current_tenant_id()
             ]);
-        } catch (\Exception $ignored) {}
+        } catch (\Exception $ignored) {
+        }
     }
 }
 
