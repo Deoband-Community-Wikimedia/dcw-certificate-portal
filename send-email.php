@@ -40,6 +40,11 @@ if (!$certData || empty($certData['email'])) {
     echo json_encode(['success' => false, 'message' => 'Invalid certificate or missing recipient email.']);
     exit;
 }
+if (($certData['status'] ?? 'active') === 'revoked') {
+    http_response_code(410);
+    echo json_encode(['success' => false, 'message' => __('page.download.error.revoked')]);
+    exit;
+}
 
 // Rate limiting / Dispatch cooldown (SEC-01):
 // Check if an email was already successfully sent for this certificate in the last 10 minutes
