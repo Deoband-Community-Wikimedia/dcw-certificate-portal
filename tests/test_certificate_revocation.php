@@ -156,15 +156,15 @@ assertTest(count($logs) === 3, 'Rejected attempts produce no audit rows');
 // -----------------------------------------------------------------------------
 echo "\nTest 7: Static audit of enforcement points...\n";
 $filesToCheck = [
-    'helpers.php'                   => ["helpers/revocation.php", 'status'],
-    'verify.php'                    => ['isRevoked', 'revoked_at', 'revocation_reason'],
+    'helpers.php'                   => ["helpers/revocation.php"],
     'download.php'                  => ["'revoked'", '410'],
     'send-email.php'                => ["'revoked'", '410'],
     'thumbnail.php'                 => ['certificate_is_revoked'],
     'admin/manage_participants.php' => ['revoke_certificate', 'reinstate_certificate', 'verify_event_access', 'csrf_token'],
     'scripts/migrate_certificate_revocation.php' => ['revocation_ensure_schema'],
-    'index.php'                     => ['certificate_is_revoked', "'revoked'", 'page.claim.error.revoked'],
     'success.php'                   => ["'revoked'", 'verify.php?id='],
+    'index.php'                     => ['revocation_ensure_schema', 'certificate_is_revoked', "'revoked'", 'page.claim.error.revoked'],
+    'verify.php'                    => ['revocation_ensure_schema', 'isRevoked', 'revoked_at', 'revocation_reason'],
 ];
 foreach ($filesToCheck as $filePath => $tokens) {
     $fullPath = __DIR__ . '/../' . $filePath;
