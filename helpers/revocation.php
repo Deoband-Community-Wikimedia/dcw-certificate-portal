@@ -5,6 +5,11 @@
  * Revocation state lives on event_participants (status, revocation_reason,
  * revoked_at, revoked_by). Every revoke/reinstate is tenant-checked via
  * verify_event_access() and written to audit_logs.
+ *
+ * The schema is provisioned at runtime by revocation_ensure_schema(), so
+ * deployments without shell access (Git/FTP on shared hosting) never hit an
+ * "Unknown column" error. scripts/migrate_certificate_revocation.php remains
+ * available as an optional CLI shortcut.
  */
 
 if (!defined('CERT_STATUS_ACTIVE')) {
@@ -15,27 +20,42 @@ if (!defined('CERT_STATUS_ACTIVE')) {
 if (!function_exists('revocation_ensure_schema')) {
     /**
      * Idempotently adds the revocation columns to event_participants.
-     * Safe to run on every deploy; works on MySQL and SQLite (tests).
+     * Runs at most once per request per connection; safe on MySQL and SQLite (tests).
+     * Never throws: a failure is logged and the caller carries on.
      */
     function revocation_ensure_schema(PDO $pdo): void {
+        static $checked = [];
+        $key = spl_object_hash($pdo);
+        if (isset($checked[$key])) {
+            return;
+        }
+
         $columns = [
             'status'            => "VARCHAR(20) NOT NULL DEFAULT 'active'",
             'revocation_reason' => 'VARCHAR(255) NULL',
             'revoked_at'        => 'DATETIME NULL',
             'revoked_by'        => 'VARCHAR(50) NULL',
         ];
-        foreach ($columns as $name => $definition) {
-            try {
-                $pdo->query("SELECT $name FROM event_participants LIMIT 0")->closeCursor();
-            } catch (PDOException $e) {
-                $pdo->exec("ALTER TABLE event_participants ADD COLUMN $name $definition");
+
+        try {
+            foreach ($columns as $name => $definition) {
+                try {
+                    $pdo->query("SELECT $name FROM event_participants LIMIT 0")->closeCursor();
+                } catch (PDOException $e) {
+                    $pdo->exec("ALTER TABLE event_participants ADD COLUMN $name $definition");
+                }
             }
+            $checked[$key] = true;
+        } catch (\Exception $e) {
+            error_log('revocation_ensure_schema failed: ' . $e->getMessage());
         }
     }
 }
 
 if (!function_exists('certificate_is_revoked')) {
     function certificate_is_revoked(PDO $pdo, string $certId): bool {
+        revocation_ensure_schema($pdo);
+
         $stmt = $pdo->prepare("SELECT status FROM event_participants WHERE certificate_id = ?");
         $stmt->execute([$certId]);
         return $stmt->fetchColumn() === CERT_STATUS_REVOKED;
@@ -50,6 +70,8 @@ if (!function_exists('revoke_certificate')) {
      *   error: reason_required | reason_too_long | unauthorized | not_found | not_active
      */
     function revoke_certificate(PDO $pdo, int $eventId, int $participantId, string $reason): array {
+        revocation_ensure_schema($pdo);
+
         $reason = trim($reason);
         if ($reason === '') {
             return ['success' => false, 'error' => 'reason_required'];
@@ -101,6 +123,8 @@ if (!function_exists('reinstate_certificate')) {
      *   error: unauthorized | not_revoked
      */
     function reinstate_certificate(PDO $pdo, int $eventId, int $participantId): array {
+        revocation_ensure_schema($pdo);
+
         if (verify_event_access($pdo, $eventId) === null) {
             return ['success' => false, 'error' => 'unauthorized'];
         }

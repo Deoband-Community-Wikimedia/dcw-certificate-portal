@@ -1,5 +1,6 @@
 <?php
 require_once 'config.php';
+revocation_ensure_schema($pdo);
 
 $certId = trim($_GET['id'] ?? $_GET['cert'] ?? '');
 if (!$certId && isset($_SERVER['PATH_INFO'])) {

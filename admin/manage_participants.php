@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config.php';
+revocation_ensure_schema($pdo);
 
 if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
     header("Location: login.php");

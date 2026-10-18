@@ -1,5 +1,6 @@
 <?php
 require_once 'config.php';
+revocation_ensure_schema($pdo);
 
 if (!isset($_GET['id'])) {
     header("Location: index.php");

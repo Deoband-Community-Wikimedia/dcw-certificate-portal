@@ -3,6 +3,7 @@ require_once 'config.php';
 require_once 'helpers.php';
 
 invitation_ensure_schema($pdo);
+revocation_ensure_schema($pdo);
 
 $basePath = '';
 if (isset($_SERVER['SCRIPT_NAME'])) {
