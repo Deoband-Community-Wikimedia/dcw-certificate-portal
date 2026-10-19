@@ -157,5 +157,8 @@
 	"otp.placeholder.code": "123456",
 	"otp.error.rate-limited": "Ze vill Ufroen. Waart wgl. e puer Minutten, ier Dir nach eng Kéier probéiert.",
 	"hub.events": "Evenementer",
-	"admin.orgs.lead.active": "Aktiv"
+	"direct-claim.event-not-found.title": "Evenement net fonnt",
+	"root.filter.all-communities": "All Communautéiten",
+	"admin.orgs.lead.active": "Aktiv",
+	"email.invitation.detail-org": "Organisatioun"
 }
