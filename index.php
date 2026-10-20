@@ -4,6 +4,7 @@ require_once 'helpers.php';
 
 invitation_ensure_schema($pdo);
 revocation_ensure_schema($pdo);
+organizations_ensure_hub_schema($pdo);
 
 $basePath = '';
 if (isset($_SERVER['SCRIPT_NAME'])) {
@@ -343,6 +344,12 @@ $currentOrgLogo = !empty($targetOrg['logo_path']) && file_exists($targetOrg['log
 $currentOrgUrl = (!empty($targetOrg['home_url']) && function_exists('org_is_http_url') && org_is_http_url($targetOrg['home_url']))
     ? $targetOrg['home_url']
     : ORG_URL_HOME;
+
+$targetOrgBanner = null;
+if (!empty($targetOrg['cover_banner_path']) && (file_exists($targetOrg['cover_banner_path']) || file_exists(__DIR__ . '/' . $targetOrg['cover_banner_path']))) {
+    $targetOrgBanner = $basePath . '/' . ltrim($targetOrg['cover_banner_path'], '/');
+}
+$targetOrgSocial = function_exists('org_decode_social_links') ? org_decode_social_links($targetOrg['social_links'] ?? null) : [];
 
 $pageTitle = __e('site.portal-badge') . ' - ' . htmlspecialchars($currentOrgName);
 if ($isDirectEventClaim && $directEvent) {
@@ -751,12 +758,37 @@ if ($isDirectEventClaim && $directEvent) {
             border: 1px solid #e2e8f0;
             border-radius: 14px;
             padding: 32px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        }
+        .hub-hero.has-banner {
+            padding: 0;
+            overflow: hidden;
+        }
+        .hub-banner-wrap {
+            width: 100%;
+            height: 200px;
+            overflow: hidden;
+            background: #e2e8f0;
+            position: relative;
+        }
+        .hub-banner-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .hub-hero-inner {
+            width: 100%;
+        }
+        .hub-hero.has-banner .hub-hero-inner {
+            padding: 24px 32px 28px;
+        }
+        .hub-hero-main {
             display: flex;
             align-items: center;
             justify-content: space-between;
             flex-wrap: wrap;
-            gap: 24px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            gap: 20px;
         }
         .hub-identity {
             display: flex;
@@ -774,6 +806,13 @@ if ($isDirectEventClaim && $directEvent) {
             border-radius: 8px;
             border: 1px solid #e2e8f0;
         }
+        .hub-hero.has-banner .hub-logo {
+            margin-top: -55px;
+            position: relative;
+            z-index: 2;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+            border: 3px solid #ffffff;
+        }
         .hub-meta h1 {
             text-align: left;
             margin: 0 0 6px 0;
@@ -789,6 +828,39 @@ if ($isDirectEventClaim && $directEvent) {
             display: inline-flex;
             align-items: center;
             gap: 4px;
+        }
+        .hub-links {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .hub-bio {
+            margin: 16px 0 0 0;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #475569;
+            max-width: 820px;
+            word-break: break-word;
+        }
+        @media (max-width: 640px) {
+            .hub-hero {
+                padding: 20px;
+            }
+            .hub-banner-wrap {
+                height: 130px;
+            }
+            .hub-hero.has-banner .hub-logo {
+                margin-top: -40px;
+                height: 56px;
+            }
+            .hub-hero.has-banner .hub-hero-inner {
+                padding: 16px 20px 20px;
+            }
+            .hub-hero-main {
+                flex-direction: column;
+                align-items: flex-start;
+            }
         }
         .hub-events-grid {
             display: grid;
@@ -1072,24 +1144,54 @@ if ($isDirectEventClaim && $directEvent) {
         <?php else: ?>
             <?php if ($isCommunityHub && $targetOrg): ?>
                 <!-- Community Hub Showcase Header (/c/<slug>) -->
-                <div class="hub-hero">
-                    <div class="hub-identity">
-                        <img src="<?= htmlspecialchars($currentOrgLogo) ?>" alt="Logo" class="hub-logo">
-                        <div class="hub-meta">
-                            <h1><?= htmlspecialchars($targetOrg['name']) ?></h1>
-                            <span class="badge-affiliate">🛡️ <?= __e('hub.verified-affiliate') ?></span>
-                            <span style="font-size: 13px; color: #64748b; margin-left: 8px;">(<?= htmlspecialchars($targetOrg['cert_code']) ?>)</span>
+                <div class="hub-hero <?= $targetOrgBanner ? 'has-banner' : '' ?>">
+                    <?php if ($targetOrgBanner): ?>
+                        <div class="hub-banner-wrap">
+                            <img src="<?= htmlspecialchars($targetOrgBanner) ?>" alt="<?= htmlspecialchars($targetOrg['name']) ?>" class="hub-banner-img">
                         </div>
-                    </div>
-                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                        <?php if (!empty($targetOrg['home_url']) && (!function_exists('org_is_http_url') || org_is_http_url($targetOrg['home_url']))): ?>
-                            <a href="<?= htmlspecialchars($targetOrg['home_url']) ?>" target="_blank" class="pill-btn" style="text-decoration: none;">
-                                🌐 Website
-                            </a>
+                    <?php endif; ?>
+                    <div class="hub-hero-inner">
+                        <div class="hub-hero-main">
+                            <div class="hub-identity">
+                                <img src="<?= htmlspecialchars($currentOrgLogo) ?>" alt="Logo" class="hub-logo">
+                                <div class="hub-meta">
+                                    <h1><?= htmlspecialchars($targetOrg['name']) ?></h1>
+                                    <span class="badge-affiliate">🛡️ <?= __e('hub.verified-affiliate') ?></span>
+                                    <span style="font-size: 13px; color: #64748b; margin-left: 8px;">(<?= htmlspecialchars($targetOrg['cert_code']) ?>)</span>
+                                </div>
+                            </div>
+                            <div class="hub-links">
+                                <?php if (!empty($targetOrg['meta_wiki_url']) && (!function_exists('org_is_http_url') || org_is_http_url($targetOrg['meta_wiki_url']))): ?>
+                                    <a href="<?= htmlspecialchars($targetOrg['meta_wiki_url']) ?>" target="_blank" rel="noopener noreferrer" class="pill-btn" style="text-decoration: none;">
+                                        📚 <?= __e('hub.meta-wiki') ?>
+                                    </a>
+                                <?php endif; ?>
+                                <?php if (!empty($targetOrg['home_url']) && (!function_exists('org_is_http_url') || org_is_http_url($targetOrg['home_url']))): ?>
+                                    <a href="<?= htmlspecialchars($targetOrg['home_url']) ?>" target="_blank" rel="noopener noreferrer" class="pill-btn" style="text-decoration: none;">
+                                        🌐 <?= __e('hub.website') ?>
+                                    </a>
+                                <?php endif; ?>
+                                <?php if (!empty($targetOrg['telegram_url']) && (!function_exists('org_is_http_url') || org_is_http_url($targetOrg['telegram_url']))): ?>
+                                    <a href="<?= htmlspecialchars($targetOrg['telegram_url']) ?>" target="_blank" rel="noopener noreferrer" class="pill-btn" style="text-decoration: none;">
+                                        ✈️ <?= __e('hub.telegram') ?>
+                                    </a>
+                                <?php endif; ?>
+                                <?php
+                                    $twitterLink = !empty($targetOrg['twitter_url']) ? $targetOrg['twitter_url'] : ($targetOrgSocial['x'] ?? '');
+                                    if (!empty($twitterLink) && (!function_exists('org_is_http_url') || org_is_http_url($twitterLink))):
+                                ?>
+                                    <a href="<?= htmlspecialchars($twitterLink) ?>" target="_blank" rel="noopener noreferrer" class="pill-btn" style="text-decoration: none;">
+                                        𝕏 <?= __e('hub.twitter') ?>
+                                    </a>
+                                <?php endif; ?>
+                                <a href="<?= $basePath ?>/" class="pill-btn" style="text-decoration: none;">
+                                    ← <?= htmlspecialchars($rootOrg['name'] ?? 'Deoband Community Wikimedia') ?>
+                                </a>
+                            </div>
+                        </div>
+                        <?php if (!empty($targetOrg['bio'])): ?>
+                            <p class="hub-bio"><?= nl2br(htmlspecialchars($targetOrg['bio'])) ?></p>
                         <?php endif; ?>
-                        <a href="<?= $basePath ?>/" class="pill-btn" style="text-decoration: none;">
-                            ← <?= htmlspecialchars($rootOrg['name'] ?? 'Deoband Community Wikimedia') ?>
-                        </a>
                     </div>
                 </div>
             <?php endif; ?>
