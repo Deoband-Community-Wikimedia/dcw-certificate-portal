@@ -1,5 +1,6 @@
 <?php
 require_once 'config.php';
+revocation_ensure_schema($pdo);
 
 $certId = trim($_GET['id'] ?? $_GET['cert'] ?? '');
 if (!$certId && isset($_SERVER['PATH_INFO'])) {
@@ -23,7 +24,7 @@ if ($basePath === '/')
     $basePath = '';
 
 $stmt = $pdo->prepare("
-    SELECT p.full_name, e.name as event_name, e.category, e.custom_verification_text, e.certificate_issue_date, e.completion_date, e.description, e.partners, ep.created_at, ep.issue_date, er.role_name
+    SELECT p.full_name, e.name as event_name, e.category, e.custom_verification_text, e.certificate_issue_date, e.completion_date, e.description, e.partners, ep.created_at, ep.issue_date, ep.status, ep.revocation_reason, ep.revoked_at, er.role_name
     FROM event_participants ep
     JOIN participants p ON ep.participant_id = p.id
     JOIN events e ON ep.event_id = e.id
@@ -37,11 +38,13 @@ $certData = $stmt->fetch();
 // status code (correct for SEO/tooling) but render a proper, on-brand error
 // page so visitors understand what happened and who to contact.
 $notFound = !$certData;
+// Revoked certificates (issue #159) are still "found", but must never be shown as valid.
+$isRevoked = !$notFound && ($certData['status'] ?? 'active') === 'revoked';
 if ($notFound) {
     verification_log_attempt($pdo, $certId, $clientIp, null, 'not_found');
     header("HTTP/1.0 404 Not Found");
 } else {
-    verification_log_attempt($pdo, $certId, $clientIp, null, 'valid');
+    verification_log_attempt($pdo, $certId, $clientIp, null, $isRevoked ? 'revoked' : 'valid');
 }
 
 if (!$notFound) {
@@ -55,6 +58,15 @@ if (!$notFound) {
     }
     $issueDate = date('F j, Y', strtotime($issueSource));
     $roleName = $certData['role_name'] ? " as " . htmlspecialchars($certData['role_name']) : "";
+
+    // Revocation display data (issue #159)
+    $revokedDate = ($isRevoked && !empty($certData['revoked_at']))
+        ? date('F j, Y', strtotime($certData['revoked_at']))
+        : '';
+    $metaPrefix = $isRevoked ? __('page.verify.revoked.meta-prefix') : 'Verified Credential';
+    $metaDescription = $isRevoked
+        ? __('page.verify.revoked.meta-description')
+        : 'This official credential was securely issued. Verify the authenticity of this certificate online.';
 
     // Completion date is the date the participant actually finished the event and is
     // stored separately from the issue/creation dates (issue #59 review). It only
@@ -115,18 +127,19 @@ if (!$notFound) {
         <title>Credential Verification - <?= htmlspecialchars($certData['full_name']) ?> - <?= __e('site.name') ?>
         </title>
         <meta name="title"
-            content="Verified Credential: <?= htmlspecialchars($certData['full_name']) ?> - <?= htmlspecialchars($certData['event_name']) ?>">
+            content="<?= htmlspecialchars($metaPrefix) ?>: <?= htmlspecialchars($certData['full_name']) ?> - <?= htmlspecialchars($certData['event_name']) ?>">
         <meta name="description"
-            content="This official credential was securely issued. Verify the authenticity of this certificate online.">
+            content="<?= htmlspecialchars($metaDescription) ?>">
         <meta property="og:type" content="website">
         <meta property="og:url" content="https://<?= htmlspecialchars($_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']) ?>">
         <meta property="og:title"
-            content="Verified Credential: <?= htmlspecialchars($certData['full_name']) ?> - <?= htmlspecialchars($certData['event_name']) ?>">
+            content="<?= htmlspecialchars($metaPrefix) ?>: <?= htmlspecialchars($certData['full_name']) ?> - <?= htmlspecialchars($certData['event_name']) ?>">
         <meta property="og:description"
-            content="This official credential was securely issued. Verify the authenticity of this certificate online.">
+            content="<?= htmlspecialchars($metaDescription) ?>">
         <?php
         $thumbnailUrl = "https://" . htmlspecialchars($_SERVER['HTTP_HOST']) . $basePath . "/assets/DCW_logo.png";
-        if (defined('DYNAMIC_THUMBNAILS_ENABLED') && DYNAMIC_THUMBNAILS_ENABLED) {
+        // Revoked certificates never get a rendered certificate preview, only the logo.
+        if (!$isRevoked && defined('DYNAMIC_THUMBNAILS_ENABLED') && DYNAMIC_THUMBNAILS_ENABLED) {
             $thumbnailUrl = "https://" . htmlspecialchars($_SERVER['HTTP_HOST']) . $basePath . "/thumbnail.php?id=" . urlencode($certId);
         }
         ?>
@@ -136,13 +149,15 @@ if (!$notFound) {
         <meta property="twitter:url"
             content="https://<?= htmlspecialchars($_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']) ?>">
         <meta property="twitter:title"
-            content="Verified Credential: <?= htmlspecialchars($certData['full_name']) ?> - <?= htmlspecialchars($certData['event_name']) ?>">
+            content="<?= htmlspecialchars($metaPrefix) ?>: <?= htmlspecialchars($certData['full_name']) ?> - <?= htmlspecialchars($certData['event_name']) ?>">
         <meta property="twitter:description"
-            content="This official credential was securely issued. Verify the authenticity of this certificate online.">
+            content="<?= htmlspecialchars($metaDescription) ?>">
         <meta property="twitter:image" content="<?= $thumbnailUrl ?>">
     <?php endif; ?>
 
+    <?php if (!$notFound && !$isRevoked): ?>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <?php endif; ?>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -414,6 +429,29 @@ if (!$notFound) {
             box-sizing: border-box;
         }
 
+        /* Revocation notice (issue #159) */
+        .revoked-banner {
+            background: #fef2f2;
+            border: 2px solid #dc2626;
+            color: #991b1b;
+            border-radius: 8px;
+            padding: 16px 18px;
+            margin-bottom: 24px;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+
+        .revoked-banner .revoked-title {
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .revoked-banner .revoked-meta {
+            font-size: 14px;
+            margin-top: 8px;
+        }
+
         .meta {
             font-size: 15px;
             color: #64748b;
@@ -645,19 +683,32 @@ if (!$notFound) {
 
     <div class="main-wrapper">
         <div class="container preview-container">
-            <h1 class="preview-heading"><?= __e('page.verify.valid') ?></h1>
+            <h1 class="preview-heading"><?= $isRevoked ? __e('page.verify.revoked.heading') : __e('page.verify.valid') ?></h1>
 
-            <div class="verification-badge">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                    <path
-                        d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-1.8 15.4L6 13.2l1.4-1.4 2.8 2.8 7.6-7.6 1.4 1.4-9 9z" />
-                </svg>
-                <?= __e('page.verify.valid') ?>
-            </div>
+            <?php if ($isRevoked): ?>
+                <div class="revoked-banner" role="alert">
+                    <div class="revoked-title">&#9888; <?= __e('page.verify.revoked.title') ?></div>
+                    <div><?= __e('page.verify.revoked.body') ?></div>
+                    <?php if ($revokedDate): ?>
+                        <div class="revoked-meta"><strong><?= __e('page.verify.revoked.date-label') ?>:</strong> <?= htmlspecialchars($revokedDate) ?></div>
+                    <?php endif; ?>
+                    <?php if (!empty($certData['revocation_reason'])): ?>
+                        <div class="revoked-meta"><strong><?= __e('page.verify.revoked.reason-label') ?>:</strong> <?= htmlspecialchars($certData['revocation_reason']) ?></div>
+                    <?php endif; ?>
+                </div>
+            <?php else: ?>
+                <div class="verification-badge">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path
+                            d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-1.8 15.4L6 13.2l1.4-1.4 2.8 2.8 7.6-7.6 1.4 1.4-9 9z" />
+                    </svg>
+                    <?= __e('page.verify.valid') ?>
+                </div>
 
-            <div class="preview-box">
-                <canvas id="pdf-preview"></canvas>
-            </div>
+                <div class="preview-box">
+                    <canvas id="pdf-preview"></canvas>
+                </div>
+            <?php endif; ?>
 
             <?php if (!empty($certData['description'])): ?>
                 <div class="event-description-box"
@@ -702,21 +753,24 @@ if (!$notFound) {
                 </div>
             </div>
 
-            <div class="event-description-box"
-                style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; font-size: 15px; color: #475569; line-height: 1.6; margin-bottom: 24px;">
-                <strong><?= __e('page.verify.statement') ?></strong><br>
-                <?= $verificationText ?>
-            </div>
+            <?php if (!$isRevoked): ?>
+                <div class="event-description-box"
+                    style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; font-size: 15px; color: #475569; line-height: 1.6; margin-bottom: 24px;">
+                    <strong><?= __e('page.verify.statement') ?></strong><br>
+                    <?= $verificationText ?>
+                </div>
 
-            <a href="<?= $basePath ?>/download.php?id=<?= htmlspecialchars($certId) ?>" class="btn-primary">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
-                </svg>
-                <?= __e('page.verify.download') ?>
-            </a>
+                <a href="<?= $basePath ?>/download.php?id=<?= htmlspecialchars($certId) ?>" class="btn-primary">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+                    </svg>
+                    <?= __e('page.verify.download') ?>
+                </a>
+            <?php endif; ?>
         </div>
     </div>
 
+    <?php if (!$isRevoked): ?>
     <script>
         const pdfUrl = '<?= $basePath ?>/download.php?id=<?= htmlspecialchars($certId) ?>&preview=1';
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
@@ -740,6 +794,7 @@ if (!$notFound) {
             document.getElementById('pdf-preview').style.display = 'none';
         });
     </script>
+    <?php endif; ?>
 
     <?php endif; ?>
 

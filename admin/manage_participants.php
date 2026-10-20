@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config.php';
+revocation_ensure_schema($pdo);
 
 if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
     header("Location: login.php");
@@ -199,6 +200,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = __('admin.manage-participants.error.invalid-edit');
             $messageType = 'error';
         }
+    } elseif (isset($_POST['action']) && $_POST['action'] === 'revoke_certificate') {
+        // Certificate revocation (issue #159). Tenant check + audit log live in revoke_certificate().
+        $result = revoke_certificate(
+            $pdo,
+            $eventId,
+            (int)($_POST['revoke_pid'] ?? 0),
+            (string)($_POST['revocation_reason'] ?? '')
+        );
+        if ($result['success']) {
+            header("Location: manage_participants.php?id=" . $eventId . "&msg=revoked");
+            exit;
+        }
+        $message = in_array($result['error'], ['reason_required', 'reason_too_long'], true)
+            ? __('admin.manage-participants.error.reason-required')
+            : __('admin.manage-participants.error.revoke-failed');
+        $messageType = 'error';
+    } elseif (isset($_POST['action']) && $_POST['action'] === 'reinstate_certificate') {
+        $result = reinstate_certificate($pdo, $eventId, (int)($_POST['reinstate_pid'] ?? 0));
+        if ($result['success']) {
+            header("Location: manage_participants.php?id=" . $eventId . "&msg=reinstated");
+            exit;
+        }
+        $message = __('admin.manage-participants.error.reinstate-failed');
+        $messageType = 'error';
     } elseif (isset($_FILES['csv_file'])) {
         if ($_FILES['csv_file']['error'] === UPLOAD_ERR_OK) {
             $csvMimes = ['text/x-comma-separated-values', 'text/comma-separated-values', 'application/octet-stream', 'application/vnd.ms-excel', 'application/x-csv', 'text/x-csv', 'text/csv', 'application/csv', 'application/excel', 'application/vnd.msexcel', 'text/plain'];
@@ -303,7 +328,8 @@ $totalPages = ceil($totalRecords / $limit);
 
 // Fetch participants
 $stmt = $pdo->prepare("
-    SELECT p.*, ep.certificate_id, er.role_name, ep.role_id, ep.custom_certificate_text, ep.issue_date
+    SELECT p.*, ep.certificate_id, er.role_name, ep.role_id, ep.custom_certificate_text, ep.issue_date,
+           ep.status, ep.revocation_reason, ep.revoked_at
     FROM participants p
     JOIN event_participants ep ON p.id = ep.participant_id
     LEFT JOIN event_roles er ON ep.role_id = er.id
@@ -481,7 +507,8 @@ $participants = $stmt->fetchAll();
                 </thead>
                 <tbody>
                     <?php foreach ($participants as $p): ?>
-                        <tr>
+                        <?php $isRevoked = ($p['status'] ?? 'active') === 'revoked'; ?>
+                        <tr class="<?= $isRevoked ? 'revoked-row' : '' ?>">
                             <td><?= htmlspecialchars($p['full_name']) ?></td>
                             <td><?= htmlspecialchars($p['email']) ?></td>
                             <td>
@@ -500,7 +527,18 @@ $participants = $stmt->fetchAll();
                                     <span style="color:#ccc; font-style: italic; font-size:12px;">-</span>
                                 <?php endif; ?>
                             </td>
-                            <td><span style="font-family: monospace; background: #f4f5f7; padding: 3px 6px; border-radius: 4px; border: 1px solid #e1e4e8;"><?= htmlspecialchars($p['certificate_id']) ?></span></td>
+                            <td>
+                                <span style="font-family: monospace; background: #f4f5f7; padding: 3px 6px; border-radius: 4px; border: 1px solid #e1e4e8;"><?= htmlspecialchars($p['certificate_id']) ?></span>
+                                <?php if ($isRevoked): ?>
+                                    <br>
+                                    <span title="<?= htmlspecialchars($p['revocation_reason'] ?? '') ?>" style="display:inline-block; margin-top:4px; background:#fee2e2; color:#b91c1c; padding:1px 8px; border-radius:10px; font-size:11px; font-weight:600;">
+                                        <?= __e('admin.manage-participants.status.revoked') ?>
+                                    </span>
+                                    <?php if (!empty($p['revoked_at'])): ?>
+                                        <small style="color:#999; font-size:11px;"><?= htmlspecialchars(date('M j, Y', strtotime($p['revoked_at']))) ?></small>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <?php if (!empty($p['issue_date'])): ?>
                                     <?= htmlspecialchars(date('M j, Y', strtotime($p['issue_date']))) ?>
@@ -522,6 +560,26 @@ $participants = $stmt->fetchAll();
                                         <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                                     </button>
                                 </form>
+                                <?php if ($isRevoked): ?>
+                                    <form method="POST" action="manage_participants.php?id=<?= $eventId ?>" style="margin:0;"
+                                          onsubmit="return confirm(<?= htmlspecialchars(json_encode(__('admin.manage-participants.confirm.reinstate')), ENT_QUOTES) ?>);">
+                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generate_csrf_token()) ?>">
+                                        <input type="hidden" name="action" value="reinstate_certificate">
+                                        <input type="hidden" name="reinstate_pid" value="<?= (int)$p['id'] ?>">
+                                        <button type="submit" class="action-link" title="<?= __e('admin.manage-participants.title.reinstate') ?>" style="color:#15803d; background:none; border:none; padding:0; cursor:pointer;">
+                                            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
+                                        </button>
+                                    </form>
+                                <?php else: ?>
+                                    <button type="button" class="action-link" title="<?= __e('admin.manage-participants.title.revoke') ?>"
+                                            data-pid="<?= (int)$p['id'] ?>"
+                                            data-name="<?= htmlspecialchars($p['full_name']) ?>"
+                                            data-cert="<?= htmlspecialchars($p['certificate_id']) ?>"
+                                            onclick="openRevokeModal(this)"
+                                            style="color:#b45309; background:none; border:none; padding:0; cursor:pointer;">
+                                        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"/></svg>
+                                    </button>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -554,6 +612,48 @@ $participants = $stmt->fetchAll();
     <?php endif; ?>
 </div>
 
+<!-- Revoke Certificate Modal (issue #159) -->
+<div id="revoke-modal" class="revoke-overlay" style="display:none;">
+    <div class="revoke-box">
+        <h3 style="margin-top:0;"><?= __e('admin.manage-participants.revoke.heading') ?></h3>
+        <p id="revoke-modal-desc" style="font-size:14px; color:#475569;"></p>
+        <form method="POST" action="manage_participants.php?id=<?= $eventId ?>">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generate_csrf_token()) ?>">
+            <input type="hidden" name="action" value="revoke_certificate">
+            <input type="hidden" name="revoke_pid" id="revoke-pid" value="">
+            <label for="revoke-reason" style="font-size:13px; font-weight:600;"><?= __e('admin.manage-participants.revoke.reason-label') ?></label>
+            <textarea name="revocation_reason" id="revoke-reason" rows="3" maxlength="255" required
+                      placeholder="<?= __e('admin.manage-participants.revoke.reason-placeholder') ?>"
+                      style="width:100%; box-sizing:border-box; margin:6px 0; padding:8px; border:1px solid #cbd5e1; border-radius:6px;"></textarea>
+            <small style="color:#b45309; font-size:12px;"><?= __e('admin.manage-participants.revoke.reason-hint') ?></small>
+            <div style="display:flex; gap:10px; margin-top:16px;">
+                <button type="submit" class="btn" style="flex:1; background:#b91c1c;"><?= __e('admin.manage-participants.revoke.submit') ?></button>
+                <button type="button" class="btn" style="flex:1; background:#64748b;" onclick="closeRevokeModal()"><?= __e('admin.manage-participants.revoke.cancel') ?></button>
+            </div>
+        </form>
+    </div>
+</div>
+<style>
+    .revoke-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9998; }
+    .revoke-box { background: #fff; border-radius: 12px; padding: 24px; width: 90%; max-width: 480px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+    .revoked-row { background: #fef2f2; }
+    .revoked-row td { opacity: 0.85; }
+</style>
+<script>
+const REVOKE_DESC = <?= json_encode(__('admin.manage-participants.revoke.desc')) ?>;
+function openRevokeModal(btn) {
+    document.getElementById('revoke-pid').value = btn.dataset.pid;
+    document.getElementById('revoke-reason').value = '';
+    document.getElementById('revoke-modal-desc').textContent =
+        REVOKE_DESC.replace('{name}', btn.dataset.name).replace('{certId}', btn.dataset.cert);
+    document.getElementById('revoke-modal').style.display = 'flex';
+    document.getElementById('revoke-reason').focus();
+}
+function closeRevokeModal() {
+    document.getElementById('revoke-modal').style.display = 'none';
+}
+</script>
+
 <script src="script.js"></script>
 <script>
 function confirmDelete(id) {
@@ -567,9 +667,17 @@ function confirmDelete(id) {
     return false;
 }
 </script>
-<?php if (isset($_GET['msg']) && $_GET['msg'] === 'deleted'): ?>
+<?php
+$flashMap = [
+    'deleted'    => 'admin.manage-participants.flash.removed',
+    'revoked'    => 'admin.manage-participants.flash.revoked',
+    'reinstated' => 'admin.manage-participants.flash.reinstated',
+];
+$flashKey = $flashMap[$_GET['msg'] ?? ''] ?? null;
+?>
+<?php if ($flashKey): ?>
 <script>
-    window.flashMessage = <?= json_encode(__('admin.manage-participants.flash.removed')) ?>;
+    window.flashMessage = <?= json_encode(__($flashKey)) ?>;
     window.flashMessageType = 'success';
 </script>
 <?php elseif ($message): ?>

@@ -6,6 +6,7 @@
 require_once __DIR__ . '/helpers/otp.php';
 require_once __DIR__ . '/helpers/invitation.php';
 require_once __DIR__ . '/helpers/organization.php';
+require_once __DIR__ . '/helpers/revocation.php';
 
 if (!function_exists('event_categories')) {
     /**

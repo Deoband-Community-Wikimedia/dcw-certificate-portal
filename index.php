@@ -3,6 +3,7 @@ require_once 'config.php';
 require_once 'helpers.php';
 
 invitation_ensure_schema($pdo);
+revocation_ensure_schema($pdo);
 
 $basePath = '';
 if (isset($_SERVER['SCRIPT_NAME'])) {
@@ -65,6 +66,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 
     $pending = $_SESSION['pending_otp'];
+
+    // Revoked after the code was requested (issue #159): never authorize the claim.
+    if (certificate_is_revoked($pdo, $pending['certificate_id'])) {
+        unset($_SESSION['pending_otp']);
+        header("Location: " . buildCurrentUrl(['error' => __('page.claim.error.revoked')]));
+        exit;
+    }
+
     $code = trim($_POST['otp_code'] ?? '');
 
     if ($code === '' || strlen($code) < 6) {
@@ -101,6 +110,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 
     $pending = $_SESSION['pending_otp'];
+
+    // Revoked after the code was requested (issue #159): do not send another code.
+    if (certificate_is_revoked($pdo, $pending['certificate_id'])) {
+        unset($_SESSION['pending_otp']);
+        header("Location: " . buildCurrentUrl(['error' => __('page.claim.error.revoked')]));
+        exit;
+    }
+
     $timeSince = time() - ($pending['last_sent_at'] ?? 0);
     if ($timeSince < 60) {
         $wait = 60 - $timeSince;
@@ -214,7 +231,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
     if ($eventId && $fullName && filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $stmt = $pdo->prepare("
-            SELECT ep.certificate_id, ep.event_id, p.full_name, p.email, e.name as event_name, e.organization_id
+            SELECT ep.certificate_id, ep.event_id, ep.status, p.full_name, p.email, e.name as event_name, e.organization_id
             FROM participants p
             JOIN event_participants ep ON p.id = ep.participant_id
             JOIN events e ON ep.event_id = e.id
@@ -226,6 +243,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // Cross-tenant guard: verify event belongs to current targetOrg
         if ($certData && $targetOrg && (int)$certData['organization_id'] !== (int)$targetOrg['id']) {
             $certData = false;
+        }
+
+        // Revoked certificates (issue #159) cannot be claimed: no OTP is sent.
+        if ($certData && ($certData['status'] ?? 'active') === 'revoked') {
+            header("Location: " . buildCurrentUrl(['error' => __('page.claim.error.revoked')]));
+            exit;
         }
 
         if ($certData) {
