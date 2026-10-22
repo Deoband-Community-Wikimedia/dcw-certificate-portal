@@ -5,6 +5,7 @@
 			"Tauqeerkhansurani"
 		]
 	},
+	"site.name": "دیوبند کمیونٹی ویکی میڈیا",
 	"site.portal-badge": "سرٹیفکیٹ پورٹل",
 	"nav.about": "تعارف",
 	"nav.programs": "پروگرام",
@@ -70,6 +71,7 @@
 	"footer.links.news": "خبراں",
 	"footer.links.contact": "رابطہ",
 	"footer.copyright": "© {year} Deoband Community Wikimedia۔ جاری کیتا ڳیا",
+	"footer.license": "CC BY-SA 4.0",
 	"footer.built-with": "وکی میڈیا برادری کیتے ❤️ نال بݨایا ڳیا۔",
 	"nav.partnerships": "بھائیوالی",
 	"footer.link.subscribe": "سبسکرائب کرو",
@@ -522,5 +524,7 @@
 	"email.invitation.instructions": "آپݨا ایڈمن اکاؤنٹ سیٹ اپ کرݨ تے آپݨا محفوظ پاس ورڈ چݨݨ کیتے تھلے ݙتے ڳئے بٹن تے کلک کرو:",
 	"email.invitation.btn-setup": "دعوت قبول کرو تے پاس ورڈ سیٹ کرو",
 	"email.invitation.expiry-notice": "ایہ محفوظ لنک {hours} گھنٹیاں وچ میعاد ختم تھی ویسی۔ جے میعاد ختم تھیوݨ دے بعد تھاکوں نویں لنک دی لوڑ ہووے تاں سپر ایڈمنسٹریٹر نال رابطہ کرو۔",
-	"email.invitation.fallback-link": "جے بٹن کم نہ کرے تاں ایہ لنک کاپی کر کے آپݨے براؤزر وچ پیسٹ کرو:"
+	"email.invitation.fallback-link": "جے بٹن کم نہ کرے تاں ایہ لنک کاپی کر کے آپݨے براؤزر وچ پیسٹ کرو:",
+	"page.verify.revoked.reason-label": "سبب",
+	"admin.manage-participants.revoke.cancel": "منسوخ"
 }

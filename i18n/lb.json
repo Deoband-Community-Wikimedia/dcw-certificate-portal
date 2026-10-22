@@ -160,5 +160,16 @@
 	"direct-claim.event-not-found.title": "Evenement net fonnt",
 	"root.filter.all-communities": "All Communautéiten",
 	"admin.orgs.lead.active": "Aktiv",
-	"email.invitation.detail-org": "Organisatioun"
+	"email.invitation.detail-org": "Organisatioun",
+	"page.verify.revoked.heading": "Certificat zeréckgezunn",
+	"page.verify.revoked.date-label": "Zeréckgezunn de(n)",
+	"page.verify.revoked.reason-label": "Begrënnung",
+	"admin.manage-participants.status.revoked": "Zeréckgezunn",
+	"admin.manage-participants.title.revoke": "Certificat zeréckzéien",
+	"admin.manage-participants.revoke.heading": "Certificat zeréckzéien",
+	"admin.manage-participants.revoke.reason-label": "Begrënnung fir d'Zeréckzéien",
+	"admin.manage-participants.revoke.reason-hint": "Dës Begrënnung gëtt ëffentlech op der Verifizéierungssäit gewisen.",
+	"admin.manage-participants.revoke.cancel": "Ofbriechen",
+	"admin.manage-participants.flash.revoked": "Certificat zeréckgezunn.",
+	"admin.manage-participants.error.revoke-failed": "Konnt net zeréckgezu ginn: Certificat net fonnt oder schonn zeréckgezunn."
 }
