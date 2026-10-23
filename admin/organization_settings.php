@@ -131,6 +131,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $storedNewBanner = hub_store_banner($orgId, $_FILES['cover_banner']['tmp_name'], $newBannerExt, $rootDir);
             if ($storedNewBanner === null) {
                 $fieldErrors['cover_banner'] = 'banner-upload-failed';
+                // The row won't be saved, so don't leave a new logo behind.
+                if ($storedNewLogo !== null) {
+                    org_delete_logo($orgId, $storedNewLogo, $rootDir);
+                }
             } else {
                 $newBannerPath = $storedNewBanner;
             }

@@ -25,6 +25,9 @@ There are two admin roles:
 - Deactivating an organization blocks its admins from logging in, takes its hub offline
   (it shows "not found"), and stops its event links from accepting claims.
 - The default `admin` account in `database.sql` is a super admin.
+- An organization admin edits their own hub profile (cover banner, bio, Meta-Wiki,
+  Telegram and X links) from the **"Organization"** tab. Banners must be JPEG, PNG or WebP
+  (no SVG), and links must be `http` or `https`.
 
 ## Participants
 
