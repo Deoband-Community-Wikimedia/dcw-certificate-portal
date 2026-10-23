@@ -2,6 +2,8 @@
 session_start();
 require_once '../config.php';
 require_once '../helpers/organization.php';
+require_once '../helpers/hub_profile.php';
+organizations_ensure_hub_schema($pdo);
 
 if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
     header("Location: login.php");
@@ -34,6 +36,11 @@ $form = [
     'slug'          => $org['slug'],
     'cert_code'     => $org['cert_code'],
     'contact_email' => $org['contact_email'] ?? '',
+    // Hub profile fields (issue #160)
+    'hub_bio'           => $org['bio']           ?? '',
+    'hub_meta_wiki_url' => $org['meta_wiki_url'] ?? '',
+    'hub_telegram_url'  => $org['telegram_url']  ?? '',
+    'hub_twitter_url'   => $org['twitter_url']   ?? '',
 ];
 $social = org_decode_social_links($org['social_links'] ?? null);
 foreach (ORG_SOCIAL_PLATFORMS as $platform) {
@@ -63,6 +70,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // Cover banner: a new upload replaces the current one; the checkbox removes it.
+    $newBannerExt = null;
+    $removeBanner = !empty($_POST['remove_banner']);
+    $bannerAttempted = isset($_FILES['cover_banner']) && ($_FILES['cover_banner']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
+    if ($bannerAttempted) {
+        list($newBannerExt, $bannerError) = hub_check_banner_upload($_FILES['cover_banner']);
+        if ($bannerError) {
+            $fieldErrors['cover_banner'] = $bannerError;
+        }
+    }
+
+    // Hub profile fields (bio, URLs).
+    list($hubErrors, $hubClean) = hub_validate_profile($_POST);
+    $fieldErrors = array_merge($fieldErrors, $hubErrors);
+    // Restore hub form values on validation failure.
+    foreach (array_keys($form) as $k) {
+        if (str_starts_with($k, 'hub_')) {
+            $form[$k] = trim((string)($_POST[$k] ?? ''));
+        }
+    }
+
     // Slug and code are UNIQUE across all organizations.
     if (empty($fieldErrors['slug'])) {
         $stmt = $pdo->prepare("SELECT COUNT(*) FROM organizations WHERE slug = ? AND id <> ?");
@@ -80,9 +108,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($fieldErrors)) {
+        // Resolve final logo path.
         $newLogoPath = $org['logo_path'];
         $storedNewLogo = null;
-
         if ($newLogoExt !== null) {
             $storedNewLogo = org_store_logo($orgId, $_FILES['logo']['tmp_name'], $newLogoExt, $rootDir);
             if ($storedNewLogo === null) {
@@ -96,10 +124,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($fieldErrors)) {
+        // Resolve final banner path.
+        $newBannerPath = $org['cover_banner_path'] ?? null;
+        $storedNewBanner = null;
+        if ($newBannerExt !== null) {
+            $storedNewBanner = hub_store_banner($orgId, $_FILES['cover_banner']['tmp_name'], $newBannerExt, $rootDir);
+            if ($storedNewBanner === null) {
+                $fieldErrors['cover_banner'] = 'banner-upload-failed';
+                // The row won't be saved, so don't leave a new logo behind.
+                if ($storedNewLogo !== null) {
+                    org_delete_logo($orgId, $storedNewLogo, $rootDir);
+                }
+            } else {
+                $newBannerPath = $storedNewBanner;
+            }
+        } elseif ($removeBanner) {
+            $newBannerPath = null;
+        }
+    }
+
+    if (empty($fieldErrors)) {
         try {
             $upd = $pdo->prepare("
                 UPDATE organizations
-                SET name = ?, slug = ?, cert_code = ?, contact_email = ?, social_links = ?, logo_path = ?
+                SET name = ?, slug = ?, cert_code = ?, contact_email = ?, social_links = ?, logo_path = ?,
+                    cover_banner_path = ?, bio = ?, meta_wiki_url = ?, telegram_url = ?, twitter_url = ?
                 WHERE id = ?
             ");
             $upd->execute([
@@ -109,12 +158,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $clean['contact_email'],
                 $clean['social_links'],
                 $newLogoPath,
+                $newBannerPath,
+                $hubClean['bio'],
+                $hubClean['meta_wiki_url'],
+                $hubClean['telegram_url'],
+                $hubClean['twitter_url'],
                 $orgId,
             ]);
 
-            // The old file is only removed once the row points at the new one.
+            // Delete old files only after the row safely points at the new ones.
             if ($newLogoPath !== $org['logo_path']) {
                 org_delete_logo($orgId, $org['logo_path'], $rootDir);
+            }
+            if ($newBannerPath !== ($org['cover_banner_path'] ?? null)) {
+                hub_delete_banner($orgId, $org['cover_banner_path'] ?? null, $rootDir);
             }
 
             log_audit_action($pdo, 'Updated Organization', "Organization ID: {$orgId}");
@@ -126,6 +183,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Lost a race with another admin taking the same slug/code.
             if ($storedNewLogo !== null) {
                 org_delete_logo($orgId, $storedNewLogo, $rootDir);
+            }
+            if ($storedNewBanner !== null) {
+                hub_delete_banner($orgId, $storedNewBanner, $rootDir);
             }
             $error = __('admin.org-settings.error.save-failed');
         }
@@ -141,7 +201,8 @@ function org_field_error(array $fieldErrors, string $field, array $params = []):
     return isset($fieldErrors[$field]) ? __('admin.org-settings.error.' . $fieldErrors[$field], $params) : '';
 }
 
-$logoUrl = !empty($org['logo_path']) ? '../' . $org['logo_path'] : null;
+$logoUrl   = !empty($org['logo_path'])          ? '../' . $org['logo_path']          : null;
+$bannerUrl = !empty($org['cover_banner_path']) ? '../' . $org['cover_banner_path'] : null;
 ?>
 <!DOCTYPE html>
 <html lang="<?= htmlspecialchars(i18n_get_lang()) ?>" dir="<?= i18n_get_dir() ?>">
@@ -155,11 +216,15 @@ $logoUrl = !empty($org['logo_path']) ? '../' . $org['logo_path'] : null;
     <style>
         .field-error { color: #c0392b; font-size: 12px; margin-top: 4px; display: block; }
         .field-hint { color: #777; font-size: 12px; margin-top: 4px; display: block; }
-        .form-group input.has-error { border-color: #c0392b; }
+        .form-group input.has-error, .form-group textarea.has-error { border-color: #c0392b; }
         /* style.css styles text/email/etc. inputs but not type=url; match them. */
         .form-group input[type="url"] { width: 100%; padding: 12px 14px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-family: inherit; font-size: 14px; background: #f8fafc; color: #1e293b; transition: all 0.2s; }
         .form-group input[type="url"]:focus { outline: none; border-color: var(--primary-color); background: #ffffff; box-shadow: 0 0 0 3px rgba(16, 107, 154, 0.15); }
+        .form-group textarea { width: 100%; padding: 12px 14px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-family: inherit; font-size: 14px; background: #f8fafc; color: #1e293b; transition: all 0.2s; resize: vertical; }
+        .form-group textarea:focus { outline: none; border-color: var(--primary-color); background: #ffffff; box-shadow: 0 0 0 3px rgba(16, 107, 154, 0.15); }
         .logo-preview { max-height: 80px; max-width: 200px; background: #f4f5f7; padding: 6px; border-radius: 6px; border: 1px solid #ddd; display: block; margin-bottom: 8px; }
+        .banner-preview { max-width: 100%; max-height: 180px; border-radius: 8px; border: 1px solid #e2e8f0; display: block; margin-bottom: 8px; object-fit: cover; }
+        .char-count { font-size: 11px; color: #94a3b8; float: right; }
     </style>
 </head>
 <body>
@@ -260,6 +325,77 @@ $logoUrl = !empty($org['logo_path']) ? '../' . $org['logo_path'] : null;
             <input type="file" id="logo" name="logo" accept="image/png,image/jpeg,image/webp">
             <span class="field-hint"><?= __e('admin.org-settings.hint.logo') ?></span>
             <?php if ($m = org_field_error($fieldErrors, 'logo')): ?><span class="field-error"><?= htmlspecialchars($m) ?></span><?php endif; ?>
+        </div>
+
+        <!-- ── Hub Profile (Issue #160) ──────────────────────────────────── -->
+        <h3 style="margin: 28px 0 5px;"><?= __e('admin.org-settings.section.hub-profile') ?></h3>
+        <p style="font-size: 13px; color: #555; margin-top: 0;"><?= __e('admin.org-settings.hub-profile.desc') ?></p>
+
+        <div class="form-group">
+            <label for="hub_bio">
+                <?= __e('admin.org-settings.hub-profile.label.bio') ?>
+                <span class="char-count" id="bioCount"><?= mb_strlen($form['hub_bio']) ?>/500</span>
+            </label>
+            <textarea id="hub_bio" name="hub_bio" rows="3" maxlength="500"
+                      class="<?= isset($fieldErrors['hub_bio']) ? 'has-error' : '' ?>"
+                      placeholder="<?= __e('admin.org-settings.hub-profile.placeholder.bio') ?>"
+                      oninput="document.getElementById('bioCount').textContent = this.value.length + '/500'"><?= htmlspecialchars($form['hub_bio']) ?></textarea>
+            <span class="field-hint"><?= __e('admin.org-settings.hub-profile.hint.bio') ?></span>
+            <?php if (isset($fieldErrors['hub_bio'])): ?>
+                <span class="field-error"><?= __e('admin.org-settings.hub-profile.error.bio-too-long') ?></span>
+            <?php endif; ?>
+        </div>
+
+        <div class="form-group">
+            <label for="hub_meta_wiki_url"><?= __e('admin.org-settings.hub-profile.label.meta-wiki') ?></label>
+            <input type="url" id="hub_meta_wiki_url" name="hub_meta_wiki_url" maxlength="255"
+                   class="<?= isset($fieldErrors['hub_meta_wiki_url']) ? 'has-error' : '' ?>"
+                   placeholder="https://meta.wikimedia.org/wiki/..."
+                   value="<?= htmlspecialchars($form['hub_meta_wiki_url']) ?>">
+            <?php if (isset($fieldErrors['hub_meta_wiki_url'])): ?>
+                <span class="field-error"><?= __e('admin.org-settings.hub-profile.error.url-invalid') ?></span>
+            <?php endif; ?>
+        </div>
+
+        <div class="form-group">
+            <label for="hub_telegram_url"><?= __e('admin.org-settings.hub-profile.label.telegram') ?></label>
+            <input type="url" id="hub_telegram_url" name="hub_telegram_url" maxlength="255"
+                   class="<?= isset($fieldErrors['hub_telegram_url']) ? 'has-error' : '' ?>"
+                   placeholder="https://t.me/yourcommunity"
+                   value="<?= htmlspecialchars($form['hub_telegram_url']) ?>">
+            <?php if (isset($fieldErrors['hub_telegram_url'])): ?>
+                <span class="field-error"><?= __e('admin.org-settings.hub-profile.error.url-invalid') ?></span>
+            <?php endif; ?>
+        </div>
+
+        <div class="form-group">
+            <label for="hub_twitter_url"><?= __e('admin.org-settings.hub-profile.label.twitter') ?></label>
+            <input type="url" id="hub_twitter_url" name="hub_twitter_url" maxlength="255"
+                   class="<?= isset($fieldErrors['hub_twitter_url']) ? 'has-error' : '' ?>"
+                   placeholder="https://x.com/yourcommunity"
+                   value="<?= htmlspecialchars($form['hub_twitter_url']) ?>">
+            <?php if (isset($fieldErrors['hub_twitter_url'])): ?>
+                <span class="field-error"><?= __e('admin.org-settings.hub-profile.error.url-invalid') ?></span>
+            <?php endif; ?>
+        </div>
+
+        <!-- Cover Banner -->
+        <h3 style="margin: 25px 0 5px;"><?= __e('admin.org-settings.section.cover-banner') ?></h3>
+        <div class="form-group">
+            <?php if ($bannerUrl): ?>
+                <img class="banner-preview" src="<?= htmlspecialchars($bannerUrl) ?>" alt="<?= __e('admin.org-settings.banner.current-alt') ?>">
+                <label style="font-weight: normal; font-size: 13px; display: block; margin-bottom: 10px;">
+                    <input type="checkbox" name="remove_banner" value="1">
+                    <?= __e('admin.org-settings.banner.remove') ?>
+                </label>
+            <?php else: ?>
+                <span class="field-hint" style="margin-bottom: 8px;"><?= __e('admin.org-settings.banner.none') ?></span>
+            <?php endif; ?>
+            <input type="file" id="cover_banner" name="cover_banner" accept="image/png,image/jpeg,image/webp">
+            <span class="field-hint"><?= __e('admin.org-settings.hint.cover-banner') ?></span>
+            <?php if (isset($fieldErrors['cover_banner'])): ?>
+                <span class="field-error"><?= __e('admin.org-settings.hub-profile.error.' . $fieldErrors['cover_banner']) ?></span>
+            <?php endif; ?>
         </div>
 
         <button type="submit" class="btn" style="width: 100%;"><?= __e('admin.org-settings.submit') ?></button>

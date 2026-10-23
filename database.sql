@@ -17,9 +17,22 @@ CREATE TABLE IF NOT EXISTS organizations (
     smtp_user VARCHAR(255) NULL,
     smtp_pass_encrypted TEXT NULL,
     smtp_secure VARCHAR(10) NULL,
+    cover_banner_path VARCHAR(255) NULL,
+    bio TEXT NULL,
+    meta_wiki_url VARCHAR(255) NULL,
+    telegram_url VARCHAR(255) NULL,
+    twitter_url VARCHAR(255) NULL,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Hub profile columns (issue #160). Existing installs get them automatically from
+-- organizations_ensure_hub_schema(), or can run these once by hand:
+-- ALTER TABLE organizations ADD COLUMN cover_banner_path VARCHAR(255) NULL;
+-- ALTER TABLE organizations ADD COLUMN bio TEXT NULL;
+-- ALTER TABLE organizations ADD COLUMN meta_wiki_url VARCHAR(255) NULL;
+-- ALTER TABLE organizations ADD COLUMN telegram_url VARCHAR(255) NULL;
+-- ALTER TABLE organizations ADD COLUMN twitter_url VARCHAR(255) NULL;
 
 -- Insert Default Organization: Deoband Community Wikimedia (ID: 1)
 INSERT INTO organizations (id, name, slug, cert_code, logo_path, home_url, about_url, contact_email, linkedin_org_id, is_active)
