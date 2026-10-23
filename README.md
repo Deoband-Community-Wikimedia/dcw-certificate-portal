@@ -12,6 +12,7 @@
 
 - **Drag-and-Drop Visual Editor:** A powerful built-in PDF editor. Upload a blank PDF template and visually map dynamic text fields (Participant Name, Credential ID, Issue Date) and a customizable, brand-colored QR code directly onto the canvas.
 - **Bulk CSV Processing:** Effortlessly import hundreds of participants at once using a standardized CSV upload system.
+- **Multiple Organizations, One Portal:** Host many communities on a single install. Each organization gets its own community hub at `/c/<slug>` and its own admins, who see only that organization's events and participants. Super admins manage every organization.
 - **Event & Role Isolation:** Manage multiple events simultaneously. Create distinct roles (e.g., Speaker, Volunteer, Attendee) within each event, allowing for role-specific PDF templates.
 - **Public Verification Portal:** Includes a public-facing validation endpoint. Anyone can scan a certificate's QR code to instantly verify its authenticity against the central database.
 - **1-Click LinkedIn Integration:** Generated certificates provide participants with a dynamic "Add to LinkedIn Profile" button that securely pre-fills their credential data.
@@ -21,7 +22,10 @@
 
 ## 🌍 Adapting for Your Community (White-Labeling)
 
-This portal is built to be instantly adaptable by other Wikimedia chapters, educational institutions, or organizations. We have decoupled all organization-specific assets so you can fork and use this software without dealing with messy merge conflicts.
+This portal is built to be instantly adaptable by other Wikimedia chapters, educational institutions, or organizations. There are two ways to use it:
+
+- **Join an existing portal:** a super admin adds your organization from the **"Organizations"** tab and invites your first admin by email. You get your own community hub, events and admins, with nothing to install.
+- **Run your own install:** we have decoupled all organization-specific assets so you can fork and use this software without dealing with messy merge conflicts.
 
 - **[How to White-Label for your Organization](WHITE_LABELING.md)**: A simple 4-step guide on configuring your custom URLs, changing the logo, and setting the default language.
 - **[Translation & i18n Guide](i18n/README.md)**: A complete guide on how to add a new language bundle to the portal (fully compatible with Translatewiki.net).
@@ -80,6 +84,8 @@ Boot up your server (or run `php -S localhost:8000` locally) and navigate to the
 - **Default Password:** `password123`
 
 > **[CAUTION] Security Warning:** These credentials are published in this repository and in `database.sql`, so anyone can read them. They exist only so that a brand-new operator can log in once. Go straight to the **"Manage Users"** tab and change the password before the portal is reachable from the internet.
+>
+> This account is a **super admin**: it can see and manage every organization on the portal. Also set your own `SUPER_ADMIN_PASSCODE` (it defaults to `1234`), which guards deleting events and participants.
 
 ---
 
@@ -98,6 +104,8 @@ never contributed to an open source project before.
 **[CONTRIBUTING.md](CONTRIBUTING.md)** has everything you need: local setup, the coding
 standards reviewers check for, how to handle a database schema change, and what happens
 after you open a pull request. **[TESTING.md](TESTING.md)** covers what to test and how.
+**[PRODUCT_RULES.md](PRODUCT_RULES.md)** lists the rules the portal must always follow,
+such as who can see which organization and how certificate claiming is limited.
 
 In short: fork the repository, branch off `main`, and open a pull request against `main`.
 All new code must use PDO prepared statements for database queries, include a CSRF token

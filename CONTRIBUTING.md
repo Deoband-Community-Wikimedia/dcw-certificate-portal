@@ -87,6 +87,9 @@ you edit is the file the server runs.
 - Shared functions live in `helpers.php`. Database connection, CSRF helpers, and the
   audit log helper live in `config.php` (created from `config.example.php`).
 - `database.sql` is the schema.
+- [PRODUCT_RULES.md](PRODUCT_RULES.md) lists the behaviour the code must keep: roles,
+  organization isolation, participant identity and certificate claiming. Read it before
+  changing any of those, and update it in the same PR if the behaviour changes.
 - `vendor/` is Composer's and isn't tracked. Don't commit it.
 
 Because `config.php` is generated from `config.example.php` on every install, a change
