@@ -567,6 +567,10 @@
   "admin.manage-participants.confirm.reinstate": "¿Restablecer este certificado? Se mostrará como válido de nuevo.",
   "admin.manage-participants.flash.revoked": "Certificado revocado.",
   "admin.manage-participants.flash.reinstated": "Certificado restablecido.",
+  "admin.manage-participants.download-zip": "Descargar todo como ZIP",
+  "admin.manage-participants.zip.all-roles": "Todos los roles",
+  "admin.manage-participants.flash.zip-empty": "No hay certificados activos para descargar con esta selección.",
+  "admin.manage-participants.flash.zip-failed": "No se pudo crear el archivo ZIP. Inténtalo de nuevo.",
   "admin.manage-participants.error.reason-required": "Se requiere un motivo de hasta 255 caracteres para revocar un certificado.",
   "admin.manage-participants.error.revoke-failed": "No se pudo revocar: certificado no encontrado o ya revocado.",
   "admin.manage-participants.error.reinstate-failed": "No se pudo restablecer: certificado no encontrado o no revocado."

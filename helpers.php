@@ -8,6 +8,7 @@ require_once __DIR__ . '/helpers/invitation.php';
 require_once __DIR__ . '/helpers/organization.php';
 require_once __DIR__ . '/helpers/revocation.php';
 require_once __DIR__ . '/helpers/hub_profile.php';
+require_once __DIR__ . '/helpers/certificate_pdf.php';
 
 if (!function_exists('event_categories')) {
     /**
