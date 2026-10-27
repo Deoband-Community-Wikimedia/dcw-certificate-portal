@@ -86,12 +86,23 @@ foreach ([
     'log_audit_action'           => 'audit log entry',
     'ZipArchive'                 => 'uses ZipArchive',
     'admin_logged_in'            => 'requires an admin session',
+    'session_write_close()'      => 'releases the session lock during the long export',
+    'register_shutdown_function' => 'temp files are cleaned up even if the request is killed',
 ] as $token => $why) {
     assertTest(strpos($route, $token) !== false, "Route contains '$token' ($why)");
 }
 
 $participants = file_get_contents(__DIR__ . '/../admin/manage_participants.php');
 assertTest(strpos($participants, 'download_certificates_zip.php') !== false, 'manage_participants.php links to the ZIP route');
+
+// helpers.php (loaded on every page) defines K_PATH_FONTS, so every other definition must be guarded
+foreach (['send-email.php', 'download.php'] as $entry) {
+    $src = file_get_contents(__DIR__ . '/../' . $entry);
+    assertTest(
+        preg_match("/if\\s*\\(\\s*!defined\\('K_PATH_FONTS'\\)\\s*\\)\\s*\\{\\s*define\\('K_PATH_FONTS'/", $src) === 1,
+        "$entry only defines K_PATH_FONTS if it is not already defined"
+    );
+}
 
 $download = file_get_contents(__DIR__ . '/../download.php');
 assertTest(strpos($download, 'certificate_build_pdf') !== false, 'download.php renders through the shared helper');

@@ -64,7 +64,7 @@ if ($longWidth > $boxWidth) {
 }
 
 // -------------------------------------------------------------
-// Test 2: Verify renderElement Execution with TCPDF Page Output
+// Test 2: Verify certificate_render_element Execution with TCPDF Page Output
 // -------------------------------------------------------------
 echo "\nTest 2: Full PDF Rendering Pipeline with Dynamic Auto-Scaling...\n";
 
@@ -81,17 +81,17 @@ $settings = [
 
 require_once __DIR__ . '/../download.php';
 
-// Test renderElement with short text
-renderElement($pdf, $settings, $shortText);
-assertTest(true, "renderElement executed without errors for Short Text");
+// Test certificate_render_element with short text
+certificate_render_element($pdf, $settings, $shortText);
+assertTest(true, "certificate_render_element executed without errors for Short Text");
 
-// Test renderElement with detailed long text
-renderElement($pdf, $settings, $longText);
-assertTest(true, "renderElement executed without errors for Detailed Long Text");
+// Test certificate_render_element with detailed long text
+certificate_render_element($pdf, $settings, $longText);
+assertTest(true, "certificate_render_element executed without errors for Detailed Long Text");
 
-// Test renderElement with extra long description
-renderElement($pdf, $settings, $extraLongText);
-assertTest(true, "renderElement executed without errors for Extra Long Description");
+// Test certificate_render_element with extra long description
+certificate_render_element($pdf, $settings, $extraLongText);
+assertTest(true, "certificate_render_element executed without errors for Extra Long Description");
 
 // Output PDF string to ensure TCPDF doesn't throw exceptions
 $pdfData = $pdf->Output('', 'S');

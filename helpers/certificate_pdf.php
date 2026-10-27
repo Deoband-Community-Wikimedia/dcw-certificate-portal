@@ -115,16 +115,16 @@ if (!function_exists('certificate_build_pdf')) {
         // Render the elements and QR code
         if (is_array($visualSettings)) {
             if (isset($visualSettings['name'])) {
-                renderElement($pdf, $visualSettings['name'], $fullName);
+                certificate_render_element($pdf, $visualSettings['name'], $fullName);
             }
             if (isset($visualSettings['certid'])) {
-                renderElement($pdf, $visualSettings['certid'], $certId, $verifyUrl);
+                certificate_render_element($pdf, $visualSettings['certid'], $certId, $verifyUrl);
             }
             if (isset($visualSettings['date'])) {
-                renderElement($pdf, $visualSettings['date'], $issueDate);
+                certificate_render_element($pdf, $visualSettings['date'], $issueDate);
             }
             if (isset($visualSettings['custom_text']) && !empty($certData['custom_certificate_text'])) {
-                renderElement($pdf, $visualSettings['custom_text'], $certData['custom_certificate_text']);
+                certificate_render_element($pdf, $visualSettings['custom_text'], $certData['custom_certificate_text']);
             }
             if (isset($visualSettings['qrcode']) && !empty($visualSettings['qrcode']['enabled'])) {
 
@@ -156,9 +156,9 @@ if (!function_exists('certificate_build_pdf')) {
     }
 }
 
-if (!function_exists('renderElement')) {
+if (!function_exists('certificate_render_element')) {
     // Function to render text element
-    function renderElement($pdf, $settings, $text, $linkUrl = '') {
+    function certificate_render_element($pdf, $settings, $text, $linkUrl = '') {
         if (!isset($settings['enabled']) || !$settings['enabled']) return;
 
         $fontName = $settings['font_name'] ?? 'helvetica';

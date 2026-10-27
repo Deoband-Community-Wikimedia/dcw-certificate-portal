@@ -22,7 +22,9 @@ if (!otp_is_claim_authorized($certId)) {
 }
 
 // Define explicit font path for TCPDF
-define('K_PATH_FONTS', __DIR__ . '/vendor/tecnickcom/tcpdf/fonts/');
+if (!defined('K_PATH_FONTS')) {
+    define('K_PATH_FONTS', __DIR__ . '/vendor/tecnickcom/tcpdf/fonts/');
+}
 
 // 1. Fetch Participant and Event Specific Data (including organization_id for multi-tenant awareness)
 $stmt = $pdo->prepare("

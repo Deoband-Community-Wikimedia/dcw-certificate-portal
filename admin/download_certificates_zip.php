@@ -70,6 +70,10 @@ if (!class_exists('ZipArchive')) {
     exit;
 }
 
+// Every access check is done. Release the session lock now: a long export would otherwise block every other
+// admin page open in this browser until it finishes. $_SESSION stays readable for the audit log below.
+session_write_close();
+
 // Rendering 200+ PDFs takes a while; each one is written to disk rather than held in memory.
 set_time_limit(0);
 
@@ -84,6 +88,8 @@ $cleanup = function () use ($workDir) {
     }
     @rmdir($workDir);
 };
+// Also runs if the host kills a long request, so the temp PDFs never linger in /tmp.
+register_shutdown_function($cleanup);
 
 if (!mkdir($workDir, 0700)) {
     header("Location: $back&msg=zip_failed");
