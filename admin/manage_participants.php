@@ -477,10 +477,10 @@ $participants = $stmt->fetchAll();
         </div>
     </div>
 
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px; border-bottom: 2px solid #333; padding-bottom: 10px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 10px; border-bottom: 2px solid #333; padding-bottom: 10px;">
         <h3 style="margin: 0;"><?= __('admin.manage-participants.list-heading', ['count' => count($participants)]) ?></h3>
 
-        <form method="GET" style="display: flex; gap: 5px;">
+        <form method="GET" style="display: flex; flex-wrap: wrap; gap: 5px;">
             <input type="hidden" name="id" value="<?= $eventId ?>">
             <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="<?= __e('admin.manage-participants.search-placeholder') ?>" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc; width: 250px;">
             <button type="submit" class="btn" style="padding: 8px 15px;"><?= __e('admin.common.search') ?></button>
@@ -488,6 +488,16 @@ $participants = $stmt->fetchAll();
                 <a href="manage_participants.php?id=<?= $eventId ?>" class="btn" style="padding: 8px 15px;"><?= __e('admin.common.clear') ?></a>
             <?php endif; ?>
             <a href="manage_participants.php?id=<?= $eventId ?>&export=1" class="btn btn-green" style="padding: 8px 15px;"><?= __e('admin.manage-participants.export-csv') ?></a>
+        </form>
+        <form method="GET" action="download_certificates_zip.php" style="display: flex; flex-wrap: wrap; gap: 5px;">
+            <input type="hidden" name="id" value="<?= $eventId ?>">
+            <select name="role" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+                <option value="0"><?= __e('admin.manage-participants.zip.all-roles') ?></option>
+                <?php foreach ($rolesList as $zipRole): ?>
+                    <option value="<?= (int)$zipRole['id'] ?>"><?= htmlspecialchars($zipRole['role_name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <button type="submit" class="btn btn-green" style="padding: 8px 15px;"><?= __e('admin.manage-participants.download-zip') ?></button>
         </form>
     </div>
 
@@ -672,13 +682,16 @@ $flashMap = [
     'deleted'    => 'admin.manage-participants.flash.removed',
     'revoked'    => 'admin.manage-participants.flash.revoked',
     'reinstated' => 'admin.manage-participants.flash.reinstated',
+    'zip_empty'  => 'admin.manage-participants.flash.zip-empty',
+    'zip_failed' => 'admin.manage-participants.flash.zip-failed',
 ];
 $flashKey = $flashMap[$_GET['msg'] ?? ''] ?? null;
+$flashType = in_array($_GET['msg'] ?? '', ['zip_empty', 'zip_failed'], true) ? 'error' : 'success';
 ?>
 <?php if ($flashKey): ?>
 <script>
     window.flashMessage = <?= json_encode(__($flashKey)) ?>;
-    window.flashMessageType = 'success';
+    window.flashMessageType = <?= json_encode($flashType) ?>;
 </script>
 <?php elseif ($message): ?>
 <script>
